@@ -54,7 +54,7 @@ const AudioFile = () => {
   return (
     <div className="relative z-20 flex flex-col items-center p-10 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl w-full shadow-lg">
       <p className="text-3xl font-bold text-gray-800">
-        Generate Notes from Audio File
+        Generate Notes from Audio/Video File
       </p>
       <p className="text-sm text-gray-500 mt-1 text-center">
         Upload recorded audio and get notes generated within seconds.

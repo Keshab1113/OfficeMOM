@@ -12,11 +12,12 @@ const Signup = () => {
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/auth/signup", {
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/signup`, {
         fullName,
         email,
         password,
       });
+      alert("Working");
       navigate("/login");
     } catch (err) {
       console.log(err);

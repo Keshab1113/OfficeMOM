@@ -3,12 +3,15 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiMenu } from "react-icons/fi";
 import { RxCross2 } from "react-icons/rx";
-import { useDispatch } from "react-redux";
 import { setSidebarSelection } from "../../redux/sidebarSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../../redux/authSlice";
+import { persistor } from "../../redux/store";
 
 const SideBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { email } = useSelector((state) => state.auth);
 
   const [active, setActive] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,7 +20,10 @@ const SideBar = () => {
 
   const navItems = [
     { heading: "Join Online Meeting", icon: "/Icons/writing.webp" },
-    { heading: "Generate Notes from Audio File", icon: "/Icons/video.webp" },
+    {
+      heading: "Generate Notes from Audio/Video File",
+      icon: "/Icons/video.webp",
+    },
     { heading: "Record Live Meeting", icon: "/Icons/voice.webp" },
   ];
 
@@ -32,6 +38,10 @@ const SideBar = () => {
   }, []);
 
   const handleClick = (index) => {
+    if (!email) {
+      navigate("/login");
+      return;
+    }
     setActive(index);
     dispatch(
       setSidebarSelection({
@@ -48,6 +58,11 @@ const SideBar = () => {
     dispatch(setSidebarSelection({ heading: "" }));
     if (isMobile) setIsSidebarOpen(false);
     navigate("/");
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    persistor.purge();
   };
 
   const SidebarContent = (
@@ -86,7 +101,13 @@ const SideBar = () => {
             key={index}
             onClick={() => handleClick(index)}
             className={`text-left text-lg font-semibold flex items-center cursor-pointer gap-3 dark:text-white text-[#06304f] px-4 py-2 rounded-lg transition-all duration-300 whitespace-pre-wrap
-              ${isCollapsed ? "text-xs px-1 justify-center" : active === index ? "bg-blue-400 font-bold" : "hover:bg-blue-400 justify-start"}`}
+              ${
+                isCollapsed
+                  ? "text-xs px-1 justify-center"
+                  : active === index
+                  ? "bg-blue-400 font-bold"
+                  : "hover:bg-blue-400 justify-start"
+              }`}
             title={isCollapsed ? item : ""}
           >
             <div className="flex justify-center items-center rounded-full bg-blue-400 min-w-12 min-h-12">
@@ -104,6 +125,14 @@ const SideBar = () => {
           </button>
         ))}
       </div>
+      {email && (
+        <button
+          onClick={handleLogout}
+          className=" dark:text-white text-black font-bold cursor-pointer px-4 py-2 rounded absolute bottom-10 border border-solid border-gray-600"
+        >
+          Logout
+        </button>
+      )}
     </section>
   );
 
@@ -120,21 +149,19 @@ const SideBar = () => {
       )}
 
       {/* Sidebar */}
-      {isMobile ? (
-        isSidebarOpen && (
-          <motion.div
-            initial={{ x: -250 }}
-            animate={{ x: 0 }}
-            exit={{ x: -250 }}
-            transition={{ type: "spring", stiffness: 100 }}
-            className="fixed top-0 left-0 h-full z-50"
-          >
-            {SidebarContent}
-          </motion.div>
-        )
-      ) : (
-        SidebarContent
-      )}
+      {isMobile
+        ? isSidebarOpen && (
+            <motion.div
+              initial={{ x: -250 }}
+              animate={{ x: 0 }}
+              exit={{ x: -250 }}
+              transition={{ type: "spring", stiffness: 100 }}
+              className="fixed top-0 left-0 h-full z-50"
+            >
+              {SidebarContent}
+            </motion.div>
+          )
+        : SidebarContent}
     </>
   );
 };

@@ -2,20 +2,27 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
+import { useDispatch } from "react-redux";
+import { setUser } from "../../redux/authSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`, {
         email,
         password,
       });
-      localStorage.setItem("token", res.data.token);
+      dispatch(setUser({
+      user: res.data.user.fullname,
+      email: res.data.user.email,
+    }));
+      alert("Working");
       navigate("/");
     } catch (err) {
       console.log(err);
