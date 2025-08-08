@@ -61,11 +61,13 @@ const AudioFile = () => {
       </p>
 
       <div className="mt-6 w-full">
-        <p className="text-gray-600 text-lg mb-1">Choose the language.</p>
-        <p className="text-sm text-gray-400">
-          We can detect mixed language and accent, rest assured.
+        <p className="text-gray-600 text-sm mb-1">
+          Choose the language.{" "}
+          <span className="text-xs text-gray-400">
+            We can detect mixed language and accent, rest assured.
+          </span>
         </p>
-
+        
         <div
           className="mt-3 border border-gray-300 rounded-lg p-3 bg-gray-50 relative"
           ref={dropdownRef}
@@ -165,15 +167,18 @@ const AudioFile = () => {
 
         {activeTab === "drive" && (
           <div className="mt-4 flex flex-col items-start justify-center border border-gray-300 rounded-lg p-2 h-40">
-            <h1 className="text-gray-600 text-sm text-start mb-2">Paste your Google Drive URL</h1>
+            <h1 className="text-gray-600 text-sm text-start mb-2">
+              Paste your Google Drive URL
+            </h1>
             <div className=" w-full flex flex-col justify-center items-center">
-              
-            <input
-              type="text"
-              placeholder="Copy-paste your file public link from Google Drive"
-              className=" outline-none border border-gray-300 border-solid rounded-lg py-2 px-4 w-full h-fit"
-            />
-            <p className="text-xs text-gray-400 mt-2">Max. file size: 10.74GB</p>
+              <input
+                type="text"
+                placeholder="Copy-paste your file public link from Google Drive"
+                className=" outline-none border border-gray-300 border-solid rounded-lg py-2 px-4 w-full h-fit"
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                Max. file size: 10.74GB
+              </p>
             </div>
           </div>
         )}
