@@ -4,22 +4,27 @@ import authReducer from "./authSlice";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 
-// Persist config for auth slice
-const persistConfig = {
-  key: "auth", // key for localStorage
+const authPersistConfig = {
+  key: "auth",
   storage,
 };
 
-const persistedAuthReducer = persistReducer(persistConfig, authReducer);
+const sidebarPersistConfig = {
+  key: "sidebar",
+  storage,
+};
+
+const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
+const persistedSidebarReducer = persistReducer(sidebarPersistConfig, sidebarReducer);
 
 export const store = configureStore({
   reducer: {
-    sidebar: sidebarReducer,
-    auth: persistedAuthReducer, // Add persisted auth
+    sidebar: persistedSidebarReducer,
+    auth: persistedAuthReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false, // Required for redux-persist
+      serializableCheck: false,
     }),
 });
 

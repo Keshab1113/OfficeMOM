@@ -15,8 +15,8 @@ import { BsThreeDotsVertical } from "react-icons/bs";
 const SideBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { email } = useSelector((state) => state.auth);
-  const { fullName } = useSelector((state) => state.auth);
+  const { email, fullName } = useSelector((state) => state.auth);
+  const { heading } = useSelector((state) => state.sidebar);
   const { addToast } = useToast();
   const [active, setActive] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -27,22 +27,21 @@ const SideBar = () => {
 
   const navItems = [
     { heading: "Join Online Meeting", icon: "/Icons/writing.webp" },
-    {
-      heading: "Generate Notes from Audio/Video Files",
-      icon: "/Icons/video.webp",
-    },
+    { heading: "Generate Notes from Audio/Video Files", icon: "/Icons/video.webp" },
     { heading: "Record Live Meeting", icon: "/Icons/voice.webp" },
   ];
 
-  // Detect mobile screen
   useEffect(() => {
-    const checkScreen = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
-    };
+    const checkScreen = () => setIsMobile(window.innerWidth < 1024);
     checkScreen();
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
+
+  useEffect(() => {
+    const index = navItems.findIndex((item) => item.heading === heading);
+    if (index !== -1) setActive(index);
+  }, [heading]);
 
   const handleClick = (index) => {
     if (!email) {
@@ -51,15 +50,9 @@ const SideBar = () => {
       return;
     }
     setActive(index);
-    dispatch(
-      setSidebarSelection({
-        heading: navItems[index].heading,
-        subHeading: navItems[index].subHeading,
-      })
-    );
-
+    dispatch(setSidebarSelection({ heading: navItems[index].heading, subHeading: navItems[index].subHeading }));
     navigate("/");
-    if (isMobile) setIsSidebarOpen(false); // Close after click
+    if (isMobile) setIsSidebarOpen(false);
   };
 
   const handleHomeClick = () => {
@@ -77,9 +70,7 @@ const SideBar = () => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -88,13 +79,9 @@ const SideBar = () => {
   const SidebarContent = (
     <section
       className={`dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)] shadow-lg h-full min-h-screen py-10 sticky top-0 left-0 flex flex-col z-50 transition-all duration-300 border-r border-white/40
-      ${isCollapsed ? "w-[5rem]" : "md:w-[20rem] w-screen 2xl:w-[22vw] px-10"}`}
+      ${isCollapsed ? "w-[5rem]" : "md:w-[20rem] w-screen 2xl:w-[22vw] px-6"}`}
     >
-      <div
-        className={`flex items-center justify-between mb-16 ${
-          isCollapsed ? "gap-10 flex-col-reverse" : ""
-        }`}
-      >
+      <div className={`flex items-center justify-between mb-16 ${isCollapsed ? "gap-10 flex-col-reverse" : ""}`}>
         <button onClick={handleHomeClick} className="flex gap-2">
           <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
             <img src="/logo.webp" alt="logo" loading="lazy" />
@@ -106,10 +93,7 @@ const SideBar = () => {
           )}
         </button>
         {isMobile && (
-          <button
-            className="text-2xl text-blue-400"
-            onClick={() => setIsSidebarOpen(false)}
-          >
+          <button className="text-2xl text-blue-400" onClick={() => setIsSidebarOpen(false)}>
             <RxCross2 />
           </button>
         )}
@@ -120,7 +104,7 @@ const SideBar = () => {
           <button
             key={index}
             onClick={() => handleClick(index)}
-            className={`text-left text-lg font-semibold flex items-center cursor-pointer gap-3 dark:text-white text-[#06304f] px-4 py-2 rounded-lg transition-all duration-300 whitespace-pre-wrap
+            className={`text-left text-lg leading-5 font-semibold flex items-center cursor-pointer gap-3 dark:text-white text-[#06304f] px-4 py-2 rounded-lg transition-all duration-300 whitespace-pre-wrap
               ${
                 isCollapsed
                   ? "text-xs px-1 justify-center"
@@ -136,8 +120,7 @@ const SideBar = () => {
             {!isCollapsed &&
               (item.heading === "Join Online Meeting" ? (
                 <h1>
-                  Join Online Meeting{" "}
-                  <span className="text-sm">(Gmeet, Zoom Etc)</span>
+                  Join Online Meeting <span className="text-sm">(Gmeet, Zoom Etc)</span>
                 </h1>
               ) : (
                 item.heading
@@ -145,8 +128,9 @@ const SideBar = () => {
           </button>
         ))}
       </div>
+
       {email && fullName && (
-        <div className="absolute bottom-10 w-[80%]">
+        <div className="absolute bottom-10 w-[90%]">
           <div className="flex justify-between w-full items-center">
             <div className="flex gap-2 justify-center items-center">
               <div className="w-11 h-11 rounded-full bg-white flex justify-center items-center text-2xl">
@@ -156,20 +140,13 @@ const SideBar = () => {
                 <h1 className="dark:text-white text-black text-xl font-bold truncate" style={{ maxWidth: "200px" }}>
                   {fullName}
                 </h1>
-                <p className="dark:text-white text-black text-sm font-bold">
-                  {email}
-                </p>
+                <p className="dark:text-white text-black text-sm font-bold">{email}</p>
               </div>
             </div>
-
             <div className="relative" ref={dropdownRef}>
-              <div
-                className="p-2 cursor-pointer"
-                onClick={() => setDropdownOpen((prev) => !prev)}
-              >
+              <div className="p-2 cursor-pointer" onClick={() => setDropdownOpen((prev) => !prev)}>
                 <BsThreeDotsVertical className="dark:text-white text-black" />
               </div>
-
               {dropdownOpen && (
                 <div className="absolute cursor-pointer right-0 mt-2 w-32 bg-white dark:bg-gray-800 shadow-lg rounded border border-gray-300 dark:border-gray-700">
                   <button
@@ -189,7 +166,6 @@ const SideBar = () => {
 
   return (
     <>
-      {/* Mobile Hamburger Button */}
       {isMobile && !isSidebarOpen && (
         <button
           className="p-3 text-2xl text-blue-400 fixed top-4 left-4 z-50 bg-white rounded-full"
@@ -198,8 +174,6 @@ const SideBar = () => {
           <FiMenu />
         </button>
       )}
-
-      {/* Sidebar */}
       {isMobile
         ? isSidebarOpen && (
             <motion.div

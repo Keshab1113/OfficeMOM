@@ -13,7 +13,7 @@ const TakeNotes = () => {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const res = await fetch("http://ip-api.com/json/");
+        const res = await fetch(`${import.meta.env.VITE_LANGUAGE_URL}`);
         const data = await res.json();
         setUserCountry(data.country);
 

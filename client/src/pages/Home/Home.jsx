@@ -2,6 +2,7 @@ import { cn } from "../../lib/utils";
 import { useSelector } from "react-redux";
 import TakeNotes from "../../components/TakeNotes/TakeNotes";
 import AudioFile from "../../components/AudioFile/AudioFile";
+import LiveMeeting from "../../components/LiveMeeting/LiveMeeting";
 
 const Home = () => {
   const { heading } = useSelector((state) => state.sidebar);
@@ -34,16 +35,7 @@ const Home = () => {
       )}
       {heading === "Join Online Meeting" && <TakeNotes />}
       {heading === "Generate Notes from Audio/Video Files" && <AudioFile />}
-      {heading === "Record Live Meeting" && (
-        <div className=" flex flex-col justify-center items-center">
-          <p className="relative z-20 bg-gradient-to-b from-neutral-200 to-neutral-500 bg-clip-text text-3xl font-bold text-transparent md:text-5xl">
-            Sorry
-          </p>
-          <p className="mt-3 relative z-20 bg-gradient-to-b from-white to-blue-500 bg-clip-text text-xl font-bold text-transparent md:text-xl">
-            We are working on this features
-          </p>
-        </div>
-      )}
+      {heading === "Record Live Meeting" && <LiveMeeting/>}
     </section>
   );
 };

@@ -2,7 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   heading: "",
-  subHeading: ""
+  subHeading: "",
 };
 
 const sidebarSlice = createSlice({
