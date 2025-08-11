@@ -13,16 +13,15 @@ const TakeNotes = () => {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const res = await fetch("https://ipapi.co/json/");
+        const res = await fetch("http://ip-api.com/json/");
         const data = await res.json();
-        setUserCountry(data.country_name);
+        setUserCountry(data.country);
 
-        // Set language based on country
-        if (data.country_name && countryToLanguage[data.country_name]) {
-          setSelectedLanguage(countryToLanguage[data.country_name]);
+        if (data.country && countryToLanguage[data.country]) {
+          setSelectedLanguage(countryToLanguage[data.country]);
         }
       } catch (error) {
-        console.log(error);
+        console.error("Location fetch error:", error);
       }
     };
     fetchLocation();
@@ -43,7 +42,7 @@ const TakeNotes = () => {
   );
 
   return (
-    <div className="relative z-20 flex flex-col items-center p-10 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl w-full shadow-lg">
+    <div className="relative z-20 flex flex-col items-center p-10 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl md:w-full w-[90vw] shadow-lg">
       <p className="text-3xl font-bold text-gray-800">
         Take Notes from Online Meeting
       </p>
@@ -107,15 +106,17 @@ const TakeNotes = () => {
         </div>
       </div>
       <div className=" flex flex-col justify-center items-start w-full mt-6">
-      <h1 className="text-gray-600 text-sm">Paste your Google Meet, Zoom, or Microsoft Teams URL</h1>
-      <div className="mt-2 w-full flex items-center border border-gray-300 rounded-lg p-2">
-        <FcConferenceCall className="text-blue-500 text-xl mr-2" />
-        <input
-          type="text"
-          placeholder="Paste Google Meet, Zoom, or Microsoft Teams URL here"
-          className="flex-1 outline-none"
-        />
-      </div>
+        <h1 className="text-gray-600 text-sm">
+          Paste your Google Meet, Zoom, or Microsoft Teams URL
+        </h1>
+        <div className="mt-2 w-full flex items-center border border-gray-300 rounded-lg p-2">
+          <FcConferenceCall className="text-blue-500 text-xl mr-2" />
+          <input
+            type="text"
+            placeholder="Paste Google Meet, Zoom, or Microsoft Teams URL here"
+            className="flex-1 outline-none"
+          />
+        </div>
       </div>
 
       <button className="mt-4 w-full py-3 rounded-lg text-white font-semibold bg-blue-400 cursor-pointer">

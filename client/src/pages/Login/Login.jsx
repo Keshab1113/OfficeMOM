@@ -4,28 +4,37 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useDispatch } from "react-redux";
 import { setUser } from "../../redux/authSlice";
+import { useToast } from "../../components/ToastContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { addToast } = useToast();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`, {
-        email,
-        password,
-      });
-      dispatch(setUser({
-      user: res.data.user.fullname,
-      email: res.data.user.email,
-    }));
-      alert("Working");
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
+        {
+          email,
+          password,
+        }
+      );
+
+      dispatch(
+        setUser({
+          fullName: res.data.user.fullName,
+          email: res.data.user.email,
+        })
+      );
+      addToast("success", "Login Successfully");
       navigate("/");
-    } catch (err) {
-      console.log(err);
+    } catch (error) {
+      addToast("error", error?.response?.data?.message);
+      console.log(error);
     }
   };
 
@@ -47,8 +56,15 @@ const Login = () => {
           <p className="relative text-center z-20 pb-2 uppercase dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
             Login
           </p>
-          <p className="mb-10 mt-1 text-lg text-center text-gray-700 font-bold">To access all features, you need to login first</p>
-          <label htmlFor="email" className="text-lg font-bold mb-2 text-gray-700">Enter Email</label>
+          <p className="mb-10 mt-1 text-lg text-center text-gray-700 font-bold">
+            To access all features, you need to login first
+          </p>
+          <label
+            htmlFor="email"
+            className="text-lg font-bold mb-2 text-gray-700"
+          >
+            Enter Email
+          </label>
           <input
             type="email"
             placeholder="Enter Your Email"
@@ -57,7 +73,12 @@ const Login = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <label htmlFor="password" className="text-lg font-bold mb-2 text-gray-700">Enter Password</label>
+          <label
+            htmlFor="password"
+            className="text-lg font-bold mb-2 text-gray-700"
+          >
+            Enter Password
+          </label>
           <input
             type="password"
             placeholder="Enter Your Password"

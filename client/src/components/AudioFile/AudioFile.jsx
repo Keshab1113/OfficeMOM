@@ -15,16 +15,15 @@ const AudioFile = () => {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const res = await fetch("https://ipapi.co/json/");
+        const res = await fetch("http://ip-api.com/json/");
         const data = await res.json();
-        setUserCountry(data.country_name);
+        setUserCountry(data.country);
 
-        // Set language based on country
-        if (data.country_name && countryToLanguage[data.country_name]) {
-          setSelectedLanguage(countryToLanguage[data.country_name]);
+        if (data.country && countryToLanguage[data.country]) {
+          setSelectedLanguage(countryToLanguage[data.country]);
         }
       } catch (error) {
-        console.log(error);
+        console.error("Location fetch error:", error);
       }
     };
     fetchLocation();
@@ -52,9 +51,9 @@ const AudioFile = () => {
   };
 
   return (
-    <div className="relative z-20 flex flex-col items-center p-10 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl w-full shadow-lg">
+    <div className="relative z-20 flex flex-col items-center p-10 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl md:w-full w-[90vw] shadow-lg">
       <p className="text-3xl font-bold text-gray-800">
-        Generate Notes from Audio/Video File
+        Generate Notes from Audio/Video Files
       </p>
       <p className="text-sm text-gray-500 mt-1 text-center">
         Upload recorded audio and get notes generated within seconds.
@@ -67,7 +66,7 @@ const AudioFile = () => {
             We can detect mixed language and accent, rest assured.
           </span>
         </p>
-        
+
         <div
           className="mt-3 border border-gray-300 rounded-lg p-3 bg-gray-50 relative"
           ref={dropdownRef}

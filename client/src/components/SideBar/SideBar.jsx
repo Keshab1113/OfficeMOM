@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { FiMenu } from "react-icons/fi";
 import { RxCross2 } from "react-icons/rx";
@@ -7,21 +7,28 @@ import { setSidebarSelection } from "../../redux/sidebarSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/authSlice";
 import { persistor } from "../../redux/store";
+import { TbLogout2 } from "react-icons/tb";
+import { useToast } from "../ToastContext";
+import { IoPerson } from "react-icons/io5";
+import { BsThreeDotsVertical } from "react-icons/bs";
 
 const SideBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { email } = useSelector((state) => state.auth);
-
+  const { fullName } = useSelector((state) => state.auth);
+  const { addToast } = useToast();
   const [active, setActive] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const navItems = [
     { heading: "Join Online Meeting", icon: "/Icons/writing.webp" },
     {
-      heading: "Generate Notes from Audio/Video File",
+      heading: "Generate Notes from Audio/Video Files",
       icon: "/Icons/video.webp",
     },
     { heading: "Record Live Meeting", icon: "/Icons/voice.webp" },
@@ -39,6 +46,7 @@ const SideBar = () => {
 
   const handleClick = (index) => {
     if (!email) {
+      addToast("error", "After login, you can get access");
       navigate("/login");
       return;
     }
@@ -49,6 +57,7 @@ const SideBar = () => {
         subHeading: navItems[index].subHeading,
       })
     );
+
     navigate("/");
     if (isMobile) setIsSidebarOpen(false); // Close after click
   };
@@ -63,7 +72,18 @@ const SideBar = () => {
   const handleLogout = () => {
     dispatch(logout());
     persistor.purge();
+    addToast("success", "Logout Successfully");
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const SidebarContent = (
     <section
@@ -125,13 +145,44 @@ const SideBar = () => {
           </button>
         ))}
       </div>
-      {email && (
-        <button
-          onClick={handleLogout}
-          className=" dark:text-white text-black font-bold cursor-pointer px-4 py-2 rounded absolute bottom-10 border border-solid border-gray-600"
-        >
-          Logout
-        </button>
+      {email && fullName && (
+        <div className="absolute bottom-10 w-[80%]">
+          <div className="flex justify-between w-full items-center">
+            <div className="flex gap-2 justify-center items-center">
+              <div className="w-11 h-11 rounded-full bg-white flex justify-center items-center text-2xl">
+                <IoPerson />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="dark:text-white text-black text-xl font-bold truncate" style={{ maxWidth: "200px" }}>
+                  {fullName}
+                </h1>
+                <p className="dark:text-white text-black text-sm font-bold">
+                  {email}
+                </p>
+              </div>
+            </div>
+
+            <div className="relative" ref={dropdownRef}>
+              <div
+                className="p-2 cursor-pointer"
+                onClick={() => setDropdownOpen((prev) => !prev)}
+              >
+                <BsThreeDotsVertical className="dark:text-white text-black" />
+              </div>
+
+              {dropdownOpen && (
+                <div className="absolute cursor-pointer right-0 mt-2 w-32 bg-white dark:bg-gray-800 shadow-lg rounded border border-gray-300 dark:border-gray-700">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center cursor-pointer gap-2 w-full px-4 py-2 text-sm font-bold dark:text-white text-black hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <TbLogout2 className="text-lg" /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

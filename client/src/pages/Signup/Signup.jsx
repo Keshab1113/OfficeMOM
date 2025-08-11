@@ -2,12 +2,14 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
+import { useToast } from "../../components/ToastContext";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -17,10 +19,20 @@ const Signup = () => {
         email,
         password,
       });
-      alert("Working");
+      addToast("success", "User profile created");
       navigate("/login");
-    } catch (err) {
-      console.log(err);
+    } catch (error) {
+      const errors = error?.response?.data?.errors;
+
+      if (Array.isArray(errors) && errors.length > 0) {
+        errors.forEach((err) => addToast("error", err));
+      } else {
+        const errorMessage =
+          error?.response?.data?.message || "Something went wrong";
+        addToast("error", errorMessage);
+      }
+
+      console.log(errors || error);
     }
   };
 
