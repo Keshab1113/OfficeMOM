@@ -1,12 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { FiChevronDown, FiUploadCloud } from "react-icons/fi";
-import { countryToLanguage, languages } from "../Language";
+import { useState, useRef } from "react";
+import { FiUploadCloud } from "react-icons/fi";
+import { useToast } from "../ToastContext";
+import Timing from "../Timing/Timing";
 
 const AudioFile = () => {
-  const [selectedLanguage, setSelectedLanguage] = useState("English");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [userCountry, setUserCountry] = useState("");
   const [activeTab, setActiveTab] = useState("computer");
   const [selectedFile, setSelectedFile] = useState(null);
   const [driveUrl, setDriveUrl] = useState("");
@@ -14,38 +11,9 @@ const AudioFile = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [gettingData, setGettingData] = useState(false);
 
-  const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
+  const { addToast } = useToast();
 
-  useEffect(() => {
-    const fetchLocation = async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_LANGUAGE_URL}`);
-        const data = await res.json();
-        setUserCountry(data.country_name);
-        if (data.country_name && countryToLanguage[data.country_name]) {
-          setSelectedLanguage(countryToLanguage[data.country_name]);
-        }
-      } catch (error) {
-        console.error("Location fetch error:", error);
-      }
-    };
-    fetchLocation();
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const filteredLanguages = languages.filter((lang) =>
-    lang.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -71,26 +39,41 @@ const AudioFile = () => {
   };
 
   const handleStartMakingNotes = async () => {
-    if (!selectedFile) {
+    if (activeTab === "computer" && !selectedFile) {
+      return;
+    }
+    if (activeTab === "drive" && !driveUrl) {
+      setError("Please paste a valid Google Drive URL");
       return;
     }
     setIsProcessing(true);
     setGettingData(false);
+
     const formData = new FormData();
-    formData.append("audio", selectedFile);
+    let apiUrl = "";
+
+    if (activeTab === "computer") {
+      formData.append("audio", selectedFile);
+      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-audio`;
+    } else {
+      formData.append("driveUrl", driveUrl);
+      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;
+    }
+
     formData.append("language_code", "en_us");
+
     try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/process-audio`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const resp = await fetch(apiUrl, {
+        method: "POST",
+        body: formData,
+      });
+
       if (!resp.ok) {
         throw new Error(`Server error: ${resp.status}`);
       }
+
       const data = await resp.json();
+
       const downloadBase64File = (base64, fileName, mimeType) => {
         const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
         const blob = new Blob([byteArray], { type: mimeType });
@@ -103,6 +86,7 @@ const AudioFile = () => {
         a.remove();
         URL.revokeObjectURL(url);
       };
+
       downloadBase64File(
         data.wordBase64,
         "transcript.docx",
@@ -113,14 +97,16 @@ const AudioFile = () => {
         "transcript.xlsx",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
+      addToast("success", "Audio converted Successfully");
       setSelectedFile(null);
+      setDriveUrl("");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
       setGettingData(true);
     } catch (err) {
       console.error(err);
-      alert("Failed to process audio. Please try again.");
+      addToast("error", "Failed to process file. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -131,69 +117,10 @@ const AudioFile = () => {
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center">
         Generate Notes from Audio/Video Files
       </h1>
-      <p className="text-sm text-gray-500 mt-1 text-center">
+      <p className="text-sm text-gray-500 mt-1 mb-6 text-center">
         Upload recorded audio and get notes generated within seconds.
       </p>
-      <div className="mt-2 w-full">
-        <p className="text-gray-600 text-sm mb-1">
-          Choose the language.{" "}
-          <span className="text-xs text-gray-400">
-            We can detect mixed language and accent.
-          </span>
-        </p>
-        <div
-          className="mt-1 border border-gray-300 rounded-lg p-3 bg-gray-50 relative"
-          ref={dropdownRef}
-        >
-          <p className="text-gray-500 text-sm">
-            Recommended based on your location:{" "}
-            <b>{userCountry ? `🇺🇳 ${userCountry}` : "Detecting..."}</b>
-          </p>
-          <div
-            className="mt-2 flex items-center justify-between bg-white border border-gray-300 rounded-lg p-2 cursor-pointer"
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            <span>{selectedLanguage}</span>
-            <FiChevronDown
-              className={`transition-transform ${
-                showDropdown ? "rotate-180" : ""
-              }`}
-            />
-          </div>
-          {showDropdown && (
-            <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
-              <input
-                type="text"
-                placeholder="Search language..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 border-b border-gray-200 outline-none sticky top-0 bg-white"
-              />
-              <div className="max-h-48 overflow-y-auto">
-                {filteredLanguages.length > 0 ? (
-                  filteredLanguages.map((lang, i) => (
-                    <div
-                      key={i}
-                      className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
-                      onClick={() => {
-                        setSelectedLanguage(lang);
-                        setShowDropdown(false);
-                        setSearchTerm("");
-                      }}
-                    >
-                      {lang}
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-3 py-2 text-gray-400">
-                    No results found
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <Timing/>
       <div className="mt-2 w-full">
         <div className="flex border-b border-gray-300">
           <button
@@ -220,6 +147,21 @@ const AudioFile = () => {
         {activeTab === "computer" && (
           <label
             htmlFor="file-upload"
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.add("border-blue-400", "bg-blue-50");
+            }}
+            onDragLeave={(e) => {
+              e.currentTarget.classList.remove("border-blue-400", "bg-blue-50");
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove("border-blue-400", "bg-blue-50");
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleFileSelect({ target: { files: e.dataTransfer.files } });
+                e.dataTransfer.clearData();
+              }
+            }}
             className={`mt-4 h-40 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors ${
               selectedFile
                 ? "border-blue-400 bg-blue-50"
@@ -296,43 +238,57 @@ const AudioFile = () => {
           {error}
         </div>
       )}
-      <button
-        onClick={handleStartMakingNotes}
-        disabled={isProcessing || !selectedFile}
-        className={`mt-3 w-full py-3  rounded-lg text-white font-semibold transition-colors ${
-          isProcessing || !selectedFile
-            ? "bg-blue-400 cursor-not-allowed"
-            : "bg-blue-500 hover:bg-blue-600 cursor-pointer"
-        } flex items-center justify-center`}
-      >
-        {isProcessing ? (
-          <>
-            <svg
-              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Processing Audio...
-          </>
-        ) : (
-          "Start Making Notes"
-        )}
-      </button>
+      {activeTab === "drive" ? (
+        <button
+          onClick={handleStartMakingNotes}
+          disabled={!driveUrl}
+          className={`mt-3 w-full py-3  rounded-lg text-white font-semibold transition-colors ${
+            !driveUrl
+              ? "bg-blue-400 cursor-not-allowed"
+              : "bg-blue-500 hover:bg-blue-600 cursor-pointer"
+          } flex items-center justify-center`}
+        >
+          Start Making Notes
+        </button>
+      ) : (
+        <button
+          onClick={handleStartMakingNotes}
+          disabled={isProcessing || !selectedFile}
+          className={`mt-3 w-full py-3  rounded-lg text-white font-semibold transition-colors ${
+            isProcessing || !selectedFile
+              ? "bg-blue-400 cursor-not-allowed"
+              : "bg-blue-500 hover:bg-blue-600 cursor-pointer"
+          } flex items-center justify-center`}
+        >
+          {isProcessing ? (
+            <>
+              <svg
+                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Processing Audio...
+            </>
+          ) : (
+            "Start Making Notes"
+          )}
+        </button>
+      )}
       {gettingData && (
         <div className="mt-2 w-full">
           <p className="text-xs text-gray-400 text-center">
@@ -340,9 +296,7 @@ const AudioFile = () => {
           </p>
         </div>
       )}
-      <p className="text-xs text-gray-400 mt-2 text-center">
-        Free service during beta testing
-      </p>
+      
     </div>
   );
 };

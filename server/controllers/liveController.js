@@ -5,7 +5,6 @@ const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
 const TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";
 
-// Upload file to AssemblyAI
 async function uploadFileToAssemblyAI(filePath) {
   const stat = fs.statSync(filePath);
   const fileStream = fs.createReadStream(filePath);
@@ -24,7 +23,6 @@ async function uploadFileToAssemblyAI(filePath) {
   return res.data.upload_url;
 }
 
-// Create transcription job
 async function createTranscription(audioUrl) {
   const res = await axios.post(
     TRANSCRIPT_URL,
@@ -36,7 +34,6 @@ async function createTranscription(audioUrl) {
   return res.data;
 }
 
-// Poll transcription result
 async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
   const start = Date.now();
   while (true) {
@@ -51,7 +48,6 @@ async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
   }
 }
 
-// Controller: handles /transcribe
 export const transcribeAudio = async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: "No file uploaded" });
@@ -60,8 +56,6 @@ export const transcribeAudio = async (req, res) => {
     const audioUrl = await uploadFileToAssemblyAI(file.path);
     const created = await createTranscription(audioUrl);
     const result = await pollTranscription(created.id);
-
-    // Remove the file from local uploads
     fs.unlink(file.path, () => {});
 
     res.json({ text: result.text, full: result });
