@@ -1,19 +1,24 @@
 import { useState, useRef } from "react";
-import { FiChevronDown } from "react-icons/fi";
 import { MdRecordVoiceOver } from "react-icons/md";
 import { useToast } from "../ToastContext";
 import Timing from "../Timing/Timing";
+import HeaderModal from "../HeaderModal/HeaderModal";
+import { useDispatch } from "react-redux";
+import { setTableHeader } from "../../redux/meetingSlice";
+import { saveTranscriptFiles } from "../TextTable/TextTable";
 
 const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const recordedBlobRef = useRef(null); // Store the final blob
-  
+  const recordedBlobRef = useRef(null);
+  const [showModal, setShowModal] = useState(false);
+  const [finalTranscript, setFinalTranscript] = useState(null);
+
   const [recordedBlob, setRecordedBlob] = useState(null);
   const { addToast } = useToast();
-
+  const dispatch = useDispatch();
 
   const startRecording = async () => {
     try {
@@ -62,7 +67,6 @@ const LiveMeeting = () => {
       alert("Please record some audio first");
       return;
     }
-
     setIsProcessing(true);
     try {
       const formData = new FormData();
@@ -70,56 +74,45 @@ const LiveMeeting = () => {
 
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/transcribe`,
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: formData }
       );
-
-      if (!res.ok) {
-        throw new Error("Failed to transcribe audio");
-      }
-
+      if (!res.ok) throw new Error("Failed to transcribe audio");
       const data = await res.json();
-      const finalTranscript = data.text;
-      addToast("success", "Audio converted Successfully");
-      downloadAsWord(finalTranscript);
-      downloadAsExcel(finalTranscript);
+      setFinalTranscript(data.text);
+      setShowModal(true);
     } catch (error) {
       addToast("error", "Failed to process file. Please try again.");
       console.error("Error processing notes:", error);
-    } finally {
       setIsProcessing(false);
+    } finally {
       setRecordedBlob(null);
     }
   };
 
-  const downloadAsWord = (content) => {
-    const blob = new Blob([content], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "meeting_notes.doc";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadAsExcel = (content) => {
-    const csvContent =
-      "Timestamp,Speaker,Content\n" +
-      `"${new Date().toISOString()}","Participant 1","${content}"`;
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "meeting_notes.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleSaveHeaders = async (headers) => {
+    dispatch(setTableHeader(headers));
+    setShowModal(false);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: finalTranscript, headers:headers }),
+        }
+      );
+      const tableData = await response.json();
+      if (!Array.isArray(tableData)) {
+        addToast("error", "Could not process meeting notes");
+        return;
+      }
+      saveTranscriptFiles(tableData,headers,addToast);
+    } catch (error) {
+      console.error("Error converting transcript:", error);
+      addToast("error", "Failed to convert transcript");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -129,7 +122,7 @@ const LiveMeeting = () => {
         Using your device microphone
       </p>
 
-      <Timing/>
+      <Timing />
 
       <div className="flex flex-col justify-center items-start w-full mt-6">
         <div className="flex gap-2 justify-start items-center w-full">
@@ -177,6 +170,12 @@ const LiveMeeting = () => {
       <p className="text-xs text-gray-400 mt-2">
         Meeting cost is totally free now.
       </p>
+      {showModal && (
+        <HeaderModal
+          onSave={handleSaveHeaders}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 };

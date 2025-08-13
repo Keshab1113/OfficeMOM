@@ -1,21 +1,24 @@
 import { useState, useRef } from "react";
 import { FcConferenceCall } from "react-icons/fc";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 import { useToast } from "../ToastContext";
 import Timing from "../Timing/Timing";
+import { saveTranscriptFiles } from "../TextTable/TextTable";
+import HeaderModal from "../HeaderModal/HeaderModal";
+import { useDispatch } from "react-redux";
+import { setTableHeader } from "../../redux/meetingSlice";
 
 const TakeNotes = () => {
-  
   const [meetingLink, setMeetingLink] = useState("");
   const [isMeetingActive, setIsMeetingActive] = useState(false);
   const [transcript, setTranscript] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [finalTranscript, setFinalTranscript] = useState(null);
 
   const wsRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const { addToast } = useToast();
-
+  const dispatch = useDispatch();
 
   const startMeeting = async () => {
     if (!meetingLink) {
@@ -35,14 +38,22 @@ const TakeNotes = () => {
       try {
         let stream;
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              sampleRate: 44100,
-            },
-            video: false,
+          const micStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
           });
+          const systemStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+          });
+
+          const audioContext = new AudioContext();
+          const destination = audioContext.createMediaStreamDestination();
+
+          audioContext.createMediaStreamSource(micStream).connect(destination);
+          audioContext
+            .createMediaStreamSource(systemStream)
+            .connect(destination);
+
+          stream = destination.stream;
 
           addToast("info", "Using microphone for meeting audio");
         } catch (micError) {
@@ -110,35 +121,45 @@ const TakeNotes = () => {
     wsRef.current = ws;
   };
 
-  const endMeeting = () => {
+  const endMeeting = async () => {
     if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
     if (mediaStreamRef.current)
       mediaStreamRef.current.getTracks().forEach((t) => t.stop());
     if (wsRef.current) wsRef.current.close();
-
-    saveTranscriptFiles(transcript.join(" "));
+    const transcriptText = transcript.join(" ");
+    setFinalTranscript(transcriptText);
+    setShowModal(true);
     setIsMeetingActive(false);
     setMeetingLink("");
     setTranscript([]);
   };
 
-  const saveTranscriptFiles = (text) => {
-    const blobWord = new Blob([text], { type: "application/msword" });
-    saveAs(blobWord, "MeetingNotes.doc");
-
-    const ws = XLSX.utils.aoa_to_sheet([["Transcript"], [text]]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Notes");
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(
-      new Blob([excelBuffer], { type: "application/octet-stream" }),
-      "MeetingNotes.xlsx"
-    );
-
-    addToast("success", "Meeting converted Successfully");
+  const handleSaveHeaders = async (headers) => {
+    dispatch(setTableHeader(headers));
+    setShowModal(false);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcript: finalTranscript,
+            headers: headers,
+          }),
+        }
+      );
+      const tableData = await response.json();
+      if (!Array.isArray(tableData)) {
+        addToast("error", "Could not process meeting notes");
+        return;
+      }
+      saveTranscriptFiles(tableData, headers, addToast);
+    } catch (error) {
+      console.error("Error converting transcript:", error);
+      addToast("error", "Failed to convert transcript");
+    }
   };
-
-  
 
   return (
     <div className="relative z-20 flex flex-col items-center p-10 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl md:w-full w-[90vw] shadow-lg animate-fadeIn">
@@ -152,7 +173,7 @@ const TakeNotes = () => {
             Connect Zoom, Google Meet, or Teams link and generate automatic MoM.
           </p>
 
-          <Timing/>
+          <Timing />
 
           <div className="flex flex-col items-start w-full my-6">
             <h1 className="text-gray-600 text-sm mb-1">Paste meeting URL</h1>
@@ -197,6 +218,12 @@ const TakeNotes = () => {
             ))}
           </div>
         </>
+      )}
+      {showModal && (
+        <HeaderModal
+          onSave={handleSaveHeaders}
+          onClose={() => setShowModal(false)}
+        />
       )}
     </div>
   );

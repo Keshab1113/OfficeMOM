@@ -2,6 +2,10 @@ import { useState, useRef } from "react";
 import { FiUploadCloud } from "react-icons/fi";
 import { useToast } from "../ToastContext";
 import Timing from "../Timing/Timing";
+import { saveTranscriptFiles } from "../TextTable/TextTable";
+import { useDispatch } from "react-redux";
+import { setTableHeader } from "../../redux/meetingSlice";
+import HeaderModal from "../HeaderModal/HeaderModal";
 
 const AudioFile = () => {
   const [activeTab, setActiveTab] = useState("computer");
@@ -10,10 +14,12 @@ const AudioFile = () => {
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [gettingData, setGettingData] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [finalTranscript, setFinalTranscript] = useState(null);
 
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
-
+  const dispatch = useDispatch();
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -73,31 +79,8 @@ const AudioFile = () => {
       }
 
       const data = await resp.json();
-
-      const downloadBase64File = (base64, fileName, mimeType) => {
-        const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-        const blob = new Blob([byteArray], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      };
-
-      downloadBase64File(
-        data.wordBase64,
-        "transcript.docx",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      );
-      downloadBase64File(
-        data.excelBase64,
-        "transcript.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-      addToast("success", "Audio converted Successfully");
+      setFinalTranscript(data.text);
+      setShowModal(true);
       setSelectedFile(null);
       setDriveUrl("");
       if (fileInputRef.current) {
@@ -112,6 +95,35 @@ const AudioFile = () => {
     }
   };
 
+  const handleSaveHeaders = async (headers) => {
+    dispatch(setTableHeader(headers));
+    setShowModal(false);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcript: finalTranscript,
+            headers: headers,
+          }),
+        }
+      );
+      const tableData = await response.json();
+      if (!Array.isArray(tableData)) {
+        addToast("error", "Could not process meeting notes");
+        return;
+      }
+      saveTranscriptFiles(tableData, headers, addToast);
+    } catch (error) {
+      console.error("Error converting transcript:", error);
+      addToast("error", "Failed to convert transcript");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="relative z-20 flex flex-col items-center p-6 bg-[linear-gradient(45deg,white,#b4d6e0)] rounded-xl max-w-2xl w-[95vw] shadow-lg max-h-[90vh]">
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center">
@@ -120,7 +132,7 @@ const AudioFile = () => {
       <p className="text-sm text-gray-500 mt-1 mb-6 text-center">
         Upload recorded audio and get notes generated within seconds.
       </p>
-      <Timing/>
+      <Timing />
       <div className="mt-2 w-full">
         <div className="flex border-b border-gray-300">
           <button
@@ -241,14 +253,40 @@ const AudioFile = () => {
       {activeTab === "drive" ? (
         <button
           onClick={handleStartMakingNotes}
-          disabled={!driveUrl}
-          className={`mt-3 w-full py-3  rounded-lg text-white font-semibold transition-colors ${
-            !driveUrl
+          disabled={isProcessing || !driveUrl}
+          className={`mt-3 w-full py-3 rounded-lg text-white font-semibold transition-colors ${
+            isProcessing || !driveUrl
               ? "bg-blue-400 cursor-not-allowed"
               : "bg-blue-500 hover:bg-blue-600 cursor-pointer"
           } flex items-center justify-center`}
         >
-          Start Making Notes
+          {isProcessing ? (
+            <>
+              <svg
+                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Processing...
+            </>
+          ) : (
+            "Start Making Notes"
+          )}
         </button>
       ) : (
         <button
@@ -296,7 +334,13 @@ const AudioFile = () => {
           </p>
         </div>
       )}
-      
+
+      {showModal && (
+        <HeaderModal
+          onSave={handleSaveHeaders}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 };
