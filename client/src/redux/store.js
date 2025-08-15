@@ -1,5 +1,4 @@
 import { configureStore } from "@reduxjs/toolkit";
-import sidebarReducer from "./sidebarSlice";
 import authReducer from "./authSlice";
 import meetingReducer from "./meetingSlice";
 import { persistStore, persistReducer } from "redux-persist";
@@ -10,24 +9,18 @@ const authPersistConfig = {
   storage,
 };
 
-const sidebarPersistConfig = {
-  key: "sidebar",
+const meetingPersistConfig = {
+  key: "meeting",
   storage,
 };
-const tableHeadersConfig = {
-  key: "headers",
-  storage,
-}
 
 const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
-const persistedSidebarReducer = persistReducer(sidebarPersistConfig, sidebarReducer);
-const persistedHeaderReducer = persistReducer(tableHeadersConfig, meetingReducer);
+const persistedMeetingReducer = persistReducer(meetingPersistConfig, meetingReducer);
 
 export const store = configureStore({
   reducer: {
-    sidebar: persistedSidebarReducer,
     auth: persistedAuthReducer,
-    headers: persistedHeaderReducer,
+    meeting: persistedMeetingReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -41,26 +41,26 @@ const Timing = () => {
 
   return (
     <div className="w-full" ref={dropdownRef}>
-      <p className="text-gray-600 text-sm mb-1">
+      <p className="dark:text-white text-black md:text-xl text-lg mb-2">
         Choose the language.{" "}
-        <span className="text-xs text-gray-400">
+        <span className="md:text-sm dark:text-gray-200 text-gray-600">
           We can detect mixed language and accent.
         </span>
       </p>
-      <div className="relative mt-1 border border-gray-300 rounded-lg p-3 bg-gray-50">
-        <p className="text-gray-500 text-sm">
+      <div className="relative mt-1 border border-gray-300 dark:border-white/20 rounded-lg p-3 bg-white dark:bg-gray-900">
+        <p className="text-gray-50 dark:text-gray-400 text-sm mb-1">
           Recommended based on your location:{" "}
           <b>{userCountry ? `🇺🇳 ${userCountry}` : "Detecting..."}</b>
         </p>
         <div
-          className="flex items-center justify-between bg-white border border-gray-300 rounded-lg p-2 cursor-pointer select-none"
+          className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          <span>{selectedLanguage}</span>
+          <span className=" text-black dark:text-gray-300">{selectedLanguage}</span>
           <FiChevronDown />
         </div>
         {showDropdown && (
-          <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+          <div className="absolute left-3 right-3 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-56 overflow-y-auto z-50">
             <input
               type="text"
               placeholder="Search language..."

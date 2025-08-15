@@ -6,6 +6,7 @@ import audioRoutes from "./routes/audioRoutes.js";
 import liveRoutes from "./routes/liveRoutes.js";
 import driveRoutes from "./routes/driveRoutes.js";
 import openaiRoute from "./routes/openaiRoute.js";
+import historyRoutes from "./routes/historyRoutes.js";
 import { WebSocketServer, WebSocket } from "ws";
 import http from "http";
 
@@ -21,6 +22,7 @@ app.use("/api", audioRoutes);
 app.use("/api", liveRoutes);
 app.use("/api", driveRoutes);
 app.use("/api/openai", openaiRoute);
+app.use("/api/history", historyRoutes);
 
 const server = http.createServer(app);
 

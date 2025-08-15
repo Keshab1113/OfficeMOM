@@ -7,11 +7,12 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #007BFF;  /* Blue color */
+  background-color: #007BFF;
+  /* Blue color */
   border-radius: 10px;
   border: 1px solid transparent;
 }
@@ -27,6 +28,7 @@ body {
     transform: translateX(100%);
     opacity: 0;
   }
+
   100% {
     transform: translateX(0);
     opacity: 1;
@@ -37,6 +39,7 @@ body {
   from {
     width: 100%;
   }
+
   to {
     width: 0%;
   }
@@ -55,15 +58,18 @@ body {
 }
 
 .toast-success {
-  background-color: #22c55e; /* Tailwind green-500 */
+  background-color: #22c55e;
+  /* Tailwind green-500 */
 }
 
 .toast-error {
-  background-color: #ef4444; /* Tailwind red-500 */
+  background-color: #ef4444;
+  /* Tailwind red-500 */
 }
 
 .toast-default {
-  background-color: #374151; /* Tailwind gray-700 */
+  background-color: #374151;
+  /* Tailwind gray-700 */
 }
 
 .toast-progress {
@@ -73,4 +79,30 @@ body {
   height: 4px;
   background-color: rgba(255, 255, 255, 0.6);
   animation: progressBar 3s linear forwards;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollBarRemove {
+  scrollbar-width: none;
+}
+
+@keyframes wave {
+
+  0%,
+  100% {
+    transform: scaleY(0.3);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.wave-bar {
+  animation: wave 1.5s ease-in-out infinite;
 }

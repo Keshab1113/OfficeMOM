@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
     return (
-        <footer className="dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(90deg,white_0%,#d3e4f0_100%)] text-white py-12 w-screen border-t-[0.1px] border-solid border-white/40">
+        <footer className="dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(90deg,white_0%,#d3e4f0_100%)] text-white py-12 md:w-full w-screen border-t-[0.1px] border-solid border-white/40">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid md:grid-cols-4 gap-8">
                     <div>
