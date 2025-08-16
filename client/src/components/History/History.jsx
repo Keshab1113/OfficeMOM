@@ -3,8 +3,9 @@ import { motion, useAnimation } from "framer-motion";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import { History, FileText } from "lucide-react";
 
-const History = () => {
+const AllHistory = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [history, setHistory] = useState([]);
   const controls = useAnimation();
@@ -41,11 +42,13 @@ const History = () => {
   }, [token]);
 
   return (
-    <div className=" h-[20rem] rounded-md w-full p-4 overflow-hidden flex flex-col border border-solid dark:border-white/20 border-gray-300">
-      <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-        History
-      </h2>
-
+    <div className=" h-[20rem] rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">
+      <div className="flex items-center gap-3 mb-4">
+        <History className="text-purple-500 w-6 h-6" />
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Recent Meetings
+        </h2>
+      </div>
       {history.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-gray-700 font-medium">
           No data found
@@ -70,14 +73,19 @@ const History = () => {
                     key={index}
                     onMouseEnter={() => setIsPaused(true)}
                     onMouseLeave={() => setIsPaused(false)}
-                    className="bg-white dark:bg-gray-900 bg-opacity-80 rounded-lg p-3 shadow-sm flex flex-col cursor-pointer transition-transform duration-300"
+                    className="bg-gray-100 dark:bg-gray-800 bg-opacity-80 rounded-lg p-3 shadow-sm flex flex-col cursor-pointer transition-transform duration-300"
                   >
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {(index % history.length) + 1}. {localDate}
-                    </span>
-                    <span className="text-gray-800 dark:text-gray-300 font-medium">
+                    <span className=" flex gap-2 justify-start items-center">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <span className="text-gray-800 dark:text-gray-300 font-medium">
                       {item.source}
                     </span>
+                    </span>
+                    
+                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-6">
+                      {localDate}
+                    </span>
+                    
                   </li>
                 );
               })}
@@ -88,4 +96,4 @@ const History = () => {
     </div>
   );
 };
-export default History;
+export default AllHistory;

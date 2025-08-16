@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
-import History from "../../components/History/History";
 import Timing from "../../components/Timing/Timing";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../components/ToastContext";
@@ -11,6 +10,7 @@ import Footer from "../../components/Footer/Footer";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import AllHistory from "../../components/History/History";
 
 const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -242,10 +242,10 @@ const LiveMeeting = () => {
                     </div>
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
-                      className={`border border-solid my-4 text-xs md:text-base ml-auto cursor-pointer md:px-4 px-2 py-2 text-white rounded font-medium shadow-md transition-all duration-200 ${
+                      className={`relative cursor-pointer px-6 py-3 rounded-full font-semibold text-white shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 ${
                         isRecording
-                          ? "bg-red-500 hover:bg-red-600 hover:shadow-lg"
-                          : "bg-green-500 hover:bg-green-600 hover:shadow-lg"
+                          ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:ring-red-500/50 animate-pulse"
+                          : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
                       }`}
                     >
                       {isRecording ? "Stop recording" : "Start recording"}
@@ -266,7 +266,7 @@ const LiveMeeting = () => {
               <button
                 onClick={scrolltotable}
                 disabled={isProcessing || !recordedBlob}
-                className={`mt-10 w-full py-3 rounded-lg text-white font-semibold ${
+                className={`mt-10 w-full py-4 rounded-lg text-white font-semibold ${
                   isProcessing || !recordedBlob
                     ? "bg-blue-400 cursor-not-allowed"
                     : "bg-blue-400 hover:bg-blue-500 cursor-pointer"
@@ -277,11 +277,11 @@ const LiveMeeting = () => {
                   : "Create MoM (Minutes of Meeting)"}
               </button>
               <p className="text-xs text-gray-400 mt-3 text-center">
-                Meeting cost is totally free now.
+                🆓 Meeting transcription is completely free now
               </p>
             </section>
             <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
-              <History />
+              <AllHistory />
               <DownloadOptions onChange={setDownloadOptions} />
             </section>
           </div>

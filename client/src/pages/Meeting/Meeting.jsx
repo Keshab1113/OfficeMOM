@@ -3,13 +3,23 @@ import Timing from "../../components/Timing/Timing";
 import { cn } from "../../lib/utils";
 import { FcConferenceCall } from "react-icons/fc";
 import { useToast } from "../../components/ToastContext";
-import History from "../../components/History/History";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import Footer from "../../components/Footer/Footer";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import AllHistory from "../../components/History/History";
+import {
+  Video,
+  Users,
+} from "lucide-react";
+
+const meetingPlatforms = [
+  { name: "Google Meet", icon: "/Icons/meet.svg", color: "bg-green-500" },
+  { name: "Zoom", icon: "/Icons/zoom.svg", color: "bg-blue-500" },
+  { name: "Microsoft Teams", icon: "/Icons/teams.png", color: "bg-purple-500" },
+];
 
 const Meeting = () => {
   const [activeTab, setActiveTab] = useState(1);
@@ -269,90 +279,109 @@ const Meeting = () => {
               className="h-full pb-10 lg:w-[65%] w-screen md:px-10 px-4"
             >
               <Timing />
-              <div className="flex border-b border-gray-300 dark:border-gray-600 mt-10">
-                <button
-                  onClick={() => setActiveTab(1)}
-                  className={cn(
-                    " py-2 w-[50%] font-bold text-sm md:text-lg cursor-pointer",
-                    activeTab === 1
-                      ? "border-b-2 border-blue-500 text-blue-500"
-                      : "text-gray-600 dark:text-gray-300"
+              <div className="bg-white/80 mt-6 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/20 animate-fade-in-up">
+                <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 mb-6">
+                  <button
+                    onClick={() => setActiveTab(1)}
+                    className={`flex-1 cursor-pointer py-3 px-4 rounded-lg font-semibold transition-all ${
+                      activeTab === 1
+                        ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
+                        : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                    }`}
+                  >
+                    <Video className="w-5 h-5 inline mr-2" />
+                    Meeting Link
+                  </button>
+                  <button
+                    onClick={() => setActiveTab(2)}
+                    className={`flex-1 cursor-pointer py-3 px-4 rounded-lg font-semibold transition-all ${
+                      activeTab === 2
+                        ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
+                        : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                    }`}
+                  >
+                    <Users className="w-5 h-5 inline mr-2" />
+                    ID & Password
+                  </button>
+                </div>
+                <div className="space-y-6">
+                  {activeTab === 1 && (
+                    <div className="mt-6">
+                      <h1 className="text-gray-600 dark:text-white md:text-xl text-lg mb-2">
+                        Paste meeting URL
+                      </h1>
+                      <div className="flex gap-4 mb-4">
+                        {meetingPlatforms.map((platform, index) => (
+                          <div
+                            key={platform.name}
+                            className="flex flex-col items-center gap-2 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg hover:scale-105 transition-transform cursor-pointer animate-fade-in-up"
+                            style={{ animationDelay: `${500 + index * 100}ms` }}
+                          >
+                            <div className="text-2xl">
+                              <img src={platform.icon} alt="" className=" h-10 w-10"/>
+                            </div>
+                            <span className="text-xs text-gray-600 dark:text-gray-300">
+                              {platform.name.split(" ")[0]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center border border-gray-500 rounded-lg p-2 w-full">
+                        <FcConferenceCall className="text-blue-500 text-xl mr-2" />
+                        <input
+                          type="text"
+                          placeholder={placeholderText || " "}
+                          className="flex-1 outline-none bg-transparent text-gray-700 dark:text-white py-1"
+                          value={meetingLink}
+                          onChange={(e) => setMeetingLink(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   )}
-                >
-                  Join meeting through link
-                </button>
-                <button
-                  onClick={() => setActiveTab(2)}
-                  className={cn(
-                    "w-[50%] py-2 font-bold text-sm md:text-lg cursor-pointer",
-                    activeTab === 2
-                      ? "border-b-2 border-blue-500 text-blue-500 "
-                      : "text-gray-600 dark:text-gray-300"
+
+                  {activeTab === 2 && (
+                    <div className="mt-6">
+                      <h1 className="text-gray-600 dark:text-white md:text-xl text-lg mb-3">
+                        Enter Meeting Details
+                      </h1>
+                      <div className="flex flex-col gap-4">
+                        <input
+                          type="text"
+                          placeholder="Enter Meeting ID"
+                          className="border border-gray-500 rounded-lg p-3 w-full outline-none bg-transparent text-gray-700 dark:text-white"
+                          value={meetingId}
+                          onChange={(e) => setMeetingId(e.target.value)}
+                        />
+                        <input
+                          type="password"
+                          placeholder="Enter Meeting Password"
+                          className="border border-gray-500 rounded-lg p-3 w-full outline-none bg-transparent text-gray-700 dark:text-white"
+                          value={meetingPassword}
+                          onChange={(e) => setMeetingPassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   )}
+                </div>
+                <button
+                  disabled={!meetingLink.trim()}
+                  onClick={startMeeting}
+                  className={`mt-10 w-full py-4 rounded-lg text-white font-semibold transition-colors duration-300 ${
+                    meetingLink.trim()
+                      ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
+                      : "bg-blue-400 cursor-not-allowed"
+                  }`}
                 >
-                  Join meeting through ID & Password
+                  Create MoM (Minutes of Meeting)
                 </button>
+                <p className="text-xs text-gray-400 mt-3 text-center">
+                  Meeting cost is totally free now.
+                </p>
               </div>
-              {activeTab === 1 && (
-                <div className="mt-6">
-                  <h1 className="text-gray-600 dark:text-white md:text-xl text-lg mb-2">
-                    Paste meeting URL
-                  </h1>
-                  <div className="flex items-center border border-gray-300 rounded-lg p-2 w-full">
-                    <FcConferenceCall className="text-blue-500 text-xl mr-2" />
-                    <input
-                      type="text"
-                      placeholder={placeholderText || " "}
-                      className="flex-1 outline-none bg-transparent text-gray-700 dark:text-white"
-                      value={meetingLink}
-                      onChange={(e) => setMeetingLink(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 2 && (
-                <div className="mt-6">
-                  <h1 className="text-gray-600 dark:text-white md:text-xl text-lg mb-1">
-                    Enter Meeting Details
-                  </h1>
-                  <div className="flex flex-col gap-4">
-                    <input
-                      type="text"
-                      placeholder="Enter Meeting ID"
-                      className="border border-gray-300 rounded-lg p-2 w-full outline-none bg-transparent text-gray-700 dark:text-white"
-                      value={meetingId}
-                      onChange={(e) => setMeetingId(e.target.value)}
-                    />
-                    <input
-                      type="password"
-                      placeholder="Enter Meeting Password"
-                      className="border border-gray-300 rounded-lg p-2 w-full outline-none bg-transparent text-gray-700 dark:text-white"
-                      value={meetingPassword}
-                      onChange={(e) => setMeetingPassword(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <button
-                disabled={!meetingLink.trim()}
-                onClick={startMeeting}
-                className={`mt-10 w-full py-3 rounded-lg text-white font-semibold transition-colors duration-300 ${
-                  meetingLink.trim()
-                    ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
-                    : "bg-blue-400 cursor-not-allowed"
-                }`}
-              >
-                Create MoM (Minutes of Meeting)
-              </button>
-              <p className="text-xs text-gray-400 mt-3 text-center">
-                Meeting cost is totally free now.
-              </p>
             </section>
 
             <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
-              <History />
+              <AllHistory />
               <DownloadOptions onChange={setDownloadOptions} />
             </section>
           </div>

@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { FaFileWord, FaFileExcel } from "react-icons/fa";
+import { Download } from "lucide-react";
 
 const DownloadOptions = ({ onChange }) => {
   const [wordChecked, setWordChecked] = useState(false);
@@ -20,17 +21,20 @@ const DownloadOptions = ({ onChange }) => {
   };
 
   return (
-    <div className="p-4 w-full h-fit rounded-md border border-solid dark:border-white/20 border-gray-300 mt-6 flex flex-col justify-between">
+    <div className="p-4 dark:bg-gray-900 bg-white w-full h-fit rounded-md mt-6 flex flex-col justify-between">
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">
+        <div className="flex items-center gap-3 mb-4">
+        <Download className="text-indigo-500 w-6 h-6" />
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 ">
           Download Options
         </h3>
+        </div>
         <p className="text-sm text-gray-600 dark:text-gray-300">
           You'll automatically receive a copy in your Gmail. You can also download in your preferred format:
         </p>
       </div>
 
-      <div className="flex gap-6 mt-2">
+      <div className="flex flex-col gap-2 mt-4">
         {/* Word File Option */}
         <motion.label whileTap={{ scale: 0.95 }} className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" className="hidden" checked={wordChecked} onChange={handleWordChange} />
@@ -51,8 +55,7 @@ const DownloadOptions = ({ onChange }) => {
               />
             )}
           </motion.div>
-          <FaFileWord className="text-blue-600 text-xl" />
-          <span className="text-gray-800 dark:text-white">Word File</span>
+          <span className="text-gray-800 dark:text-white">Word Document</span>
         </motion.label>
 
         {/* Excel File Option */}
@@ -75,8 +78,7 @@ const DownloadOptions = ({ onChange }) => {
               />
             )}
           </motion.div>
-          <FaFileExcel className="text-green-600 text-xl" />
-          <span className="text-gray-800 dark:text-white">Excel File</span>
+          <span className="text-gray-800 dark:text-white">Excel Spreadsheet</span>
         </motion.label>
       </div>
     </div>

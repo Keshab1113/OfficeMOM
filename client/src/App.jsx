@@ -10,6 +10,7 @@ import LiveMeeting from "./pages/LiveMeeting/LiveMeeting";
 import Profile from "./pages/Profile/Profile";
 import ProtectedRoute from "../ProtectedRoute";
 import NoPage from "./pages/NoPage/NoPage";
+import GenerateNotes from "./pages/GenerateNotes/GenerateNotes";
 
 function App() {
   return (
@@ -31,6 +32,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <LiveMeeting />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/audio-notes"
+            element={
+              <ProtectedRoute>
+                <GenerateNotes />
               </ProtectedRoute>
             }
           />

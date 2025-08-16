@@ -108,20 +108,19 @@ const ProfileImageUploader = () => {
           onHoverEnd={() => setIsHovered(false)}
         >
           <motion.label
-            className="relative w-[300px] h-[300px] !max-h-[400px] rounded-full cursor-pointer overflow-hidden group
-  bg-gradient-to-br from-blue-400/20 to-indigo-600/20 border-4 border-white/30 dark:border-white/20
-  shadow-2xl shadow-blue-500/20"
+            className="relative w-[300px] h-[200px] !max-h-[200px] rounded-full cursor-pointer overflow-hidden group
+  bg-gradient-to-br from-blue-400/20 to-indigo-600/20 shadow-2xl shadow-blue-500/20 bg-transparent"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
             {/* Profile image or placeholder */}
-            <div className="w-full h-full flex items-center justify-center relative overflow-hidden rounded-full">
+            <div className=" w-[200px] h-[200px] flex items-center justify-center relative overflow-hidden rounded-full">
               {profileImage ? (
                 <motion.img
                   src={profileImage}
                   alt="profile"
-                  className="w-full h-full object-cover !max-h-[200px]"
+                  className="w-full h-full object-cover "
                   initial={{ scale: 1.2, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.6 }}
