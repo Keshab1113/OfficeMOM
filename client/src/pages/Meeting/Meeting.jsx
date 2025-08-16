@@ -10,10 +10,7 @@ import Footer from "../../components/Footer/Footer";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import AllHistory from "../../components/History/History";
-import {
-  Video,
-  Users,
-} from "lucide-react";
+import { Video, Users } from "lucide-react";
 
 const meetingPlatforms = [
   { name: "Google Meet", icon: "/Icons/meet.svg", color: "bg-green-500" },
@@ -207,7 +204,7 @@ const Meeting = () => {
       addToast("error", "Failed to add history");
     }
   };
-  const token = useSelector((state) => state.auth.token);
+  const { email, fullName, token } = useSelector((state) => state.auth);
 
   const handleSaveHeaders = async (headers, rows, fileName) => {
     try {
@@ -233,7 +230,9 @@ const Meeting = () => {
         headers,
         addToast,
         downloadOptions,
-        fileName
+        fileName,
+        email,
+        fullName
       );
       const dateCreated = new Date().toISOString().split("T")[0];
       const historyData = {
@@ -318,7 +317,11 @@ const Meeting = () => {
                             style={{ animationDelay: `${500 + index * 100}ms` }}
                           >
                             <div className="text-2xl">
-                              <img src={platform.icon} alt="" className=" h-10 w-10"/>
+                              <img
+                                src={platform.icon}
+                                alt=""
+                                className=" h-10 w-10"
+                              />
                             </div>
                             <span className="text-xs text-gray-600 dark:text-gray-300">
                               {platform.name.split(" ")[0]}
@@ -375,7 +378,7 @@ const Meeting = () => {
                   Create MoM (Minutes of Meeting)
                 </button>
                 <p className="text-xs text-gray-400 mt-3 text-center">
-                  Meeting cost is totally free now.
+                  🆓 Meeting transcription is completely free now
                 </p>
               </div>
             </section>

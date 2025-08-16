@@ -12,6 +12,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import axios from "axios";
 
 export const saveTranscriptFiles = async (
   tableData,
@@ -19,16 +20,13 @@ export const saveTranscriptFiles = async (
   addToast,
   downloadOptions,
   fileName,
+  email,
+  fullName,
+  token
 ) => {
   const { word, excel } = downloadOptions;
 
-  if (!word && !excel) {
-    addToast("error", "Please choose a download option");
-    // return;
-  }
-
   if (!Array.isArray(tableData)) {
-    console.error("Expected array but got:", tableData);
     addToast("error", "Invalid data format from API");
     return;
   }
@@ -37,7 +35,6 @@ export const saveTranscriptFiles = async (
     ? headers
     : ["Sr No", ...headers];
 
-  // Common rows for both Word and Excel
   const rows = [
     new TableRow({
       children: tableHeaders.map(
@@ -85,8 +82,7 @@ export const saveTranscriptFiles = async (
     ),
   ];
 
-  // Generate Word document if selected
-  if (word) {
+  const createWordFile = async () => {
     const doc = new Document({
       sections: [
         {
@@ -96,7 +92,7 @@ export const saveTranscriptFiles = async (
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: "OfficeMoM", bold: true, size: 48 }),
+                new TextRun({ text: "SmartMom", bold: true, size: 48 }),
               ],
               alignment: AlignmentType.CENTER,
             }),
@@ -112,13 +108,10 @@ export const saveTranscriptFiles = async (
         },
       ],
     });
+    return await Packer.toBlob(doc);
+  };
 
-    const blobWord = await Packer.toBlob(doc);
-    saveAs(blobWord, `${fileName}.docx`);
-  }
-
-  // Generate Excel file if selected
-  if (excel) {
+  const createExcelFile = () => {
     const excelRows = [
       tableHeaders,
       ...tableData.map((r, i) =>
@@ -128,12 +121,44 @@ export const saveTranscriptFiles = async (
     const ws = XLSX.utils.aoa_to_sheet(excelRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Action Items");
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(
-      new Blob([excelBuffer], { type: "application/octet-stream" }),
-      `${fileName}.xlsx`
-    );
+    return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  };
+
+  let fileBlob;
+  let downloadFileName;
+
+  if (!word && !excel) {
+    fileBlob = await createWordFile();
+    downloadFileName = `${fileName}.docx`;
+  } else if (word) {
+    fileBlob = await createWordFile();
+    downloadFileName = `${fileName}.docx`;
+    saveAs(fileBlob, downloadFileName);
+  } else if (excel) {
+    const excelBuffer = createExcelFile();
+    fileBlob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    downloadFileName = `${fileName}.xlsx`;
+    saveAs(fileBlob, downloadFileName);
   }
 
-  addToast("success", "Meeting converted to structured table successfully");
+  try {
+    const formData = new FormData();
+    formData.append("file", fileBlob, downloadFileName);
+    formData.append("email", email);
+    formData.append("name", fullName);
+    formData.append("fileName", downloadFileName);
+
+    await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/send-meeting-email`,
+      formData,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    addToast("success", "File processed and emailed successfully");
+  } catch (err) {
+    console.error(err);
+    addToast("error", "Failed to send email");
+  }
 };

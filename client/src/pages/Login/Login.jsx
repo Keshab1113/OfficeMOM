@@ -49,57 +49,120 @@ const Login = () => {
         )}
       />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
-      <div className="flex items-center justify-center relative z-20">
+      <div className="flex items-center justify-center relative z-20 md:w-[50%] w-[90%]">
         <form
-          className="bg-[linear-gradient(45deg,white,#b4d6e0)] p-6 rounded-lg shadow-md md:w-[60vh] w-[90vh]"
+          className="dark:bg-white/10 bg-gray-200 dark:backdrop-blur-lg w-full border border-white/20 rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:scale-105 hover:bg-white/15"
           onSubmit={handleLogin}
         >
-          <p className="relative text-center z-20 pb-2 uppercase dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
-            Login
-          </p>
-          <p className="mb-10 mt-1 text-lg text-center text-gray-700 font-bold">
-            To access all features, you need to login first
-          </p>
-          <label
-            htmlFor="email"
-            className="text-lg font-bold mb-2 text-gray-700"
-          >
-            Enter Email
-          </label>
-          <input
-            type="email"
-            placeholder="Enter Your Email"
-            className="w-full p-2 mb-4 border outline-none rounded-md"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <label
-            htmlFor="password"
-            className="text-lg font-bold mb-2 text-gray-700"
-          >
-            Enter Password
-          </label>
-          <input
-            type="password"
-            placeholder="Enter Your Password"
-            className="w-full p-2 mb-4 border outline-none rounded-md"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button className="w-full bg-blue-500 text-white p-2 rounded cursor-pointer">
-            Login
-          </button>
-          <p className="mt-2 text-sm">
-            Don't have an account?{" "}
-            <span
-              onClick={() => navigate("/signup")}
-              className="text-blue-500 cursor-pointer"
-            >
-              Sign Up
-            </span>
-          </p>
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mx-auto flex items-center justify-center shadow-lg animate-bounce-slow">
+                <svg
+                  className="w-10 h-10 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-gradient-x">
+              Welcome Back
+            </h1>
+            <p className="dark:text-gray-300 text-gray-600 mt-2 animate-slide-up">
+              Sign in to continue your journey
+            </p>
+          </div>
+          <div className="space-y-6">
+            <div className="animate-slide-up animation-delay-200">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium dark:text-gray-200 text-gray-600 mb-2"
+              >
+                Email Address
+              </label>
+              <div className="relative group">
+                <input
+                  type="email"
+                  placeholder="Enter Your Email"
+                  className="w-full px-4 py-3 bg-white/10 border dark:border-white/20 border-slate-400 rounded-xl dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 group-hover:bg-white/15"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <svg
+                    className="w-5 h-5 text-gray-400 group-hover:text-purple-400 transition-colors duration-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="animate-slide-up animation-delay-300">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium dark:text-gray-200 text-gray-600 mb-2"
+              >
+                Password
+              </label>
+              <div className="relative group">
+                <input
+                  type="password"
+                  placeholder="Enter Your Password"
+                  className="w-full px-4 py-3 bg-white/10 border dark:border-white/20 border-gray-400 rounded-xl dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-300 group-hover:bg-white/15"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <svg
+                    className="w-5 h-5 text-gray-400 group-hover:text-purple-400 transition-colors duration-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <button className="w-full cursor-pointer py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-gray-900 transform transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+              Sign In
+            </button>
+
+            <div className="text-center animate-slide-up animation-delay-500">
+              <p className="dark:text-gray-300">
+                Don't have an account?{" "}
+                <button
+                  type="button"
+                  className="text-purple-400 cursor-pointer hover:text-purple-300 font-semibold transition-colors duration-300 hover:underline"
+                  onClick={() => navigate("/signup")}
+                >
+                  Sign Up
+                </button>
+              </p>
+            </div>
+          </div>
         </form>
       </div>
     </section>

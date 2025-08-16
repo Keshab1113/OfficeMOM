@@ -10,10 +10,7 @@ import AllHistory from "../../components/History/History";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import axios from "axios";
-import {
-  MonitorSmartphone,
-  HardDriveUpload
-} from "lucide-react";
+import { MonitorSmartphone, HardDriveUpload } from "lucide-react";
 
 const GenerateNotes = () => {
   const [downloadOptions, setDownloadOptions] = useState({
@@ -116,7 +113,7 @@ const GenerateNotes = () => {
     }
   };
 
-  const token = useSelector((state) => state.auth.token);
+  const { email, fullName, token } = useSelector((state) => state.auth);
   const handleSaveHeaders = async (headers, rows, fileName) => {
     setShowModal(false);
     try {
@@ -142,7 +139,9 @@ const GenerateNotes = () => {
         headers,
         addToast,
         downloadOptions,
-        fileName
+        fileName,
+        email,
+        fullName
       );
       const dateCreated = new Date().toISOString().split("T")[0];
       const historyData = {
@@ -404,6 +403,9 @@ const GenerateNotes = () => {
                     )}
                   </button>
                 )}
+                <p className="text-xs text-gray-400 mt-3 text-center">
+                  🆓 Meeting transcription is completely free now
+                </p>
               </div>
             </section>
             <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">

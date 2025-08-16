@@ -42,7 +42,7 @@ const AllHistory = () => {
   }, [token]);
 
   return (
-    <div className=" h-[20rem] rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">
+    <div className=" h-[20rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">
       <div className="flex items-center gap-3 mb-4">
         <History className="text-purple-500 w-6 h-6" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">

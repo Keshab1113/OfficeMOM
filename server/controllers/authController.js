@@ -1,11 +1,23 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../config/db.js";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 import { signupSchema, loginSchema } from "../validations/authValidation.js";
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.hostinger.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS || "S9867867878$#@4delta",
+  },
+  tls: { rejectUnauthorized: false },
+});
 
 export const signup = async (req, res) => {
   try {
-    // ✅ Validate input
     const { error } = signupSchema.validate(req.body, { abortEarly: false });
     if (error) {
       return res.status(400).json({
@@ -15,24 +27,71 @@ export const signup = async (req, res) => {
     }
 
     const { fullName, email, password } = req.body;
-
-    // ✅ Check if email exists
-    const [existingUser] = await db.query("SELECT id FROM users WHERE email = ?", [email]);
+    const [existingUser] = await db.query(
+      "SELECT id FROM users WHERE email = ?",
+      [email]
+    );
     if (existingUser.length > 0) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    // ✅ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = crypto.randomInt(1000, 9999);
 
-    // ✅ Save to DB
-    await db.query("INSERT INTO users (fullName, email, password) VALUES (?, ?, ?)", [
-      fullName,
-      email,
-      hashedPassword,
-    ]);
+    await db.query(
+      "INSERT INTO users (fullName, email, password, otp, isVerified) VALUES (?, ?, ?, ?, ?)",
+      [fullName, email, hashedPassword, otp, false]
+    );
 
-    res.status(201).json({ message: "User registered successfully" });
+    await transporter.sendMail({
+      from: `"OfficeMoM" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: "Verify your email - OfficeMoM",
+      html: `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Verification</title>
+  </head>
+  <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f5f5f5;">
+    <table align="center" cellpadding="0" cellspacing="0" width="100%" style="padding:20px 0;">
+      <tr>
+        <td align="center">
+          <table cellpadding="0" cellspacing="0" width="600" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+            <tr>
+              <td style="background-color:#4a90e2; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
+                OfficeMoM Email Verification
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
+                <p>Hello,</p>
+                <p>Thank you for signing up with <b>OfficeMoM</b>. To complete your registration, please verify your email address using the OTP below:</p>
+                <p style="text-align:center; margin:30px 0;">
+                  <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">
+                    ${otp}
+                  </span>
+                </p>
+                <p>This OTP is valid for <b>10 minutes</b>. If you didn’t request this, you can safely ignore this email.</p>
+                <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#777777;">
+                &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `,
+    });
+
+    res.status(201).json({ message: "OTP sent to email", email });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ message: "Server error" });
@@ -53,7 +112,9 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     // ✅ Check user
-    const [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    const [user] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
     if (user.length === 0) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
@@ -82,6 +143,62 @@ export const login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const [user] = await db.query("SELECT otp FROM users WHERE email = ?", [
+      email,
+    ]);
+
+    if (user.length === 0) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    if (String(user[0].otp) !== String(otp)) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    await db.query(
+      "UPDATE users SET isVerified = ?, otp = NULL WHERE email = ?",
+      [true, email]
+    );
+
+    res.json({ message: "Email verified successfully" });
+  } catch (err) {
+    console.error("OTP verify error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const [user] = await db.query("SELECT id FROM users WHERE email = ?", [
+      email,
+    ]);
+
+    if (user.length === 0) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const otp = crypto.randomInt(1000, 9999);
+    await db.query("UPDATE users SET otp = ? WHERE email = ?", [otp, email]);
+
+    await transporter.sendMail({
+      from: `"OfficeMoM" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: "Resend OTP",
+      text: `Your new OTP is ${otp}`,
+      html: `<p>Your new OTP is <b>${otp}</b></p>`,
+    });
+
+    res.json({ message: "OTP resent successfully" });
+  } catch (err) {
+    console.error("Resend OTP error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

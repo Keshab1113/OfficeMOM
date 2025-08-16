@@ -21,7 +21,7 @@ const DownloadOptions = ({ onChange }) => {
   };
 
   return (
-    <div className="p-4 dark:bg-gray-900 bg-white w-full h-fit rounded-md mt-6 flex flex-col justify-between">
+    <div className="p-4 dark:bg-gray-900 bg-white shadow-lg w-full h-fit rounded-md mt-6 flex flex-col justify-between">
       <div>
         <div className="flex items-center gap-3 mb-4">
         <Download className="text-indigo-500 w-6 h-6" />

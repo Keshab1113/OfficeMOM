@@ -108,7 +108,7 @@ const LiveMeeting = () => {
       addToast("error", "Failed to add history");
     }
   };
-  const token = useSelector((state) => state.auth.token);
+  const { email, fullName, token } = useSelector((state) => state.auth);
 
   const handleSaveHeaders = async (headers, rows, fileName) => {
     setShowModal(false);
@@ -135,7 +135,9 @@ const LiveMeeting = () => {
         headers,
         addToast,
         downloadOptions,
-        fileName
+        fileName,
+        email,
+        fullName,
       );
       const dateCreated = new Date().toISOString().split("T")[0];
       const historyData = {

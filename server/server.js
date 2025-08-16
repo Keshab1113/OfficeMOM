@@ -7,6 +7,7 @@ import liveRoutes from "./routes/liveRoutes.js";
 import driveRoutes from "./routes/driveRoutes.js";
 import openaiRoute from "./routes/openaiRoute.js";
 import historyRoutes from "./routes/historyRoutes.js";
+import emailRoutes from "./routes/emailRoutes.js";
 import { WebSocketServer, WebSocket } from "ws";
 import http from "http";
 
@@ -23,6 +24,7 @@ app.use("/api", liveRoutes);
 app.use("/api", driveRoutes);
 app.use("/api/openai", openaiRoute);
 app.use("/api/history", historyRoutes);
+app.use("/api", emailRoutes);
 
 const server = http.createServer(app);
 
