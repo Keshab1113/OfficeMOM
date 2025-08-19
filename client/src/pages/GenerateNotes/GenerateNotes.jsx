@@ -10,7 +10,7 @@ import AllHistory from "../../components/History/History";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import axios from "axios";
-import { MonitorSmartphone, HardDriveUpload } from "lucide-react";
+import { MonitorSmartphone, HardDriveUpload, FileText } from "lucide-react";
 import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 
@@ -369,7 +369,10 @@ const GenerateNotes = () => {
                           Processing...
                         </>
                       ) : (
-                        "Create MoM (Minutes of Meeting)"
+                        <>
+                          <FileText className="w-6 h-6 mr-2" />
+                          Create MoM (Minutes of Meeting)
+                        </>
                       )}
                     </button>
                   ) : (
@@ -407,7 +410,10 @@ const GenerateNotes = () => {
                           Processing Audio...
                         </>
                       ) : (
-                        "Create MoM (Minutes of Meeting)"
+                        <>
+                          <FileText className="w-6 h-6 mr-2" />
+                          Create MoM (Minutes of Meeting)
+                        </>
                       )}
                     </button>
                   )}

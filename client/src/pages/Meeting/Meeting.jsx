@@ -10,14 +10,29 @@ import Footer from "../../components/Footer/Footer";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import AllHistory from "../../components/History/History";
-import { Video, Users } from "lucide-react";
+import { Video, Users, FileText } from "lucide-react";
 import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 
 const meetingPlatforms = [
-  { name: "Google Meet", icon: "/Icons/meet.svg", color: "bg-green-500" },
-  { name: "Zoom", icon: "/Icons/zoom.svg", color: "bg-blue-500" },
-  { name: "Microsoft Teams", icon: "/Icons/teams.png", color: "bg-purple-500" },
+  {
+    name: "Google Meet",
+    icon: "/Icons/meet.svg",
+    color: "bg-green-500",
+    url: "https://meet.google.com/new",
+  },
+  {
+    name: "Zoom",
+    icon: "/Icons/zoom.svg",
+    color: "bg-blue-500",
+    url: "https://zoom.us/start/videomeeting",
+  },
+  {
+    name: "Microsoft Teams",
+    icon: "/Icons/teams.png",
+    color: "bg-purple-500",
+    url: "https://teams.microsoft.com/start",
+  },
 ];
 
 const Meeting = () => {
@@ -338,10 +353,11 @@ const Meeting = () => {
                               {meetingPlatforms.map((platform, index) => (
                                 <div
                                   key={platform.name}
-                                  className="flex flex-col items-center gap-2 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg hover:scale-105 transition-transform cursor-pointer animate-fade-in-up"
+                                  className="flex flex-col items-center gap-2 p-3 bg-gray-200 dark:bg-slate-700 rounded-lg hover:scale-105 transition-transform cursor-pointer animate-fade-in-up"
                                   style={{
                                     animationDelay: `${500 + index * 100}ms`,
                                   }}
+                                  onClick={() => window.open(platform.url, "_blank")}
                                 >
                                   <div className="text-2xl">
                                     <img
@@ -395,12 +411,13 @@ const Meeting = () => {
                       <button
                         disabled={!meetingLink.trim()}
                         onClick={startMeeting}
-                        className={`mt-6 w-full py-4 rounded-lg text-white font-semibold transition-colors duration-300 ${
+                        className={`mt-6 w-full py-4 flex justify-center items-center gap-2 rounded-lg text-white font-semibold transition-colors duration-300 ${
                           meetingLink.trim()
                             ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
                             : "bg-gray-500 cursor-not-allowed"
                         }`}
                       >
+                        <FileText className="w-6 h-6" />
                         Create MoM (Minutes of Meeting)
                       </button>
                       <p className="text-xs text-gray-400 mt-3 text-center">
