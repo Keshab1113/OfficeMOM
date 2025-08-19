@@ -1,11 +1,11 @@
 import nodemailer from "nodemailer";
 
 const sendMeetingEmail = async (req, res) => {
-  const { name, email, fileName } = req.body;
-  const file = req.file;
+  const { name, email } = req.body;
+  const files = req.files;
 
-  if (!email || !file) {
-    return res.status(400).json({ success: false, message: "Missing email or file" });
+  if (!email || !files || files.length === 0) {
+    return res.status(400).json({ success: false, message: "Missing email or files" });
   }
 
   try {
@@ -20,6 +20,12 @@ const sendMeetingEmail = async (req, res) => {
       tls: { rejectUnauthorized: false }
     });
 
+    const attachments = files.map(file => ({
+      filename: file.originalname,
+      content: file.buffer,
+      contentDisposition: 'attachment'  // ensures it is sent as a download
+    }));
+
     const mailOptions = {
       from: `"SmartMom Notifications" <${process.env.MAIL_USER}>`,
       to: email,
@@ -32,7 +38,7 @@ const sendMeetingEmail = async (req, res) => {
           <div style="padding:30px; background-color:#fff; color:#333;">
             <p>Dear <strong>${name}</strong>,</p>
             <p>Your meeting notes have been successfully generated.</p>
-            <p>Please find the file attached. Click to open or download it.</p>
+            <p>Please find the files attached. Click to download.</p>
             <p style="margin-top:20px;">Best regards,<br/><strong>SmartMom Team</strong></p>
           </div>
           <div style="background-color:#f5f5f5; text-align:center; padding:10px; font-size:12px; color:#777;">
@@ -40,10 +46,7 @@ const sendMeetingEmail = async (req, res) => {
           </div>
         </div>
       `,
-      attachments: [{
-        filename: fileName,
-        content: file.buffer
-      }]
+      attachments
     };
 
     await transporter.sendMail(mailOptions);

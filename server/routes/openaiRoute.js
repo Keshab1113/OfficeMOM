@@ -11,7 +11,7 @@ const client = new OpenAI({
 });
 
 router.post("/convert-transcript", async (req, res) => {
-  const { transcript, headers, rows } = req.body;
+  const { transcript, headers } = req.body;
 
   if (!transcript || !Array.isArray(headers) || headers.length === 0) {
     return res.status(400).json({ error: "Transcript and headers are required" });
@@ -21,7 +21,7 @@ router.post("/convert-transcript", async (req, res) => {
     const prompt = `
 Extract information from the text below and return ONLY a valid JSON array.
 - Use these keys exactly: ${headers.join(", ")}.
-- Return exactly ${rows} objects (no more, no less). 
+- Return objects.
 - If there is insufficient data, fill missing fields with an empty string ("").
 - Ensure the output is strictly valid JSON — do NOT include any extra text, explanations, or markdown formatting.
 

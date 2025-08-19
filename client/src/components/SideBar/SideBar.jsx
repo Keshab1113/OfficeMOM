@@ -16,7 +16,9 @@ import { IoPersonCircleSharp } from "react-icons/io5";
 const SideBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { email, fullName, token } = useSelector((state) => state.auth);
+  const { email, fullName, token, profileImage } = useSelector(
+    (state) => state.auth
+  );
   const { addToast } = useToast();
   // eslint-disable-next-line no-unused-vars
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -37,7 +39,7 @@ const SideBar = () => {
       url: "/audio-notes",
     },
     {
-      heading: "Record Live Meeting",
+      heading: "Start New Meeting",
       icon: "/Icons/voice.webp",
       url: "/live-meeting",
     },
@@ -153,7 +155,15 @@ const SideBar = () => {
                   className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex justify-center items-center text-2xl text-white shadow-lg"
                   whileHover={{ scale: 1.1, rotate: 5 }}
                 >
-                  <IoPerson />
+                  {profileImage ? (
+                    <img
+                      src={profileImage}
+                      alt="profile"
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <IoPerson />
+                  )}
                 </motion.div>
                 <div className="flex flex-col">
                   <motion.h1

@@ -7,7 +7,6 @@ const meetingSlice = createSlice({
     tableData: {
       headers: [],
       columns: 0,
-      rows: 0,
     },
   },
   reducers: {
@@ -23,7 +22,6 @@ const meetingSlice = createSlice({
       state.tableData = {
         headers: [],
         columns: 0,
-        rows: 0,
       };
       state.tableHeader = [];
     },

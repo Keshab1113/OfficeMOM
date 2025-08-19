@@ -1,4 +1,5 @@
 import Footer from "../../components/Footer/Footer";
+import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { cn } from "../../lib/utils";
 
 const Home = () => {

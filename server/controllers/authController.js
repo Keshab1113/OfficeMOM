@@ -100,7 +100,6 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    // ✅ Validate input
     const { error } = loginSchema.validate(req.body, { abortEarly: false });
     if (error) {
       return res.status(400).json({
@@ -108,24 +107,17 @@ export const login = async (req, res) => {
         errors: error.details.map((err) => err.message),
       });
     }
-
     const { email, password } = req.body;
-
-    // ✅ Check user
     const [user] = await db.query("SELECT * FROM users WHERE email = ?", [
       email,
     ]);
     if (user.length === 0) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
-
-    // ✅ Check password
     const isMatch = await bcrypt.compare(password, user[0].password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
-
-    // ✅ Generate JWT token
     const token = jwt.sign(
       { id: user[0].id, email: user[0].email },
       process.env.JWT_SECRET,

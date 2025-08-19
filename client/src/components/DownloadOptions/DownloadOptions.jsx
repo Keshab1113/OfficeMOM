@@ -21,7 +21,7 @@ const DownloadOptions = ({ onChange }) => {
   };
 
   return (
-    <div className="p-4 dark:bg-gray-900 bg-white shadow-lg w-full h-fit rounded-md mt-6 flex flex-col justify-between">
+    <div className="p-4 dark:bg-gray-900 bg-white shadow-lg w-full h-fit rounded-md mb-4 flex flex-col justify-between">
       <div>
         <div className="flex items-center gap-3 mb-4">
         <Download className="text-indigo-500 w-6 h-6" />
@@ -30,7 +30,7 @@ const DownloadOptions = ({ onChange }) => {
         </h3>
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          You'll automatically receive a copy in your Gmail. You can also download in your preferred format:
+          A copy will be sent to your registered email automatically. You’ll also have the option to download it in your preferred format.
         </p>
       </div>
 

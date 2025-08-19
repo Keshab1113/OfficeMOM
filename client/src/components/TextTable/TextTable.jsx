@@ -9,6 +9,7 @@ import {
   TextRun,
   AlignmentType,
   PageOrientation,
+  TableLayoutType,
 } from "docx";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
@@ -16,67 +17,59 @@ import axios from "axios";
 
 export const saveTranscriptFiles = async (
   tableData,
-  headers,
   addToast,
   downloadOptions,
-  fileName,
   email,
   fullName,
   token
 ) => {
   const { word, excel } = downloadOptions;
 
-  if (!Array.isArray(tableData)) {
-    addToast("error", "Invalid data format from API");
+  if (!Array.isArray(tableData) || tableData.length === 0) {
+    addToast("error", "Invalid or empty data format from API");
     return;
   }
 
-  const tableHeaders = headers.includes("Sr No")
-    ? headers
-    : ["Sr No", ...headers];
+  const headers = Object.keys(tableData[0]);
+  const tableHeaders = headers.includes("Sr No") ? headers : ["Sr No", ...headers];
 
   const rows = [
     new TableRow({
-      children: tableHeaders.map(
-        (header) =>
-          new TableCell({
-            width: {
-              size: header === "Sr No" ? 6 : 94 / (tableHeaders.length - 1),
-              type: WidthType.PERCENTAGE,
-            },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: header, bold: true, size: 28 })],
-                alignment: AlignmentType.CENTER,
-              }),
-            ],
-          })
+      children: tableHeaders.map((header) =>
+        new TableCell({
+          width: {
+            size: header === "Sr No" ? 6 : 94 / (tableHeaders.length - 1),
+            type: WidthType.PERCENTAGE,
+          },
+          children: [
+            new Paragraph({
+              children: [new TextRun({ text: header, bold: true, size: 28 })],
+              alignment: AlignmentType.CENTER,
+            }),
+          ],
+        })
       ),
     }),
     ...tableData.map(
       (row, i) =>
         new TableRow({
-          children: tableHeaders.map(
-            (key) =>
-              new TableCell({
-                width: {
-                  size: key === "Sr No" ? 6 : 94 / (tableHeaders.length - 1),
-                  type: WidthType.PERCENTAGE,
-                },
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text:
-                          key === "Sr No"
-                            ? String(i + 1)
-                            : String(row[key] ?? ""),
-                        size: 24,
-                      }),
-                    ],
-                  }),
-                ],
-              })
+          children: tableHeaders.map((key) =>
+            new TableCell({
+              width: {
+                size: key === "Sr No" ? 6 : 94 / (tableHeaders.length - 1),
+                type: WidthType.PERCENTAGE,
+              },
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: key === "Sr No" ? String(i + 1) : String(row[key] ?? ""),
+                      size: 24,
+                    }),
+                  ],
+                }),
+              ],
+            })
           ),
         })
     ),
@@ -91,19 +84,19 @@ export const saveTranscriptFiles = async (
           },
           children: [
             new Paragraph({
-              children: [
-                new TextRun({ text: "SmartMom", bold: true, size: 48 }),
-              ],
+              children: [new TextRun({ text: "SmartMom", bold: true, size: 48 })],
               alignment: AlignmentType.CENTER,
             }),
             new Paragraph({
-              children: [
-                new TextRun({ text: "Meeting Notes", italics: true, size: 32 }),
-              ],
+              children: [new TextRun({ text: "Meeting Notes", italics: true, size: 32 })],
               alignment: AlignmentType.CENTER,
             }),
             new Paragraph({ text: "" }),
-            new Table({ rows }),
+            new Table({
+              rows,
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              layout: TableLayoutType.FIXED,
+            }),
           ],
         },
       ],
@@ -124,29 +117,38 @@ export const saveTranscriptFiles = async (
     return XLSX.write(wb, { bookType: "xlsx", type: "array" });
   };
 
-  let fileBlob;
-  let downloadFileName;
+  const attachments = [];
+
+  if (word) {
+    const wordBlob = await createWordFile();
+    const wordFileName = `Mom.docx`;
+    saveAs(wordBlob, wordFileName);
+    attachments.push({ blob: wordBlob, fileName: wordFileName });
+  }
+
+  if (excel) {
+    const excelBuffer = createExcelFile();
+    const excelBlob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    const excelFileName = `Mom.xlsx`;
+    saveAs(excelBlob, excelFileName);
+    attachments.push({ blob: excelBlob, fileName: excelFileName });
+  }
 
   if (!word && !excel) {
-    fileBlob = await createWordFile();
-    downloadFileName = `${fileName}.docx`;
-  } else if (word) {
-    fileBlob = await createWordFile();
-    downloadFileName = `${fileName}.docx`;
-    saveAs(fileBlob, downloadFileName);
-  } else if (excel) {
-    const excelBuffer = createExcelFile();
-    fileBlob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    downloadFileName = `${fileName}.xlsx`;
-    saveAs(fileBlob, downloadFileName);
+    const wordBlob = await createWordFile();
+    const wordFileName = `Mom.docx`;
+    // saveAs(wordBlob, wordFileName);
+    attachments.push({ blob: wordBlob, fileName: wordFileName });
   }
 
   try {
     const formData = new FormData();
-    formData.append("file", fileBlob, downloadFileName);
+    // eslint-disable-next-line no-unused-vars
+    attachments.forEach((file, idx) => {
+      formData.append(`files`, file.blob, file.fileName);
+    });
     formData.append("email", email);
     formData.append("name", fullName);
-    formData.append("fileName", downloadFileName);
 
     await axios.post(
       `${import.meta.env.VITE_BACKEND_URL}/api/send-meeting-email`,
@@ -156,7 +158,7 @@ export const saveTranscriptFiles = async (
       }
     );
 
-    addToast("success", "File processed and emailed successfully");
+    addToast("success", "Files processed and emailed successfully");
   } catch (err) {
     console.error(err);
     addToast("error", "Failed to send email");

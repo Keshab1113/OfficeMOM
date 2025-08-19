@@ -10,6 +10,25 @@ const AllHistory = () => {
   const [history, setHistory] = useState([]);
   const controls = useAnimation();
 
+  function timeAgo(localDate) {
+    const today = new Date();
+    const inputDate = new Date(localDate);
+    today.setHours(0, 0, 0, 0);
+    inputDate.setHours(0, 0, 0, 0);
+    const diffTime = today - inputDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return "today";
+    } else if (diffDays === 1) {
+      return "1 day ago";
+    } else if (diffDays > 1) {
+      return `${diffDays} days ago`;
+    } else {
+      return "in the future";
+    }
+  }
+
   useEffect(() => {
     if (isPaused) {
       controls.stop();
@@ -42,7 +61,7 @@ const AllHistory = () => {
   }, [token]);
 
   return (
-    <div className=" h-[20rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">
+    <div className=" h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">
       <div className="flex items-center gap-3 mb-4">
         <History className="text-purple-500 w-6 h-6" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -78,14 +97,14 @@ const AllHistory = () => {
                     <span className=" flex gap-2 justify-start items-center">
                       <FileText className="w-4 h-4 text-blue-500" />
                       <span className="text-gray-800 dark:text-gray-300 font-medium">
-                      {item.source}
+                        {item.source}
+                      </span>
                     </span>
-                    </span>
-                    
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-6">
+
+                    <div className="text-sm text-gray-600 dark:text-gray-400 ml-6 flex justify-between">
                       {localDate}
-                    </span>
-                    
+                      <span className=" capitalize">{timeAgo(localDate)}</span>
+                    </div>
                   </li>
                 );
               })}

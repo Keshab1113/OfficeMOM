@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useDispatch } from "react-redux";
-import { setUser } from "../../redux/authSlice";
+import { setUser, startLogoutTimer } from "../../redux/authSlice";
 import { useToast } from "../../components/ToastContext";
 
 const Login = () => {
@@ -31,6 +31,7 @@ const Login = () => {
           token: res.data.token,
         })
       );
+      dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
       addToast("success", "Login Successfully");
       navigate("/");
     } catch (error) {
