@@ -299,6 +299,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
               </div>
               {Array.from({ length: rows }, (_, rowIndex) => (
                 <div
+                key={rowIndex}
                   className={`flex transition-all duration-300 ease-out animate-slide-up w-full`}
                 >
                   <div

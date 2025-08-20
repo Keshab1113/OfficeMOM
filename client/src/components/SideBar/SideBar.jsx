@@ -61,6 +61,7 @@ const SideBar = () => {
     dispatch(logout());
     persistor.purge();
     addToast("success", "Logout Successfully");
+    setDropdownOpen((prev) => !prev);
   };
 
   const handleNavClick = () => {
@@ -82,7 +83,7 @@ const SideBar = () => {
     <section
       className={`relative backdrop-blur-xl bg-gradient-to-br from-white/90 via-blue-50/80 to-indigo-100/70 
       dark:from-gray-900/95 dark:via-slate-800/90 dark:to-indigo-900/80 
-      shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-full min-h-screen py-8 
+      shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-[100dvh] py-8 
       sticky top-0 left-0 flex flex-col z-50 transition-all duration-500 ease-in-out
       border-r border-white/30 dark:border-gray-700/50 overflow-hidden
       ${isCollapsed ? "w-[5rem]" : "md:w-[20rem] w-screen 2xl:w-[22vw] px-6"}`}
@@ -150,7 +151,7 @@ const SideBar = () => {
         <div className="absolute bottom-4 w-[90%]">
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/30 dark:border-gray-700/50">
             <div className="flex justify-between w-full items-center">
-              <div className="flex gap-3 justify-center items-center">
+              <div className="flex gap-3 justify-start items-center max-w-[90%]">
                 <motion.div
                   className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex justify-center items-center text-2xl text-white shadow-lg"
                   whileHover={{ scale: 1.1, rotate: 5 }}
@@ -165,7 +166,7 @@ const SideBar = () => {
                     <IoPerson />
                   )}
                 </motion.div>
-                <div className="flex flex-col">
+                <div className="flex flex-col  max-w-[78%]  overflow-hidden">
                   <motion.h1
                     className="text-gray-800 dark:text-white text-lg font-bold truncate"
                     style={{ maxWidth: "200px" }}
@@ -174,7 +175,7 @@ const SideBar = () => {
                     {fullName}
                   </motion.h1>
                   <motion.p
-                    className="text-gray-600 dark:text-gray-300 text-sm font-medium"
+                    className="text-gray-600 dark:text-gray-300 text-sm font-medium truncate max-w-[100%] overflow-hidden"
                     whileHover={{ scale: 1.02 }}
                   >
                     {email}
@@ -202,7 +203,10 @@ const SideBar = () => {
                   >
                     <Link
                       to="profile"
-                      onClick={handleNavClick}
+                      onClick={() => {
+                        setDropdownOpen((prev) => !prev);
+                        handleNavClick;
+                      }}
                       className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold 
                           text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 
                           hover:text-blue-600 dark:hover:text-blue-400 transition-all"

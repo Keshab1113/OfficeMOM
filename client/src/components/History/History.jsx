@@ -53,12 +53,23 @@ const AllHistory = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setHistory(res.data);
+        if (!isPaused && history.length > 0) {
+          controls.start({
+            y: ["0%", "-100%"],
+            transition: {
+              repeat: Infinity,
+              duration: history.length * 5,
+              ease: "linear",
+            },
+          });
+        }
       } catch (err) {
         console.error("Get history error:", err);
       }
     };
     fetchHistory();
-  }, [token]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, history.length]);
 
   return (
     <div className=" h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">

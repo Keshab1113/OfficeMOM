@@ -15,13 +15,13 @@ const Home = () => {
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
       <div className=" relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
         <div className=" min-h-screen flex flex-col justify-center items-center px-4">
-          <p className="relative text-center z-20 dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-3xl font-bold text-transparent md:text-5xl">
+          <p className="relative text-center z-20 dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-[34px] font-bold text-transparent md:text-5xl">
             Welcome to Office<span className="text-blue-400">MoM</span>
           </p>
-          <p className="mt-3 md:max-w-full max-w-[90%] text-center relative z-20 bg-gradient-to-b dark:from-white from-black to-blue-500 bg-clip-text text-lg font-bold text-transparent md:text-xl">
+          <p className="md:mt-3 mt-1 md:max-w-full max-w-[90%] text-center relative z-20 bg-gradient-to-b dark:from-white from-black to-blue-500 bg-clip-text text-base font-bold text-transparent md:text-xl">
             Automate Meeting Minutes Seamlessly
           </p>
-          <p className="mt-20 relative max-w-[90%] md:max-w-[80%] text-center z-20 bg-gradient-to-b dark:from-white from-black to-blue-500 bg-clip-text text-lg font-bold text-transparent md:text-2xl">
+          <p className="md:mt-20 mt-10 relative max-w-[90%] md:max-w-[80%] text-center z-20 bg-gradient-to-b dark:from-white from-black to-blue-500 bg-clip-text text-lg font-bold text-transparent md:text-2xl">
             Automate meeting minutes seamlessly with AI-powered transcription
             and smart formatting. Capture every detail without lifting a pen,
             from key points to action items. Get organized summaries instantly,

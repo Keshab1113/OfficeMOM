@@ -1,6 +1,6 @@
 const Heading = ({heading, subHeading}) => {
   return (
-    <div className=" md:h-[17vh] h-[30vh] flex flex-col justify-center items-center">
+    <div className=" md:h-[17vh] h-[30vh] flex flex-col justify-center items-center px-4 md:px-0">
       <h1 className="text-[28px] md:text-[35px] font-bold text-gray-800 dark:text-white text-center">
         {heading}
       </h1>

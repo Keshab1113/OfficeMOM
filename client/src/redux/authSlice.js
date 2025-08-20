@@ -26,6 +26,7 @@ const authSlice = createSlice({
       state.fullName = null;
       state.email = null;
       state.token = null;
+      state.profileImage = null;
       state.tokenExpiration = null;
       if (logoutTimer) {
         clearTimeout(logoutTimer);
@@ -35,6 +36,7 @@ const authSlice = createSlice({
     setProfileImage: (state, action) => {
       state.profileImage = action.payload;
     },
+    // eslint-disable-next-line no-unused-vars
     setLogoutTimer: (state, action) => {}
   },
 });

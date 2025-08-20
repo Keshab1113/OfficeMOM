@@ -147,7 +147,7 @@ const Login = () => {
                 </div>
               </div>
             </div>
-            <button className="w-full cursor-pointer py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-gray-900 transform transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+            <button className="w-full cursor-pointer py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-0 focus:ring-purple-400 focus:ring-offset-0 focus:ring-offset-gray-900 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
               Sign In
             </button>
 

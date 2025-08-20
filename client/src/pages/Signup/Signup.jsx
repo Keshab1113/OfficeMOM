@@ -9,7 +9,7 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [currentStep, setCurrentStep] = useState(1);
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(30);
   const [isLoading, setIsLoading] = useState(false);
   const [canResend, setCanResend] = useState(false);
@@ -42,7 +42,7 @@ const Signup = () => {
       newOtp[index] = value;
       setOtp(newOtp);
 
-      if (value && index < 3) {
+      if (value && index < 5) {
         const nextInput = document.getElementById(`otp-${index + 1}`);
         if (nextInput) nextInput.focus();
       }
@@ -63,7 +63,7 @@ const Signup = () => {
         { email }
       );
       addToast("success", "OTP resent to your email");
-      setOtp(["", "", "", ""]);
+      setOtp(["", "", "", "", "", ""]);
       setTimer(30);
       setCanResend(false);
     } catch (error) {
@@ -168,7 +168,7 @@ const Signup = () => {
                 Verify Your Email
               </h1>
               <p className="text-gray-700 text-center dark:text-gray-300 text-lg font-medium mb-1">
-                Enter the 4-digit code sent to
+                Enter the 6-digit code sent to
               </p>
               <p className="text-blue-500 text-center dark:text-blue-400 text-sm font-medium break-all mb-2">
                 {email}
@@ -283,7 +283,7 @@ const Signup = () => {
 
                 <button
                   type="submit"
-                  className="w-full cursor-pointer py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:from-blue-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 transform transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full cursor-pointer py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:from-blue-600 hover:to-purple-600 focus:outline-none focus:ring-0 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-white dark:focus:ring-offset-gray-900 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Sign Up
                 </button>
@@ -338,7 +338,7 @@ const Signup = () => {
                       onPaste={(e) => {
                         e.preventDefault();
                         const pastedData = e.clipboardData.getData("text");
-                        if (/^[0-9]{4}$/.test(pastedData)) {
+                        if (/^[0-9]{6}$/.test(pastedData)) {
                           const newOtp = pastedData.split("");
                           setOtp(newOtp);
                         }
@@ -400,7 +400,7 @@ const Signup = () => {
                   className="text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-300 flex items-center justify-center mx-auto"
                   onClick={() => {
                     setCurrentStep(1);
-                    setOtp(["", "", "", ""]);
+                    setOtp(["", "", "", "", "", ""]);
                     setTimer(30);
                     setCanResend(false);
                   }}

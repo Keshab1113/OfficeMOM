@@ -3,7 +3,9 @@ import jwt from "jsonwebtoken";
 import db from "../config/db.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-import { signupSchema, loginSchema } from "../validations/authValidation.js";
+import { signupSchema, loginSchema, updateProfileSchema } from "../validations/authValidation.js";
+import uploadToFTP from "../config/uploadToFTP.js"
+
 
 const transporter = nodemailer.createTransport({
   host: "smtp.hostinger.com",
@@ -36,7 +38,7 @@ export const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const otp = crypto.randomInt(1000, 9999);
+    const otp = crypto.randomInt(100000, 1000000);
 
     await db.query(
       "INSERT INTO users (fullName, email, password, otp, isVerified) VALUES (?, ?, ?, ?, ?)",
@@ -177,7 +179,7 @@ export const resendOtp = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    const otp = crypto.randomInt(1000, 9999);
+    const otp = crypto.randomInt(100000, 1000000);
     await db.query("UPDATE users SET otp = ? WHERE email = ?", [otp, email]);
 
     await transporter.sendMail({
@@ -192,5 +194,64 @@ export const resendOtp = async (req, res) => {
   } catch (err) {
     console.error("Resend OTP error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { error } = updateProfileSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: error.details.map(err => err.message),
+      });
+    }
+
+    const { fullName, email, profilePic } = req.body;
+    const userId = req.user.id;
+
+    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
+    if (user.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await db.query(
+      "UPDATE users SET fullName = ?, email= ?, profilePic = ? WHERE id = ?",
+      [fullName, email, profilePic || null, userId]
+    );
+
+    res.status(200).json({ message: "Profile updated successfully" });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const uploadProfilePicture = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const userId = req.user.id;
+    const buffer = req.file.buffer;
+    const originalName = req.file.originalname;
+    const ftpUrl = await uploadToFTP(buffer, originalName, "profile_pictures");
+    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
+    if (user.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    await db.query(
+      "UPDATE users SET profilePic = ? WHERE id = ?",
+      [ftpUrl, userId]
+    );
+
+    console.log(`✅ [Profile Upload] Profile picture updated for user ${userId}`);
+    res.status(200).json({
+      message: "Profile picture uploaded successfully",
+      profilePic: ftpUrl
+    });
+  } catch (err) {
+    console.error("❌ [Profile Upload] Error:", err);
+    res.status(500).json({ message: "Server error while uploading profile picture" });
   }
 };
