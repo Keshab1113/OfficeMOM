@@ -356,7 +356,7 @@ const ProfileImageUploader = () => {
                   onClick={() => setShowCropper(false)}
                   disabled={uploading}
                   className="flex-1 px-6 py-3 cursor-pointer bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 
-                  rounded-2xl font-semibold flex items-center disabled:opacity-50 justify-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                  rounded-2xl font-semibold flex items-center disabled:cursor-not-allowed disabled:opacity-50 justify-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -368,7 +368,7 @@ const ProfileImageUploader = () => {
                   disabled={uploading}
                   className="flex-1 px-6 cursor-pointer py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white 
                   rounded-2xl font-semibold flex items-center justify-center gap-2 hover:from-blue-600 hover:to-indigo-700 
-                  transition-all shadow-lg shadow-blue-500/30 disabled:opacity-70"
+                  transition-all shadow-lg shadow-blue-500/30 disabled:opacity-70 disabled:cursor-not-allowed text-xs md:text-sm"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
