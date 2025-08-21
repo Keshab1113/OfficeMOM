@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { History, FileText } from "lucide-react";
+import {Link} from "react-router-dom"
 
 const AllHistory = () => {
   const [isPaused, setIsPaused] = useState(false);
@@ -87,10 +88,10 @@ const AllHistory = () => {
         <div className="relative flex-1 overflow-hidden">
           <motion.div
             className="absolute top-0 left-0 w-full"
-            animate={controls}
+            animate={history.length > 2 && controls}
           >
             <ol className="space-y-3">
-              {[...history, ...history].map((item, index) => {
+              {(history.length > 2 ? [...history, ...history] : history).map((item, index) => {
                 const HDate = new Date(item.date);
                 const localDate =
                   HDate.getFullYear() +
@@ -107,9 +108,9 @@ const AllHistory = () => {
                   >
                     <span className=" flex gap-2 justify-start items-center">
                       <FileText className="w-4 h-4 text-blue-500" />
-                      <span className="text-gray-800 dark:text-gray-300 font-medium">
+                      <Link to={`/meeting-history/${item.id}`} className="text-gray-800 dark:text-gray-300 hover:text-blue-700 font-medium">
                         {item.source}
-                      </span>
+                      </Link>
                     </span>
 
                     <div className="text-sm text-gray-600 dark:text-gray-400 ml-6 flex justify-between">

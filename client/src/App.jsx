@@ -11,6 +11,7 @@ import Profile from "./pages/Profile/Profile";
 import ProtectedRoute from "../ProtectedRoute";
 import NoPage from "./pages/NoPage/NoPage";
 import GenerateNotes from "./pages/GenerateNotes/GenerateNotes";
+import MeetingHistory from "./pages/MeetingHistory/MeetingHistory";
 
 function App() {
   return (
@@ -48,6 +49,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/meeting-history/:id"
+            element={
+              <ProtectedRoute>
+                <MeetingHistory />
               </ProtectedRoute>
             }
           />

@@ -10,13 +10,19 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = (type, message) => {
-    const id = toastId++;
-    setToasts((prev) => [...prev, { id, type, message }]);
+    setToasts((prev) => {
+      const alreadyExists = prev.some(
+        (toast) => toast.type === type && toast.message === message
+      );
+      if (alreadyExists) return prev;
+      const id = toastId++;
+      const newToasts = [...prev, { id, type, message }];
+      setTimeout(() => {
+        setToasts((curr) => curr.filter((toast) => toast.id !== id));
+      }, 3000);
 
-    // Auto-remove after 3s
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 3000);
+      return newToasts;
+    });
   };
 
   return (
@@ -36,7 +42,11 @@ export const ToastProvider = ({ children }) => {
           >
             <div className="flex items-start gap-3">
               <span>
-                {toast.type === "success" ? "✅" : toast.type === "error" ? "❌" : "ℹ️"}
+                {toast.type === "success"
+                  ? "✅"
+                  : toast.type === "error"
+                  ? "❌"
+                  : "ℹ️"}
               </span>
               <p className="text-sm font-medium">{toast.message}</p>
             </div>

@@ -8,11 +8,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Copy,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { setTableData } from "../../redux/meetingSlice";
-import { useToast } from "../ToastContext";
+// import { useToast } from "../ToastContext";
 
 const TablePreview = ({ onSaveHeaders, isSending }) => {
   const [columns, setColumns] = useState([
@@ -21,14 +21,14 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
   ]);
 
   // eslint-disable-next-line no-unused-vars
-  const [rows, setRows] = useState(3);
+  const [rows, setRows] = useState(6);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [editingHeading, setEditingHeading] = useState(null);
   const [menuOpen, setMenuOpen] = useState(null);
   const dropdownRef = useRef(null);
 
-  const { addToast } = useToast();
+  // const { addToast } = useToast();
   const dispatch = useDispatch();
 
   const addNewColumn = () => {
@@ -149,7 +149,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
     if (onSaveHeaders) {
       onSaveHeaders(headersArray);
     }
-    addToast("success", "Header updated successfully");
+    // addToast("success", "Header updated successfully");
   };
 
   useEffect(() => {
@@ -163,13 +163,14 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
   }, []);
 
   return (
-    <div className="mb-10 w-full lg:max-w-[71vw] animate-fade-in">
+    <div className="my-10 w-full lg:max-w-[71vw] animate-fade-in">
       <div className="dark:bg-gray-900 bg-white w-full h-full min-h-[40vh] p-4 md:p-6 rounded-xl  shadow-2xl hover:shadow-3xl transform hover:scale-[1.01] transition-all duration-500 ease-out backdrop-blur-sm">
         <div className="flex justify-center items-center gap-4 mb-8 animate-bounce-slow">
+          <h1 className=" dark:text-white text-xl font-medium">Add Columns</h1>
           <button
             onClick={addNewColumn}
             disabled={isSending}
-            className="group bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 cursor-pointer rounded-full p-2 shadow-lg hover:shadow-xl transform hover:scale-125 transition-all duration-300 animate-pulse-slow relative overflow-hidden"
+            className="group disabled:cursor-not-allowed disabled:opacity-50 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 cursor-pointer rounded-full p-2 shadow-lg hover:shadow-xl transform hover:scale-125 transition-all duration-300 animate-pulse-slow relative overflow-hidden"
             title="Add Column"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -250,7 +251,8 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                         onClick={() =>
                           setMenuOpen(menuOpen === column.id ? null : column.id)
                         }
-                        className="p-1 rounded-full hover:bg-gray-400 dark:hover:bg-gray-600 cursor-pointer transform hover:rotate-90 hover:scale-110 transition-all duration-300 group-hover:animate-spin-slow"
+                        disabled={isSending}
+                        className="p-1 disabled:cursor-not-allowed disabled:opacity-50 rounded-full hover:bg-gray-400 dark:hover:bg-gray-600 cursor-pointer transform hover:rotate-90 hover:scale-110 transition-all duration-300 group-hover:animate-spin-slow"
                       >
                         <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-300 transition-colors duration-200" />
                       </button>
@@ -297,46 +299,75 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                   </div>
                 ))}
               </div>
-              {Array.from({ length: rows }, (_, rowIndex) => (
-                <div
-                key={rowIndex}
-                  className={`flex transition-all duration-300 ease-out animate-slide-up w-full`}
-                >
+              {Array.from({ length: rows }, (_, rowIndex) => {
+                const opacity =
+                  rowIndex === 0
+                    ? "opacity-100 text-[18px]"
+                    : rowIndex === 1
+                    ? "opacity-90 text-[16px]"
+                    : rowIndex === 2
+                    ? "opacity-80 text-[14px]"
+                    : rowIndex === 3
+                    ? "opacity-60 text-[12px]"
+                    : rowIndex === 4
+                    ? "opacity-50 text-[10px]"
+                    : "opacity-40 text-[8px]";
+
+                const padding =
+                  rowIndex === 0
+                    ? "py-[12px]"
+                    : rowIndex === 1
+                    ? "py-[9px]"
+                    : rowIndex === 2
+                    ? "py-[7px]"
+                    : rowIndex === 3
+                    ? "py-[5px]"
+                    : rowIndex === 4
+                    ? "py-[3px]"
+                    : "py-[2px]";
+
+                return (
                   <div
-                    className={`w-16 sm:w-20 p-3 sm:p-4  flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${
-                      rowIndex === 0
-                        ? " dark:bg-[#162130] bg-[#a8aeb7]"
-                        : rowIndex === 1
-                        ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
-                        : "dark:bg-[#262f3b] bg-[#dae0e8]"
-                    }`}
+                    key={rowIndex}
+                    className={`flex transition-all duration-300 ease-out animate-slide-up w-full ${opacity}`}
                   >
-                    <div className="dark:text-gray-300 text-gray-600  font-semibold text-sm sm:text-base transition-colors duration-200  transform">
-                      {rowIndex + 1}
-                    </div>
-                  </div>
-                  {columns.map((column) => (
                     <div
-                      key={`cell-${column.id}-${rowIndex}`}
-                      className={` border-b border-r border-gray-200 dark:border-gray-700 ${
-                        columns.length > 3 ? "w-60" : "flex-1"
-                      } min-w-[200px] p-3 sm:p-4 transition-all duration-200 ${
+                      className={`w-16 sm:w-20 flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${
                         rowIndex === 0
-                          ? " dark:bg-[#162130] bg-[#a8aeb7]"
+                          ? "dark:bg-[#162130] bg-[#a8aeb7]"
                           : rowIndex === 1
                           ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
                           : "dark:bg-[#262f3b] bg-[#dae0e8]"
                       }`}
                     >
-                      <div className="h-fit flex items-center">
-                        <p className="dark:text-gray-300 text-gray-600 text-sm sm:text-base hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 cursor-default">
-                          Content
-                        </p>
+                      <div className="dark:text-gray-300 text-gray-600 font-semibold transition-colors duration-200">
+                        {rowIndex + 1}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ))}
+
+                    {columns.map((column) => (
+                      <div
+                        key={`cell-${column.id}-${rowIndex}`}
+                        className={`border-b border-r border-gray-200 dark:border-gray-700 ${
+                          columns.length > 3 ? "w-60" : "flex-1"
+                        } min-w-[200px] transition-all duration-200 ${
+                          rowIndex === 0
+                            ? "dark:bg-[#162130] bg-[#a8aeb7]"
+                            : rowIndex === 1
+                            ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
+                            : "dark:bg-[#262f3b] bg-[#dae0e8]"
+                        } ${padding} px-4`}
+                      >
+                        <div className="h-fit flex items-center">
+                          <p className="dark:text-gray-300 text-gray-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 cursor-default">
+                            Content
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -347,7 +378,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
           <button
             onClick={handleSaveTable}
             disabled={isSending}
-            className="px-4 py-2 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 transition-all duration-300 flex items-center gap-2 text-sm relative overflow-hidden group"
+            className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 transition-all duration-300 flex items-center gap-2 text-sm relative overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-shimmer"></div>
             {isSending ? (

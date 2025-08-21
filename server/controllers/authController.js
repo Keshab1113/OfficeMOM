@@ -133,6 +133,7 @@ export const login = async (req, res) => {
         id: user[0].id,
         fullName: user[0].fullName,
         email: user[0].email,
+        profilePic: user[0].profilePic,
       },
     });
   } catch (err) {

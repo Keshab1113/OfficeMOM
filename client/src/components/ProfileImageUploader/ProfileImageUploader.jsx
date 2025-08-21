@@ -12,7 +12,10 @@ import { useToast } from "../ToastContext";
 
 const ProfileImageUploader = () => {
   const dispatch = useDispatch();
-  const { email, fullName, profileImage, token } = useSelector(
+  const { email, fullName, token } = useSelector(
+    (state) => state.auth
+  );
+  const { profileImage } = useSelector(
     (state) => state.auth
   );
 
@@ -67,7 +70,7 @@ const ProfileImageUploader = () => {
           },
         }
       );
-      dispatch(setProfileImage(response.data.profilePic));
+      dispatch(setProfileImage({profileImage: response?.data?.profilePic}));
       setShowCropper(false);
       setUploading(false);
       addToast("success", "Profile picture updated Successfully");
@@ -122,11 +125,10 @@ const ProfileImageUploader = () => {
   };
 
   const handleUpdateProfile = async () => {
-    const profileImageType = profileImage?.split(",")[0] || "";
     try {
       await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/update-user`,
-        { fullName: name, email: emailID, profilePic: profileImageType },
+        { fullName: name, email: emailID, profilePic: profileImage?.profileImage },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       dispatch(
@@ -169,9 +171,9 @@ const ProfileImageUploader = () => {
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <div className=" w-[200px] h-[200px] flex items-center justify-center relative overflow-hidden rounded-full">
-                {profileImage ? (
+                {profileImage?.profileImage ? (
                   <motion.img
-                    src={profileImage}
+                    src={profileImage?.profileImage}
                     alt="profile"
                     className="w-full h-full object-cover "
                     initial={{ scale: 1.2, opacity: 0 }}
@@ -197,7 +199,7 @@ const ProfileImageUploader = () => {
                 )}
 
                 <AnimatePresence>
-                  {profileImage && isHovered && (
+                  {profileImage?.profileImage && isHovered && (
                     <motion.div
                       className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full"
                       initial={{ opacity: 0 }}

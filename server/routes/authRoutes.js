@@ -18,7 +18,6 @@ router.post("/login", login);
 router.put("/update-user", authMiddleware, updateUserProfile);
 router.post("/verify-otp", verifyOtp);
 router.post("/resend-otp", resendOtp);
-
 router.post(
   "/upload-profile-picture",
   authMiddleware,

@@ -16,7 +16,10 @@ import { IoPersonCircleSharp } from "react-icons/io5";
 const SideBar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { email, fullName, token, profileImage } = useSelector(
+  const { email, fullName, token } = useSelector(
+    (state) => state.auth
+  );
+  const { profileImage } = useSelector(
     (state) => state.auth
   );
   const { addToast } = useToast();
@@ -60,6 +63,7 @@ const SideBar = () => {
   const handleLogout = () => {
     dispatch(logout());
     persistor.purge();
+    if (isMobile) setIsSidebarOpen(false);
     addToast("success", "Logout Successfully");
     setDropdownOpen((prev) => !prev);
   };
@@ -156,9 +160,9 @@ const SideBar = () => {
                   className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex justify-center items-center text-2xl text-white shadow-lg"
                   whileHover={{ scale: 1.1, rotate: 5 }}
                 >
-                  {profileImage ? (
+                  {profileImage?.profileImage ? (
                     <img
-                      src={profileImage}
+                      src={profileImage?.profileImage}
                       alt="profile"
                       className="w-full h-full object-cover rounded-full"
                     />
@@ -205,7 +209,7 @@ const SideBar = () => {
                       to="profile"
                       onClick={() => {
                         setDropdownOpen((prev) => !prev);
-                        handleNavClick;
+                        if (isMobile) setIsSidebarOpen(false);
                       }}
                       className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold 
                           text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 

@@ -3,18 +3,22 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useDispatch } from "react-redux";
-import { setUser, startLogoutTimer } from "../../redux/authSlice";
+import { setProfileImage, setUser, startLogoutTimer } from "../../redux/authSlice";
 import { useToast } from "../../components/ToastContext";
+import { Loader2 } from "lucide-react";
+import { Helmet } from "react-helmet";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { addToast } = useToast();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setIsProcessing(true);
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
@@ -31,16 +35,29 @@ const Login = () => {
           token: res.data.token,
         })
       );
+      dispatch(
+        setProfileImage({
+          profileImage: res.data.user.profilePic,
+        })
+      );
       dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
+      setIsProcessing(false);
       addToast("success", "Login Successfully");
       navigate("/");
     } catch (error) {
+      setIsProcessing(false);
       addToast("error", error?.response?.data?.message);
       console.log(error);
     }
   };
 
   return (
+    <>
+    <Helmet>
+        <meta charSet="utf-8" />
+        <title>OfficeMom | Login</title>
+        <link rel="canonical" href="http://mysite.com/example" />
+      </Helmet>
     <section className="relative flex h-full min-h-screen w-full items-center justify-center dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]">
       <div
         className={cn(
@@ -147,8 +164,15 @@ const Login = () => {
                 </div>
               </div>
             </div>
-            <button className="w-full cursor-pointer py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-0 focus:ring-purple-400 focus:ring-offset-0 focus:ring-offset-gray-900 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-              Sign In
+            <button className="w-full flex gap-1 justify-center items-center cursor-pointer py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-0 focus:ring-purple-400 focus:ring-offset-0 focus:ring-offset-gray-900 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </button>
 
             <div className="text-center animate-slide-up animation-delay-500">
@@ -167,6 +191,7 @@ const Login = () => {
         </form>
       </div>
     </section>
+    </>
   );
 };
 

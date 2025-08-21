@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Timing from "../../components/Timing/Timing";
 import { cn } from "../../lib/utils";
 import { FcConferenceCall } from "react-icons/fc";
@@ -13,35 +13,32 @@ import AllHistory from "../../components/History/History";
 import { Video, Users, FileText } from "lucide-react";
 import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
+import { Helmet } from "react-helmet";
 
 const meetingPlatforms = [
   {
     name: "Google Meet",
     icon: "/Icons/meet.svg",
+    match: "meet.google.com",
     color: "bg-green-500",
-    url: "https://meet.google.com/new",
   },
   {
     name: "Zoom",
     icon: "/Icons/zoom.svg",
+    match: "zoom.us",
     color: "bg-blue-500",
-    url: "https://zoom.us/start/videomeeting",
   },
   {
     name: "Microsoft Teams",
     icon: "/Icons/teams.png",
+    match: "teams.microsoft.com",
     color: "bg-purple-500",
-    url: "https://teams.microsoft.com/start",
   },
 ];
 
 const Meeting = () => {
   const [activeTab, setActiveTab] = useState(1);
   const [meetingLink, setMeetingLink] = useState("");
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [placeholderText, setPlaceholderText] = useState("");
-  const [charIndex, setCharIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [meetingId, setMeetingId] = useState("");
   const [meetingPassword, setMeetingPassword] = useState("");
   const [isMeetingActive, setIsMeetingActive] = useState(false);
@@ -51,6 +48,7 @@ const Meeting = () => {
   const [showModal2, setShowModal2] = useState(false);
   const [showFullData, setShowFullData] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [activePlatform, setActivePlatform] = useState(null);
   const [downloadOptions, setDownloadOptions] = useState({
     word: false,
     excel: false,
@@ -60,38 +58,6 @@ const Meeting = () => {
   const mediaStreamRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const { addToast } = useToast();
-
-  const placeholders = [
-    "Enter Google Meet link",
-    "Enter Zoom meeting link",
-    "Enter Teams meeting link",
-  ];
-
-  useEffect(() => {
-    const currentText = placeholders[placeholderIndex];
-    const typingSpeed = isDeleting ? 50 : 100;
-    const timeout = setTimeout(() => {
-      if (!isDeleting) {
-        if (charIndex < currentText.length) {
-          setPlaceholderText(currentText.substring(0, charIndex + 1));
-          setCharIndex(charIndex + 1);
-        } else {
-          setIsDeleting(true);
-          setTimeout(() => {}, 1000);
-        }
-      } else {
-        if (charIndex > 0) {
-          setPlaceholderText(currentText.substring(0, charIndex - 1));
-          setCharIndex(charIndex - 1);
-        } else {
-          setIsDeleting(false);
-          setPlaceholderIndex((placeholderIndex + 1) % placeholders.length);
-        }
-      }
-    }, typingSpeed);
-
-    return () => clearTimeout(timeout);
-  }, [charIndex, isDeleting, placeholderIndex]);
 
   const startMeeting = async () => {
     if (!meetingLink) {
@@ -264,7 +230,20 @@ const Meeting = () => {
     setShowModal(false);
   };
 
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setMeetingLink(value);
+    const matched = meetingPlatforms.find((p) => value.includes(p.match));
+    setActivePlatform(matched ? matched.name : null);
+  };
+
   return (
+    <>
+    <Helmet>
+        <meta charSet="utf-8" />
+        <title>OfficeMom | Meeting</title>
+        <link rel="canonical" href="http://mysite.com/example" />
+      </Helmet>
     <section className="relative h-full min-h-screen md:w-full w-screen dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]">
       <div
         className={cn(
@@ -353,19 +332,22 @@ const Meeting = () => {
                               {meetingPlatforms.map((platform, index) => (
                                 <div
                                   key={platform.name}
-                                  className="flex flex-col items-center gap-2 p-3 bg-gray-200 dark:bg-slate-700 rounded-lg hover:scale-105 transition-transform cursor-pointer animate-fade-in-up"
+                                  className={`flex flex-col items-center gap-2 p-3 rounded-lg 
+                        bg-gray-200 dark:bg-slate-700 hover:scale-105 transition-transform animate-fade-in-up
+                        ${
+                          activePlatform === platform.name
+                            ? "ring-2 ring-offset-2 ring-blue-500"
+                            : ""
+                        }`}
                                   style={{
                                     animationDelay: `${500 + index * 100}ms`,
                                   }}
-                                  onClick={() => window.open(platform.url, "_blank")}
                                 >
-                                  <div className="text-2xl">
-                                    <img
-                                      src={platform.icon}
-                                      alt=""
-                                      className=" h-8 w-8"
-                                    />
-                                  </div>
+                                  <img
+                                    src={platform.icon}
+                                    alt={platform.name}
+                                    className="h-8 w-8"
+                                  />
                                 </div>
                               ))}
                             </div>
@@ -373,10 +355,10 @@ const Meeting = () => {
                               <FcConferenceCall className="text-blue-500 text-xl mr-2" />
                               <input
                                 type="text"
-                                placeholder={placeholderText || " "}
+                                placeholder={"Enter meeting link"}
                                 className="flex-1 outline-none bg-transparent text-gray-700 dark:text-white py-1"
                                 value={meetingLink}
-                                onChange={(e) => setMeetingLink(e.target.value)}
+                                onChange={handleInputChange}
                               />
                             </div>
                           </div>
@@ -437,6 +419,7 @@ const Meeting = () => {
         <Footer />
       </div>
     </section>
+    </>
   );
 };
 
