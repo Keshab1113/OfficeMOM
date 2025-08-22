@@ -1,10 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Download } from "lucide-react";
 
 const RealTablePreview = ({ showFullData, onSaveTable }) => {
-  const [tableData, setTableData] = useState(showFullData);
+  const [tableData, setTableData] = useState(showFullData || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
+
+  useEffect(() => {
+    if (showFullData && showFullData.length > 0) {
+      setTableData(showFullData);
+    }
+  }, [showFullData]);
+
 
   const allColumns = Array.from(
     new Set(tableData?.flatMap((row) => Object.keys(row)))
@@ -42,9 +49,6 @@ const RealTablePreview = ({ showFullData, onSaveTable }) => {
   const finishEditing = () => {
     setEditingCell(null);
   };
-  console.log("tableData: ",tableData);
-  console.log("showFullData2: ",showFullData);
-  console.log("allColumns: ",allColumns);
 
   return (
     <section className="p-0 mb-10 md:mt-10 bg-amber-50 dark:bg-gray-800 rounded-2xl w-full overflow-hidden lg:max-w-[70vw] max-w-[90vw] mx-auto">
