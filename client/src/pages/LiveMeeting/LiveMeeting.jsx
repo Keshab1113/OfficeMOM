@@ -67,11 +67,9 @@ const LiveMeeting = () => {
   }, [isRecording]);
 
   useEffect(() => {
-    // If we're joining an existing meeting (not the host)
     if (meetingIdFromParams) {
       connectToMeeting(meetingIdFromParams);
     } else {
-      // If we're the host, create a new meeting
       setMeetingId(uuidv4());
     }
   }, [meetingIdFromParams]);
@@ -83,7 +81,6 @@ const LiveMeeting = () => {
 
     websocket.onopen = () => {
       console.log("Connected to meeting");
-      // Send meeting ID to join
       websocket.send(
         JSON.stringify({
           type: "join_meeting",
@@ -94,11 +91,9 @@ const LiveMeeting = () => {
 
     websocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      // Handle different message types
       if (data.type === "participants_update") {
         setParticipants(data.participants);
       }
-      // Handle transcription data if needed
     };
 
     websocket.onerror = (error) => {
@@ -131,9 +126,7 @@ const LiveMeeting = () => {
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          // Send audio data to WebSocket if connected to a meeting
           if (ws && ws.readyState === WebSocket.OPEN) {
-            // Convert blob to array buffer and send
             e.data.arrayBuffer().then((buffer) => {
               ws.send(buffer);
             });
@@ -151,7 +144,7 @@ const LiveMeeting = () => {
         recordedBlobRef.current = audioBlob;
       };
 
-      mediaRecorder.start(1000); // Capture data every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);

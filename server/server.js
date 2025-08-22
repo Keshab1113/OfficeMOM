@@ -27,9 +27,7 @@ app.use("/api/history", historyRoutes);
 app.use("/api", emailRoutes);
 
 const server = http.createServer(app);
-
 const wss = new WebSocketServer({ noServer: true });
-
 const deepgramUrl = process.env.DEEPGRAM_URL;
 const meetingRooms = new Map();
 
@@ -70,38 +68,29 @@ wss.on("connection", (ws, req) => {
 
   ws.on("message", (message) => {
     try {
-      // Check if message is JSON (control message) or binary (audio data)
       if (message instanceof Buffer || message instanceof ArrayBuffer) {
-        // Audio data - send to Deepgram
         if (ready) {
           dgWs.send(message);
         } else {
           queue.push(message);
         }
       } else {
-        // Control message
         const data = JSON.parse(message.toString());
 
         if (data.type === "join_meeting") {
           meetingId = data.meetingId;
-
-          // Create meeting room if it doesn't exist
           if (!meetingRooms.has(meetingId)) {
             meetingRooms.set(meetingId, {
               participants: [],
               createdAt: Date.now(),
             });
           }
-
-          // Add participant to meeting room
           const meeting = meetingRooms.get(meetingId);
           meeting.participants.push({
             id: participantId,
             ws: ws,
             joinedAt: Date.now(),
           });
-
-          // Send participant list update to all participants
           meeting.participants.forEach((participant) => {
             if (participant.ws.readyState === WebSocket.OPEN) {
               participant.ws.send(
@@ -124,14 +113,11 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    // Remove participant from meeting room
     if (meetingId && meetingRooms.has(meetingId)) {
       const meeting = meetingRooms.get(meetingId);
       meeting.participants = meeting.participants.filter(
         (p) => p.id !== participantId
       );
-
-      // Send updated participant list
       meeting.participants.forEach((participant) => {
         if (participant.ws.readyState === WebSocket.OPEN) {
           participant.ws.send(
@@ -142,8 +128,6 @@ wss.on("connection", (ws, req) => {
           );
         }
       });
-
-      // Remove meeting room if empty
       if (meeting.participants.length === 0) {
         meetingRooms.delete(meetingId);
       }
