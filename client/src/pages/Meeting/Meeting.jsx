@@ -224,6 +224,7 @@ const Meeting = () => {
     const historyData = {
       source: "Online Meeting Conversion",
       date: dateCreated,
+      data: data,
     };
     await addHistory(token, historyData, addToast);
     setShowModal2(false);

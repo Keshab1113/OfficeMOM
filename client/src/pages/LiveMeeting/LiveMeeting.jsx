@@ -16,6 +16,7 @@ import { Mic, Loader2, FileText } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { v4 as uuidv4 } from "uuid";
 import { Helmet } from "react-helmet";
+import { useParams } from "react-router-dom";
 
 const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -31,7 +32,10 @@ const LiveMeeting = () => {
   const [recordedBlob, setRecordedBlob] = useState(null);
   const [barCount, setBarCount] = useState(32);
   const { addToast } = useToast();
-  const [meetingId, setMeetingId] = useState(null);
+  const { id: meetingIdFromParams } = useParams();
+  const [isHost, setIsHost] = useState(!meetingIdFromParams);
+  const [meetingId, setMeetingId] = useState(meetingIdFromParams || uuidv4());
+  const [ws, setWs] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   // eslint-disable-next-line no-unused-vars
   const [participants, setParticipants] = useState([]);
@@ -62,6 +66,52 @@ const LiveMeeting = () => {
     };
   }, [isRecording]);
 
+  useEffect(() => {
+    // If we're joining an existing meeting (not the host)
+    if (meetingIdFromParams) {
+      connectToMeeting(meetingIdFromParams);
+    } else {
+      // If we're the host, create a new meeting
+      setMeetingId(uuidv4());
+    }
+  }, [meetingIdFromParams]);
+
+  const connectToMeeting = (meetingId) => {
+    const websocket = new WebSocket(
+      `${import.meta.env.VITE_WS_URL || "ws://localhost:5000"}/transcribe`
+    );
+
+    websocket.onopen = () => {
+      console.log("Connected to meeting");
+      // Send meeting ID to join
+      websocket.send(
+        JSON.stringify({
+          type: "join_meeting",
+          meetingId,
+        })
+      );
+    };
+
+    websocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // Handle different message types
+      if (data.type === "participants_update") {
+        setParticipants(data.participants);
+      }
+      // Handle transcription data if needed
+    };
+
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    websocket.onclose = () => {
+      console.log("Disconnected from meeting");
+    };
+
+    setWs(websocket);
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -73,25 +123,35 @@ const LiveMeeting = () => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm;codecs=opus",
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
+          // Send audio data to WebSocket if connected to a meeting
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            // Convert blob to array buffer and send
+            e.data.arrayBuffer().then((buffer) => {
+              ws.send(buffer);
+            });
+          }
+
           audioChunksRef.current.push(e.data);
         }
       };
 
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
+          type: "audio/webm",
         });
         setRecordedBlob(audioBlob);
         recordedBlobRef.current = audioBlob;
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // Capture data every second
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
@@ -192,6 +252,7 @@ const LiveMeeting = () => {
     const historyData = {
       source: "Live Transcript Conversion",
       date: dateCreated,
+      data: data,
     };
     await addHistory(token, historyData, addToast);
     setShowModal2(false);
@@ -213,6 +274,11 @@ const LiveMeeting = () => {
     window.addEventListener("resize", updateBarCount);
     return () => window.removeEventListener("resize", updateBarCount);
   }, []);
+
+  console.log(
+    "meetingLink: ",
+    `${window.location.origin}/join-meeting/${meetingId}`
+  );
 
   return (
     <>
@@ -263,7 +329,6 @@ const LiveMeeting = () => {
                     </div>
                     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg md:p-8 p-4 w-full mt-4">
                       <div className="flex items-center justify-between">
-                        {/* Left side - Microphone Icon with Pulse Effect */}
                         <div className="relative flex items-center">
                           <div
                             className={`absolute inset-0 rounded-full bg-green-500 opacity-20 ${
@@ -324,7 +389,6 @@ const LiveMeeting = () => {
                                 Recording in progress...
                               </span>
                             </div>
-
                             <div className="bg-white p-4 rounded-lg shadow-md">
                               <h3 className="text-lg font-semibold mb-2 text-center">
                                 Invite others to join this meeting

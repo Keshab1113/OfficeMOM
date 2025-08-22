@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import { useToast } from "../../components/ToastContext";
 import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
+import NoPage from "../NoPage/NoPage"
 
 const MeetingHistory = () => {
   const [showFullData, setShowFullData] = useState(null);
@@ -31,7 +32,8 @@ const MeetingHistory = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const foundItem = res.data.find((item) => item.id === parseInt(id));
-        if (foundItem) {
+        
+        if (foundItem.data) {
           if (typeof foundItem.data === "string") {
             foundItem.data = JSON.parse(foundItem.data);
           }
@@ -68,6 +70,8 @@ const MeetingHistory = () => {
     setPendingData(null);
   };
 
+  
+
   return (
     <>
       <Helmet>
@@ -87,7 +91,7 @@ const MeetingHistory = () => {
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen flex justify-center items-center md:py-20 py-10">
             {error ? (
-              <h1>Data Not Found</h1>
+              <NoPage/>
             ) : (
               <RealTablePreview
                 showFullData={showFullData || []}
@@ -98,7 +102,6 @@ const MeetingHistory = () => {
               <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex justify-center items-center z-50">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-md">
                   <DownloadOptions onChange={setDownloadOptions} />
-
                   <div className="flex justify-end gap-3 mt-4">
                     <button
                       onClick={() => setIsModalOpen(false)}

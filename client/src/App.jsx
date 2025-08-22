@@ -12,6 +12,7 @@ import ProtectedRoute from "../ProtectedRoute";
 import NoPage from "./pages/NoPage/NoPage";
 import GenerateNotes from "./pages/GenerateNotes/GenerateNotes";
 import MeetingHistory from "./pages/MeetingHistory/MeetingHistory";
+import JoinMeeting from "./pages/JoinMeeting/JoinMeeting";
 
 function App() {
   return (
@@ -33,6 +34,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <LiveMeeting />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/join-meeting/:id"
+            element={
+              <ProtectedRoute>
+                <JoinMeeting/>
               </ProtectedRoute>
             }
           />
