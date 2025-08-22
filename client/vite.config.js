@@ -15,4 +15,8 @@ export default defineConfig({
       '@/lib': path.resolve(__dirname, 'src/lib'),
     },
   },
+  server: {
+    port: 5173,
+    allowedHosts: ['d9634343bcc6.ngrok-free.app']
+  }
 })
