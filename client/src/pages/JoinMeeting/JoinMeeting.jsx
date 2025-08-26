@@ -1,136 +1,314 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { cn } from "../../lib/utils";
 import Footer from "../../components/Footer/Footer";
+import io from "socket.io-client";
 import {
-  Users,
-  Mic,
-  MicOff,
-  Wifi,
-  WifiOff,
-  Settings,
-} from "lucide-react";
+  FaMicrophone,
+  FaMicrophoneSlash,
+  FaSpinner,
+  FaCheckCircle,
+  FaTimesCircle,
+} from "react-icons/fa";
+
+const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
 const JoinMeeting = () => {
-  const { id: meetingId } = useParams();
-  const [isConnected, setIsConnected] = useState(false);
-  const [participants, setParticipants] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(20);
-  const mediaRecorderRef = useRef(null);
-  const wsRef = useRef(null);
+  const { id } = useParams();
+  const nav = useNavigate();
+  const [status, setStatus] = useState("Requesting to join…");
+  const [statusType, setStatusType] = useState("info");
+  const [isMuted, setIsMuted] = useState(false);
+  const socketRef = useRef(null);
+  const pcRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const hostSocketIdRef = useRef(null);
 
   useEffect(() => {
-    connectToMeeting();
+    const run = async () => {
+      setStatus("Connecting to server…");
+      setStatusType("loading");
+
+      const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, { transports: ["websocket"] });
+      socketRef.current = sock;
+
+      let deviceLabel = navigator.userAgent;
+      try {
+        const streamTmp = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const track = streamTmp.getAudioTracks()[0];
+        deviceLabel = track.label || deviceLabel;
+        streamTmp.getTracks().forEach((t) => t.stop());
+      } catch (error) {
+        console.log("Error getting device info: ", error);
+      }
+
+      setStatus("Requesting to join room…");
+      sock.emit("guest:request-join", { id, name: "Guest", deviceLabel });
+
+      sock.on("host:socket-id", ({ hostId }) => {
+        console.log("Received host socket ID:", hostId);
+        hostSocketIdRef.current = hostId;
+        setStatus("Waiting for host approval…");
+        setStatusType("info");
+      });
+
+      sock.on("guest:approved", async () => {
+        setStatus("Approved. Connecting audio…");
+        setStatusType("success");
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+              channelCount: 1,
+              sampleRate: 48000,
+              sampleSize: 16,
+            },
+          });
+
+          localStreamRef.current = stream;
+
+          console.log("Guest audio tracks:", stream.getAudioTracks());
+
+          // const monitorAudioLevels = () => {
+          //   if (stream) {
+          //     try {
+          //       const audioContext = new AudioContext();
+          //       const analyser = audioContext.createAnalyser();
+          //       const source = audioContext.createMediaStreamSource(stream);
+          //       source.connect(analyser);
+
+          //       const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          //       analyser.getByteFrequencyData(dataArray);
+
+          //       const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+          //       console.log("Guest Audio level:", average);
+
+          //       if (average > 5) {
+          //         console.log("🎤 GUEST IS SPEAKING! Audio detected.");
+          //       }
+
+          //       audioContext.close();
+          //     } catch (error) {
+          //       console.log("Audio level check error:", error);
+          //     }
+          //   }
+          // };
+
+          // const audioInterval = setInterval(monitorAudioLevels, 2000);
+
+          const audioContext = new AudioContext();
+          const source = audioContext.createMediaStreamSource(stream);
+          const destination = audioContext.createMediaStreamDestination();
+          source.connect(destination);
+
+          const silentSource = audioContext.createOscillator();
+          silentSource.frequency.setValueAtTime(0.1, audioContext.currentTime);
+          silentSource.connect(audioContext.destination);
+          silentSource.start();
+
+          const pc = new RTCPeerConnection({
+            iceServers: ICE,
+            sdpSemantics: "unified-plan",
+          });
+
+          pcRef.current = pc;
+
+          for (const track of destination.stream.getTracks()) {
+            console.log("Adding processed track:", track.id, "enabled:", track.enabled, "muted:", track.muted);
+            pc.addTrack(track, destination.stream);
+          }
+
+          pc.onconnectionstatechange = () => {
+            console.log("Guest connection state:", pc.connectionState);
+          };
+
+          pc.oniceconnectionstatechange = () => {
+            console.log("Guest ICE connection state:", pc.iceConnectionState);
+          };
+
+          pc.onicegatheringstatechange = () => {
+            console.log("Guest ICE gathering state:", pc.iceGatheringState);
+          };
+
+          pc.onsignalingstatechange = () => {
+            console.log("Guest signaling state:", pc.signalingState);
+          };
+
+          pc.onicecandidate = (ev) => {
+            if (ev.candidate && hostSocketIdRef.current) {
+              console.log("Sending ICE candidate to host");
+              sock.emit("signal", {
+                to: hostSocketIdRef.current,
+                data: { candidate: ev.candidate },
+              });
+            }
+          };
+
+          const offer = await pc.createOffer({
+            offerToReceiveAudio: false,
+            offerToReceiveVideo: false,
+          });
+
+          const modifiedOffer = {
+            ...offer,
+            sdp: offer.sdp.replace(
+              /useinbandfec=1/g,
+              "useinbandfec=1; stereo=0; maxaveragebitrate=128000"
+            ),
+          };
+
+          await pc.setLocalDescription(modifiedOffer);
+
+          if (hostSocketIdRef.current) {
+            console.log("Sending SDP offer to host");
+            sock.emit("signal", {
+              to: hostSocketIdRef.current,
+              data: { sdp: pc.localDescription },
+            });
+          }
+
+          setStatus("Connected to meeting - Speak now!");
+          setStatusType("success");
+
+          const checkAudioLevels = () => {
+            if (stream) {
+              const audioContext = new AudioContext();
+              const analyser = audioContext.createAnalyser();
+              const source = audioContext.createMediaStreamSource(stream);
+              source.connect(analyser);
+
+              const dataArray = new Uint8Array(analyser.frequencyBinCount);
+              analyser.getByteFrequencyData(dataArray);
+
+              const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+              console.log("Audio level:", average);
+
+              if (average > 5) {
+                console.log("AUDIO DETECTED! Guest is speaking.");
+              }
+
+              audioContext.close();
+            }
+          };
+
+          setInterval(checkAudioLevels, 2000);
+        } catch (error) {
+          console.error("Error setting up audio:", error);
+          setStatus("Error setting up audio. Please check microphone permissions.");
+          setStatusType("error");
+        }
+      });
+
+      sock.on("guest:denied", ({ reason }) => {
+        setStatus(`Request denied: ${reason || "No reason provided"}`);
+        setStatusType("error");
+        setTimeout(() => {
+          alert(reason || "Denied");
+          nav("/");
+        }, 2000);
+      });
+
+      sock.on("signal", async ({ data }) => {
+        if (!pcRef.current) return;
+
+        try {
+          if (data.sdp) {
+            console.log("Received SDP from host");
+            await pcRef.current.setRemoteDescription(data.sdp);
+          } else if (data.candidate) {
+            console.log("Received ICE candidate from host");
+            await pcRef.current.addIceCandidate(data.candidate);
+          }
+        } catch (error) {
+          console.log("Error processing signal:", error);
+        }
+      });
+
+      sock.on("room:ended", () => {
+        setStatus("Meeting ended by host.");
+        setStatusType("info");
+        setTimeout(() => {
+          alert("Meeting ended by host.");
+          nav("/");
+        }, 2000);
+      });
+
+      sock.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+        setStatus("Connection failed. Please try again.");
+        setStatusType("error");
+      });
+
+      sock.on("connect", () => {
+        setStatus("Connected to server");
+        setStatusType("success");
+      });
+    };
+
+    run();
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [meetingId]);
-
-  const connectToMeeting = () => {
-    const websocket = new WebSocket(
-      `${import.meta.env.VITE_WS_URL || "ws://localhost:5000"}/transcribe`
-    );
-
-    websocket.onopen = () => {
-      console.log("Connected to meeting");
-      setIsConnected(true);
-      // Send meeting ID to join
-      websocket.send(
-        JSON.stringify({
-          type: "join_meeting",
-          meetingId,
-        })
-      );
-    };
-
-    websocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === "participants_update") {
-        setParticipants(data.participants);
-      }
-      // Handle other message types
-    };
-
-    websocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    websocket.onclose = () => {
-      console.log("Disconnected from meeting");
-      setIsConnected(false);
-    };
-
-    wsRef.current = websocket;
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm;codecs=opus",
-      });
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (
-          e.data.size > 0 &&
-          wsRef.current &&
-          wsRef.current.readyState === WebSocket.OPEN
-        ) {
-          // Send audio data to WebSocket
-          e.data.arrayBuffer().then((buffer) => {
-            wsRef.current.send(buffer);
-          });
+      try {
+        if (pcRef.current) {
+          pcRef.current.close();
         }
-      };
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach((track) => track.stop());
+        }
+        socketRef.current?.disconnect();
+      } catch (error) {
+        console.log("Error in cleanup:", error);
+      }
+    };
+  }, [id, nav]);
 
-      mediaRecorder.start(1000);
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Error starting recording:", error);
+  const toggleMute = () => {
+    if (localStreamRef.current) {
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      console.log("Toggling mute, current state:", isMuted);
+      console.log("Audio tracks:", audioTracks);
+
+      audioTracks.forEach((track) => {
+        console.log(`Track ${track.id} enabled before:`, track.enabled);
+        track.enabled = !track.enabled;
+        console.log(`Track ${track.id} enabled after:`, track.enabled);
+      });
+      setIsMuted(!isMuted);
     }
   };
 
-  const stopRecording = () => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== "inactive"
-    ) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream
-        .getTracks()
-        .forEach((track) => track.stop());
-      setIsRecording(false);
+  const getStatusIcon = () => {
+    switch (statusType) {
+      case "loading":
+        return <FaSpinner className="animate-spin" />;
+      case "success":
+        return <FaCheckCircle />;
+      case "error":
+        return <FaTimesCircle />;
+      default:
+        return null;
     }
   };
 
-  const generateParticipantAvatars = () => {
-    const colors = [
-      "bg-purple-500",
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-yellow-500",
-      "bg-pink-500",
-      "bg-indigo-500",
-    ];
-    return Array.from({ length: participants.length || 3 }, (_, i) => (
-      <div
-        key={i}
-        className={`w-12 h-12 rounded-full ${
-          colors[i % colors.length]
-        } flex items-center justify-center text-white font-semibold shadow-lg transform transition-all duration-300 hover:scale-110 animate-pulse`}
-        style={{ animationDelay: `${i * 0.2}s` }}
-      >
-        {String.fromCharCode(65 + i)}
-      </div>
-    ));
+  const getStatusColor = () => {
+    switch (statusType) {
+      case "loading":
+        return "text-blue-600";
+      case "success":
+        return "text-green-600";
+      case "error":
+        return "text-red-600";
+      default:
+        return "text-gray-600";
+    }
   };
-
+  
   return (
     <>
       <Helmet>
@@ -148,121 +326,54 @@ const JoinMeeting = () => {
         />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
-          <div className=" min-h-screen h-full w-full">
-            <header className="p-6 backdrop-blur-md bg-gray-200 dark:bg-gray-900 dark:text-white text-black shadow shadow-white dark:shadow-gray-950 border-b border-white/10">
-              <div className="max-w-4xl mx-auto flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        isConnected
-                          ? "bg-green-400 animate-pulse"
-                          : "bg-red-400"
-                      } shadow-lg`}
-                    />
-                    {isConnected ? (
-                      <Wifi className="w-5 h-5 text-green-400" />
-                    ) : (
-                      <WifiOff className="w-5 h-5 text-red-400" />
-                    )}
-                  </div>
-                  <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">
-                    Meeting Room
-                  </h1>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2 bg-gray-300 dark:bg-white/10 rounded-full px-4 py-2 backdrop-blur-sm">
-                    <Users className="w-4 h-4 dark:text-gray-300 text-black" />
-                    <span className="dark:text-white text-black font-medium">
-                      {participants.length || 3}
-                    </span>
-                  </div>
-                  <button className="p-2 dark:bg-white/10 bg-gray-300 rounded-full hover:bg-white/20 transition-all duration-200 backdrop-blur-sm">
-                    <Settings className="w-5 h-5 dark:text-white text-black" />
-                  </button>
-                </div>
+          <div className=" min-h-screen h-full w-full flex justify-center items-center">
+            <div className="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-indigo-600 p-4 text-white">
+                <h1 className="text-xl font-semibold">Joining Meeting</h1>
+                <p className="text-sm opacity-90">Room ID: {id}</p>
               </div>
-            </header>
-            <main className="flex-1 flex flex-col items-center justify-center p-6">
-              <div className="max-w-2xl w-full space-y-8">
-                <div className="text-center space-y-4">
-                  <div className="inline-flex items-center space-x-3 dark:bg-white/10 bg-gray-300 rounded-2xl px-6 py-3 backdrop-blur-md border border-white/20">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" />
-                    <span className="dark:text-white text-gray-900 font-mono text-lg tracking-wider">
-                      {meetingId?.toUpperCase() || "ABC-DEF-GHI"}
-                    </span>
-                  </div>
 
-                  <div className="flex justify-center space-x-4 mt-8">
-                    {generateParticipantAvatars()}
+              <div className="p-6">
+                <div className="flex items-center justify-center mb-6">
+                  <div className={`text-4xl mr-3 ${getStatusColor()}`}>
+                    {getStatusIcon()}
+                  </div>
+                  <div>
+                    <p className={`font-medium ${getStatusColor()}`}>
+                      {status}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <div className="relative">
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      Microphone
+                    </span>
                     <button
-                      onClick={isRecording ? stopRecording : startRecording}
-                      className={`
-                    w-24 h-24 rounded-full flex items-center justify-center text-white font-bold text-lg
-                    transform transition-all duration-300 hover:scale-110 active:scale-95
-                    shadow-2xl relative overflow-hidden
-                    ${
-                      isRecording
-                        ? "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-                        : "bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                    }
-                  `}
+                      onClick={toggleMute}
+                      className={`flex cursor-pointer items-center gap-2 px-4 py-2 rounded-full ${
+                        isMuted
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-green-100 text-green-700 hover:bg-green-200"
+                      } transition-colors`}
                     >
-                      {isRecording ? (
-                        <MicOff className="w-8 h-8 animate-pulse" />
-                      ) : (
-                        <Mic className="w-8 h-8" />
-                      )}
-
-                      {isRecording && (
-                        <>
-                          <div
-                            className="absolute inset-0 bg-white/20 rounded-full animate-ping"
-                            style={{
-                              opacity: audioLevel * 0.8,
-                              transform: `scale(${1 + audioLevel * 0.3})`,
-                            }}
-                          />
-                          <div
-                            className="absolute inset-0 bg-white/10 rounded-full"
-                            style={{
-                              opacity: audioLevel * 0.6,
-                              transform: `scale(${1 + audioLevel * 0.2})`,
-                            }}
-                          />
-                        </>
-                      )}
+                      {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
+                      {isMuted ? "Unmute" : "Mute"}
                     </button>
                   </div>
                 </div>
 
-                {isRecording && (
-                  <div className="text-center">
-                    <div className="flex justify-center items-center space-x-2 text-red-300">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                      <span className="font-medium">
-                        Recording in progress...
-                      </span>
-                    </div>
-
-                    <div className="mt-4 max-w-md mx-auto">
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-green-400 to-blue-500 rounded-full transition-all duration-150"
-                          style={{ width: `${audioLevel * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="text-center">
+                  <button
+                    onClick={() => nav("/")}
+                    className="px-4 py-2 cursor-pointer bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Leave Meeting
+                  </button>
+                </div>
               </div>
-            </main>
+            </div>
           </div>
           <Footer />
         </div>
@@ -270,5 +381,4 @@ const JoinMeeting = () => {
     </>
   );
 };
-
 export default JoinMeeting;

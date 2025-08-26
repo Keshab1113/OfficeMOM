@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
 import Timing from "../../components/Timing/Timing";
 import { cn } from "../../lib/utils";
@@ -13,105 +12,52 @@ import { useSelector } from "react-redux";
 import AllHistory from "../../components/History/History";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import Heading from "../../components/LittleComponent/Heading";
-import { Mic, Loader2, FileText, Users } from "lucide-react";
+import { Mic, Loader2, FileText, Copy } from "lucide-react";
+import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 import { QRCodeCanvas } from "qrcode.react";
-import { v4 as uuidv4 } from "uuid";
 import { Helmet } from "react-helmet";
+import JoinRequestModal from "../../components/LittleComponent/JoinRequestModal";
+import io from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import { createHostMixerStream } from "../../hooks/useHostMixer";
+
+const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
 const LiveMeeting = () => {
-  const { id: meetingIdFromParams } = useParams();
-  const navigate = useNavigate();
+  const nav = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const recordedBlobRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const [showModal2, setShowModal2] = useState(false);
   const [showFullData, setShowFullData] = useState(null);
   const [finalTranscript, setFinalTranscript] = useState(null);
-  const [recordedBlob, setRecordedBlob] = useState(null);
+  const [recordedBlob, setRecordedBlob] = useState(false);
   const [barCount, setBarCount] = useState(32);
   const { addToast } = useToast();
-  const [meetingId, setMeetingId] = useState(meetingIdFromParams || null);
+  const [meetingId, setMeetingId] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [participants, setParticipants] = useState([]);
-  const [isHost, setIsHost] = useState(!meetingIdFromParams);
-  const [ws, setWs] = useState(null);
-  const timerRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [participants, setParticipants] = useState(0);
   const [downloadOptions, setDownloadOptions] = useState({
     word: false,
     excel: false,
   });
-
-  useEffect(() => {
-    if (!meetingIdFromParams) {
-      // Host - create new meeting
-      const newMeetingId = uuidv4();
-      setMeetingId(newMeetingId);
-      setIsHost(true);
-    } else {
-      // Participant - join existing meeting
-      setMeetingId(meetingIdFromParams);
-      setIsHost(false);
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (ws) ws.close();
-    };
-  }, [meetingIdFromParams]);
-
-  useEffect(() => {
-    if (meetingId) {
-      connectToWebSocket();
-    }
-  }, [meetingId]);
-
-  const connectToWebSocket = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/transcribe`;
-    const websocket = new WebSocket(wsUrl);
-    
-    websocket.onopen = () => {
-      console.log("Connected to WebSocket");
-      // Send meeting ID to join
-      websocket.send(JSON.stringify({ 
-        type: "join_meeting", 
-        meetingId,
-        isHost 
-      }));
-    };
-
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === "participants_update") {
-          setParticipants(data.participants);
-        } else if (data.type === "transcription") {
-          // Handle transcription from server if needed
-          console.log("Transcription:", data.text);
-        } else if (data.type === "error") {
-          addToast("error", data.message);
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-
-    websocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      addToast("error", "Connection error. Please refresh the page.");
-    };
-
-    websocket.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    setWs(websocket);
-  };
+  const [audioPreviews, setAudioPreviews] = useState(new Map());
+  const [requests, setRequests] = useState([]);
+  const timerRef = useRef(null);
+  const localMicRef = useRef(null);
+  const socketRef = useRef(null);
+  const peersRef = useRef(new Map());
+  const hasInitializedRef = useRef(false);
+  const recordedChunksRef = useRef([]);
+  const individualRecordersRef = useRef(new Map());
+  const individualChunksRef = useRef(new Map());
+  const audioIntervalsRef = useRef(new Map());
+  const addRemoteRef = useRef(null);
+  const mixerRef = useRef(null);
+  const recordingBlobRef = useRef(null);
 
   useEffect(() => {
     if (isRecording) {
@@ -127,6 +73,224 @@ const LiveMeeting = () => {
     };
   }, [isRecording]);
 
+  useEffect(() => {
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
+    const initializeMeeting = async () => {
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localMicRef.current = mic;
+
+        const monitorHostAudio = () => {
+          if (mic) {
+            try {
+              const audioContext = new AudioContext();
+              const analyser = audioContext.createAnalyser();
+              const source = audioContext.createMediaStreamSource(mic);
+              source.connect(analyser);
+
+              const dataArray = new Uint8Array(analyser.frequencyBinCount);
+              analyser.getByteFrequencyData(dataArray);
+
+              const average =
+                dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+              if (average > 5) {
+                console.log("🎤 HOST IS SPEAKING! Audio detected.");
+              }
+
+              audioContext.close();
+            } catch (error) {
+              console.log("Host audio level check error:", error);
+            }
+          }
+        };
+
+        const hostAudioInterval = setInterval(monitorHostAudio, 2000);
+        audioIntervalsRef.current.set("host", hostAudioInterval);
+
+        const mixer = await createHostMixerStream(mic);
+        mixerRef.current = mixer;
+        addRemoteRef.current = mixer.addRemote;
+
+        const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, {
+          transports: ["websocket"],
+        });
+        socketRef.current = sock;
+
+        sock.on("host:replaced", () => {
+          addToast(
+            "error",
+            "Another host has joined this room. You've been disconnected."
+          );
+          nav("/dashboard");
+        });
+
+        sock.on("connect", () => {
+          sock.emit("host:join-room", { meetingId });
+        });
+
+        sock.on("room:count", ({ count }) => {
+          setParticipants(count);
+        });
+
+        sock.on("host:join-request", ({ socketId, name, deviceLabel }) => {
+          setRequests((prev) => [...prev, { socketId, name, deviceLabel }]);
+        });
+
+        sock.on("signal", async ({ from, data }) => {
+          let pc = peersRef.current.get(from);
+          if (!pc) {
+            pc = new RTCPeerConnection({
+              iceServers: ICE,
+              sdpSemantics: "unified-plan",
+            });
+
+            const remoteStream = new MediaStream();
+
+            pc.ontrack = (e) => {
+              if (e.streams && e.streams[0]) {
+                e.streams[0].getTracks().forEach((track) => {
+                  remoteStream.addTrack(track);
+
+                  track.onmute = () =>
+                    console.log(`Track ${track.id} was muted!`);
+                  track.onunmute = () =>
+                    console.log(`Track ${track.id} was unmuted!`);
+                  track.onended = () => console.log(`Track ${track.id} ended`);
+                });
+
+                const monitorGuestAudio = () => {
+                  try {
+                    const audioContext = new AudioContext();
+                    const analyser = audioContext.createAnalyser();
+                    const source =
+                      audioContext.createMediaStreamSource(remoteStream);
+                    source.connect(analyser);
+
+                    const dataArray = new Uint8Array(
+                      analyser.frequencyBinCount
+                    );
+                    analyser.getByteFrequencyData(dataArray);
+
+                    const average =
+                      dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+                    if (average > 5) {
+                      console.log(
+                        `🎤 GUEST ${from} IS SPEAKING! Audio received.`
+                      );
+                    }
+
+                    audioContext.close();
+                  } catch (error) {
+                    console.log("Guest audio level check error:", error);
+                  }
+                };
+
+                const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
+                audioIntervalsRef.current.set(from, guestAudioInterval);
+
+                addRemoteRef.current(remoteStream, from);
+                startIndividualRecording(from, remoteStream.clone());
+              }
+            };
+
+            peersRef.current.set(from, pc);
+
+            pc.onicecandidate = (ev) => {
+              if (ev.candidate) {
+                sock.emit("signal", {
+                  to: from,
+                  data: { candidate: ev.candidate },
+                });
+              }
+            };
+
+            pc.onconnectionstatechange = () => {
+              console.log(`Connection state for ${from}:`, pc.connectionState);
+            };
+
+            pc.oniceconnectionstatechange = () => {
+              console.log(
+                `ICE connection state for ${from}:`,
+                pc.iceConnectionState
+              );
+            };
+          }
+
+          if (data.sdp) {
+            await pc.setRemoteDescription(data.sdp);
+
+            const answer = await pc.createAnswer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: false,
+            });
+
+            await pc.setLocalDescription(answer);
+
+            sock.emit("signal", {
+              to: from,
+              data: { sdp: pc.localDescription },
+            });
+          } else if (data.candidate) {
+            try {
+              await pc.addIceCandidate(data.candidate);
+            } catch (error) {
+              console.error("Error adding ICE candidate:", error);
+            }
+          }
+        });
+
+        const mr = new MediaRecorder(mixer.mixedStream, {
+          mimeType: "audio/webm",
+        });
+        mr.ondataavailable = (e) => {
+          if (e.data.size) recordedChunksRef.current.push(e.data);
+        };
+        mr.onstop = () => {
+          const blob = new Blob(recordedChunksRef.current, {
+            type: "audio/webm",
+          });
+          recordingBlobRef.current = blob;
+
+          const previews = new Map();
+          previews.set("mixed", URL.createObjectURL(blob));
+          individualChunksRef.current.forEach((b, id) => {
+            previews.set(id, URL.createObjectURL(b));
+          });
+          setAudioPreviews(previews);
+        };
+        mediaRecorderRef.current = mr;
+      } catch (err) {
+        console.log(err);
+        addToast(
+          "error",
+          "Error starting meeting. Please check your mic permissions."
+        );
+      }
+    };
+
+    initializeMeeting();
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+      if (mediaRecorderRef.current?.state === "recording")
+        mediaRecorderRef.current.stop();
+      individualRecordersRef.current.forEach(
+        (r) => r.state === "recording" && r.stop()
+      );
+      peersRef.current.forEach((pc) => pc.close());
+      peersRef.current.clear();
+
+      audioIntervalsRef.current.forEach((interval, socketId) => {
+        clearInterval(interval);
+      });
+      audioIntervalsRef.current.clear();
+    };
+  }, [meetingId, nav]);
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -135,77 +299,113 @@ const LiveMeeting = () => {
       .padStart(2, "0")}`;
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-          
-          // Send audio data to server via WebSocket if connected
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            // Convert blob to array buffer for sending
-            const reader = new FileReader();
-            reader.onload = () => {
-              ws.send(JSON.stringify({
-                type: "audio_data",
-                meetingId,
-                audioData: Array.from(new Uint8Array(reader.result))
-              }));
-            };
-            reader.readAsArrayBuffer(e.data);
-          }
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-        setRecordedBlob(audioBlob);
-        recordedBlobRef.current = audioBlob;
-        
-        // Notify server that recording has stopped
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: "recording_stopped",
-            meetingId
-          }));
-        }
-      };
-
-      mediaRecorder.start(1000); // Capture data every second
-      setIsRecording(true);
-      
-      // Notify server that recording has started
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: "recording_started",
-          meetingId
-        }));
+  const startIndividualRecording = (socketId, stream) => {
+    if (individualRecordersRef.current.has(socketId)) {
+      const existingRecorder = individualRecordersRef.current.get(socketId);
+      if (existingRecorder.state === "recording") {
+        existingRecorder.stop();
       }
+      individualRecordersRef.current.delete(socketId);
+    }
+
+    try {
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm",
+        audioBitsPerSecond: 128000,
+      });
+
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        individualChunksRef.current.set(socketId, blob);
+      };
+
+      recorder.onerror = (e) => {
+        console.error(`Recording error for ${socketId}:`, e);
+      };
+
+      recorder.onstart = () => {
+        console.log(`Recording started for ${socketId}`);
+      };
+
+      recorder.start(1000);
+      individualRecordersRef.current.set(socketId, recorder);
     } catch (error) {
-      console.error("Error starting recording:", error);
-      addToast("error", "Failed to access microphone. Please check permissions.");
+      console.error(`Error starting recorder for ${socketId}:`, error);
     }
   };
 
+  const startRecording = async () => {
+    const { data } = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/createlive`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    await setMeetingId(data.roomId);
+    setIsRecording(true);
+    if (!mediaRecorderRef.current) return;
+    recordedChunksRef.current = [];
+    individualRecordersRef.current.clear();
+    individualChunksRef.current.clear();
+    mediaRecorderRef.current.start(1000);
+    if (localMicRef.current) {
+      startIndividualRecording("host", localMicRef.current);
+    }
+
+    peersRef.current.forEach((pc, socketId) => {
+      const remoteStream = new MediaStream();
+      pc.getReceivers().forEach((receiver) => {
+        if (receiver.track) {
+          remoteStream.addTrack(receiver.track);
+        }
+      });
+
+      if (remoteStream.getAudioTracks().length > 0) {
+        startIndividualRecording(socketId, remoteStream);
+      }
+    });
+  };
+
   const stopRecording = () => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== "inactive"
-    ) {
+    setIsRecording(false);
+    setIsProcessing(false);
+    if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream
-        .getTracks()
-        .forEach((track) => track.stop());
-      setIsRecording(false);
+
+      individualRecordersRef.current.forEach((recorder, socketId) => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+          console.log(`Stopped recorder for ${socketId}`);
+        }
+      });
+    }
+    setRecordedBlob(true);
+    endMeeting();
+  };
+  const endMeeting = async () => {
+    try {
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/${meetingId}/end`,
+        {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      addToast("success","Meeting ended successfully.");
+    } catch (err) {
+      console.error("Error ending meeting:", err);
+      addToast("error","Error ending meeting.");
     }
   };
 
@@ -213,59 +413,105 @@ const LiveMeeting = () => {
     return `${window.location.origin}/join-meeting/${meetingId}`;
   };
 
-  const copyMeetingLink = () => {
-    navigator.clipboard.writeText(getMeetingUrl())
-      .then(() => {
-        addToast("success", "Meeting link copied to clipboard!");
-      })
-      .catch(err => {
-        console.error('Failed to copy: ', err);
-        addToast("error", "Failed to copy meeting link");
-      });
-  };
-
   const handleStartMakingNotes = async () => {
-    if (!recordedBlob) {
-      alert("Please record some audio first");
+    if (!recordingBlobRef.current) {
+      addToast("error", "Please record some audio first");
       return;
     }
     setIsProcessing(true);
     try {
       const formData = new FormData();
-      formData.append("audio", recordedBlob, "meeting.wav");
-      formData.append("meetingId", meetingId);
-
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/transcribe`,
-        { method: "POST", body: formData }
+      formData.append("mixed", recordingBlobRef.current, "mixed.webm");
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/${meetingId}/recording`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-      if (!res.ok) throw new Error("Failed to transcribe audio");
-      const data = await res.json();
       setShowModal(true);
-      setFinalTranscript(data.text);
+      setFinalTranscript(res.data.text || "");
     } catch (error) {
       addToast("error", "Failed to process file. Please try again.");
       console.error("Error processing notes:", error);
       setIsProcessing(false);
-    } finally {
-      setRecordedBlob(null);
     }
+  };
+
+  const { email, fullName, token } = useSelector((state) => state.auth);
+
+  const HandleSaveTable = async (data) => {
+    saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
+    const dateCreated = new Date().toISOString().split("T")[0];
+    const historyData = {
+      source: "Live Transcript Conversion",
+      date: dateCreated,
+      data: data,
+    };
+    await addHistory(token, historyData, addToast);
+    setShowModal2(false);
+    setShowModal(false);
   };
 
   const addHistory = async (token, historyData, addToast) => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-        historyData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (err) {
-      console.error("Add history error:", err);
-      addToast("error", "Failed to add history");
+  try {
+    await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+      historyData,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  } catch (err) {
+    console.error("Add history error:", err);
+    addToast("error", "Failed to add history");
+  }
+};
+
+  useEffect(() => {
+    const updateBarCount = () => {
+      if (window.innerWidth < 768) {
+        setBarCount(12);
+      } else if (window.innerWidth < 1425) {
+        setBarCount(20);
+      } else {
+        setBarCount(32);
+      }
+    };
+
+    updateBarCount();
+    window.addEventListener("resize", updateBarCount);
+    return () => window.removeEventListener("resize", updateBarCount);
+  }, []);
+
+  const copyMeetingLink = () => {
+    navigator.clipboard
+      .writeText(getMeetingUrl())
+      .then(() => {
+        addToast("success", "Meeting link copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err);
+        addToast("error", "Failed to copy meeting link");
+      });
+  };
+
+  const toggleMute = () => {
+    if (localMicRef.current) {
+      const audioTracks = localMicRef.current.getAudioTracks();
+      audioTracks.forEach((track) => {
+        track.enabled = !isMuted;
+      });
+      setIsMuted(!isMuted);
     }
   };
-  const { email, fullName, token } = useSelector((state) => state.auth);
 
+  const approve = (id) => {
+    socketRef.current.emit("host:approve", { guestSocketId: id });
+    setRequests((r) => r.filter((x) => x.socketId !== id));
+  };
+  const reject = (id) => {
+    socketRef.current.emit("host:reject", { guestSocketId: id });
+    setRequests((r) => r.filter((x) => x.socketId !== id));
+  };
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
@@ -277,7 +523,6 @@ const LiveMeeting = () => {
           body: JSON.stringify({
             transcript: finalTranscript,
             headers: headers,
-            meetingId: meetingId
           }),
         }
       );
@@ -296,36 +541,6 @@ const LiveMeeting = () => {
       setIsProcessing(false);
     }
   };
-
-  const HandleSaveTable = async (data) => {
-    saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
-    const dateCreated = new Date().toISOString().split("T")[0];
-    const historyData = {
-      source: "Live Transcript Conversion",
-      date: dateCreated,
-      data: data,
-      meetingId: meetingId
-    };
-    await addHistory(token, historyData, addToast);
-    setShowModal2(false);
-    setShowModal(false);
-  };
-
-  useEffect(() => {
-    const updateBarCount = () => {
-      if (window.innerWidth < 768) {
-        setBarCount(12);
-      } else if (window.innerWidth < 1425) {
-        setBarCount(20);
-      } else {
-        setBarCount(32);
-      }
-    };
-
-    updateBarCount();
-    window.addEventListener("resize", updateBarCount);
-    return () => window.removeEventListener("resize", updateBarCount);
-  }, []);
 
   return (
     <>
@@ -346,8 +561,8 @@ const LiveMeeting = () => {
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
             <Heading
-              heading={isHost ? "Start New Meeting" : "Joined Meeting"}
-              subHeading={isHost ? "Using your device microphone." : "You've joined a live meeting."}
+              heading="Start New Meeting"
+              subHeading="Using your device microphone."
             />
             {showModal ? (
               <section className=" p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen">
@@ -376,6 +591,7 @@ const LiveMeeting = () => {
                     </div>
                     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg md:p-8 p-4 w-full mt-4">
                       <div className="flex items-center justify-between">
+                        {/* Left side - Microphone Icon with Pulse Effect */}
                         <div className="relative flex items-center">
                           <div
                             className={`absolute inset-0 rounded-full bg-green-500 opacity-20 ${
@@ -411,27 +627,20 @@ const LiveMeeting = () => {
                             )}
                           </div>
                         </div>
-                        {isHost ? (
-                          <button
-                            onClick={isRecording ? stopRecording : startRecording}
-                            disabled={isProcessing}
-                            className={`relative text-sm cursor-pointer disabled:cursor-not-allowed px-6 py-3 rounded-full font-semibold text-white shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 ${
-                              isRecording
-                                ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:ring-red-500/50 animate-pulse"
-                                : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
-                            }`}
-                          >
-                            {isRecording ? "Stop recording" : "Start recording"}
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                            <Users className="w-5 h-5" />
-                            <span>Participant</span>
-                          </div>
-                        )}
+                        <button
+                          onClick={isRecording ? stopRecording : startRecording}
+                          disabled={isProcessing}
+                          className={`relative capitalize text-sm cursor-pointer disabled:cursor-not-allowed px-6 py-3 rounded-full font-semibold text-white shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 ${
+                            isRecording
+                              ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:ring-red-500/50 animate-pulse"
+                              : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
+                          }`}
+                        >
+                          {isRecording ? "Stop recording" : "Start recording"}
+                        </button>
                       </div>
 
-                      {isRecording && isHost && (
+                      {isRecording && (
                         <div className="mt-6">
                           <div className="flex flex-col items-center">
                             <div className="flex items-center justify-center space-x-2 mb-4">
@@ -443,7 +652,8 @@ const LiveMeeting = () => {
                                 Recording in progress...
                               </span>
                             </div>
-                            <div className="bg-white p-4 rounded-lg shadow-md w-full max-w-md">
+
+                            <div className="bg-white p-4 rounded-lg shadow-md">
                               <h3 className="text-lg font-semibold mb-2 text-center">
                                 Invite others to join this meeting
                               </h3>
@@ -458,47 +668,72 @@ const LiveMeeting = () => {
                                 </p>
                                 <button
                                   onClick={copyMeetingLink}
-                                  className="mt-2 text-blue-500 hover:text-blue-700 text-sm underline"
+                                  className="mt-2 text-blue-500 hover:text-blue-700 text-sm flex items-center gap-1"
                                 >
+                                  <Copy className="w-4 h-4" />
                                   Copy meeting link
                                 </button>
-                                <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
-                                  <Users className="w-3 h-3" />
-                                  {participants.length} participant(s) connected
+                                <div className="mt-2 text-xs text-gray-400">
+                                  {participants} participant(s) connected
                                 </div>
                               </div>
                             </div>
+                            <button
+                              className={`px-4 py-2 mt-4 cursor-pointer rounded flex items-center gap-2 ${
+                                isMuted
+                                  ? "bg-gray-600"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              } text-white`}
+                              onClick={toggleMute}
+                            >
+                              {isMuted ? (
+                                <FaMicrophoneSlash />
+                              ) : (
+                                <FaMicrophone />
+                              )}
+                              {isMuted ? "Unmute" : "Mute"}
+                            </button>
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
-                  {isHost && (
-                    <button
-                      onClick={handleStartMakingNotes}
-                      disabled={isProcessing || !recordedBlob}
-                      className={`mt-10 w-full py-4 rounded-lg text-white font-semibold flex justify-center items-center gap-2 ${
-                        isProcessing || !recordedBlob
-                          ? "bg-gray-500 cursor-not-allowed"
-                          : "bg-blue-400 hover:bg-blue-500 cursor-pointer"
-                      }`}
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-6 h-6 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-6 h-6" />
-                          Create MoM (Minutes of Meeting)
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    onClick={handleStartMakingNotes}
+                    disabled={isProcessing || isRecording}
+                    className={`mt-10 w-full py-4 rounded-lg text-white font-semibold flex justify-center items-center gap-2 ${
+                      isProcessing || isRecording
+                        ? "bg-gray-500 cursor-not-allowed"
+                        : "bg-blue-400 hover:bg-blue-500 cursor-pointer"
+                    }`}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-6 h-6" />
+                        Create MoM (Minutes of Meeting)
+                      </>
+                    )}
+                  </button>
                   <p className="text-xs text-gray-400 mt-3 text-center">
                     🆓 Meeting transcription is completely free now
                   </p>
+                  {recordedBlob && audioPreviews && (
+                      <div className="my-6">
+                        <h4 className="font-medium text-gray-600 mb-1">
+                          Meeting Preview
+                        </h4>
+                        <audio
+                          controls
+                          src={audioPreviews.get("mixed")}
+                          className="w-full"
+                        />
+                      </div>
+                  )}
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
                   <DownloadOptions onChange={setDownloadOptions} />
@@ -507,6 +742,11 @@ const LiveMeeting = () => {
               </div>
             )}
           </div>
+          <JoinRequestModal
+            reqs={requests}
+            onApprove={approve}
+            onReject={reject}
+          />
           <Footer />
         </div>
       </section>

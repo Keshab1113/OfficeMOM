@@ -1,5 +1,7 @@
 import fs from "fs";
 import axios from "axios";
+import { v4 as uuidv4 } from "uuid";
+import db from "../config/db.js";
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
@@ -28,7 +30,10 @@ async function createTranscription(audioUrl) {
     TRANSCRIPT_URL,
     { audio_url: audioUrl },
     {
-      headers: { Authorization: ASSEMBLY_KEY, "Content-Type": "application/json" },
+      headers: {
+        Authorization: ASSEMBLY_KEY,
+        "Content-Type": "application/json",
+      },
     }
   );
   return res.data;
@@ -42,7 +47,8 @@ async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
     });
     const data = res.data;
     if (data.status === "completed") return data;
-    if (data.status === "error") throw new Error(data.error || "Transcription error");
+    if (data.status === "error")
+      throw new Error(data.error || "Transcription error");
     if (Date.now() - start > timeout) throw new Error("Transcription timeout");
     await new Promise((r) => setTimeout(r, interval));
   }
@@ -64,4 +70,18 @@ export const transcribeAudio = async (req, res) => {
     fs.unlink(file.path, () => {});
     res.status(500).json({ error: err.message || "Server error" });
   }
+};
+
+export const createMeeting = async (req, res) => {
+  const room_id = uuidv4();
+  const [r] = await db.query(
+    "INSERT INTO meetings (room_id, host_user_id) VALUES (?,?)",
+    [room_id, req.user.id]
+  );
+  res.json({ roomId: room_id, meetingId: r.insertId });
+};
+export const endMeeting = async (req, res) => {
+  const { meetingId } = req.params;
+  await db.query('UPDATE meetings SET status="ended", ended_at=NOW() WHERE room_id=?', [meetingId]);
+  res.json({ ok: true });
 };

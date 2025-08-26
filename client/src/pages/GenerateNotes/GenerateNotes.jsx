@@ -9,11 +9,11 @@ import { FiUploadCloud } from "react-icons/fi";
 import AllHistory from "../../components/History/History";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import TablePreview from "../../components/TablePreview/TablePreview";
-import axios from "axios";
 import { MonitorSmartphone, HardDriveUpload, FileText } from "lucide-react";
 import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { Helmet } from "react-helmet";
+import axios from "axios";
 
 const GenerateNotes = () => {
   const [downloadOptions, setDownloadOptions] = useState({
@@ -106,19 +106,6 @@ const GenerateNotes = () => {
     }
   };
 
-  const addHistory = async (token, historyData, addToast) => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-        historyData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (err) {
-      console.error("Add history error:", err);
-      addToast("error", "Failed to add history");
-    }
-  };
-
   const { email, fullName, token } = useSelector((state) => state.auth);
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
@@ -162,10 +149,22 @@ const GenerateNotes = () => {
     setShowModal2(false);
     setShowModal(false);
   };
+  const addHistory = async (token, historyData, addToast) => {
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+        historyData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.error("Add history error:", err);
+      addToast("error", "Failed to add history");
+    }
+  };
 
   return (
     <>
-    <Helmet>
+      <Helmet>
         <meta charSet="utf-8" />
         <title>OfficeMom | GenerateNotes</title>
         <link rel="canonical" href="http://mysite.com/example" />

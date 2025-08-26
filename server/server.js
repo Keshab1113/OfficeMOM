@@ -1,6 +1,10 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import http from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { Server as SocketIOServer } from "socket.io";
+
 import authRoutes from "./routes/authRoutes.js";
 import audioRoutes from "./routes/audioRoutes.js";
 import liveRoutes from "./routes/liveRoutes.js";
@@ -8,12 +12,6 @@ import driveRoutes from "./routes/driveRoutes.js";
 import openaiRoute from "./routes/openaiRoute.js";
 import historyRoutes from "./routes/historyRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
-import { WebSocketServer, WebSocket } from "ws";
-import http from "http";
-import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
-import path from "path";
-import { transcribeAudio } from "./controllers/liveController.js";
 
 dotenv.config();
 
@@ -33,320 +31,38 @@ app.use("/api", emailRoutes);
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 const deepgramUrl = process.env.DEEPGRAM_URL;
-const meetingRooms = new Map();
 
-// Ensure uploads directory exists
-const uploadsDir = "./uploads";
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+wss.on("connection", (ws) => {
 
-wss.on("connection", (ws, req) => {
-  console.log("Frontend connected to transcription relay");
-  let meetingId = null;
-  let participantId = uuidv4();
-  let isHost = false;
-  let dgWs = null;
+  const dgWs = new WebSocket(deepgramUrl, {
+    headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+  });
 
-  // Function to connect to Deepgram
-  const connectToDeepgram = () => {
-    dgWs = new WebSocket(deepgramUrl, {
-      headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
-    });
+  let ready = false;
+  let queue = [];
 
-    let ready = false;
-    let queue = [];
+  dgWs.on("open", () => {
+    ready = true;
+    queue.forEach((msg) => dgWs.send(msg));
+    queue = [];
+  });
 
-    dgWs.on("open", () => {
-      ready = true;
-      console.log("Connected to Deepgram for meeting:", meetingId);
-      
-      // Configure Deepgram for real-time transcription
-      dgWs.send(JSON.stringify({
-        type: "StartRequest",
-        transcription: {
-          punctuate: true,
-          diarize: true,
-          smart_format: true,
-        },
-      }));
-      
-      queue.forEach((msg) => dgWs.send(msg));
-      queue = [];
-    });
+  dgWs.on("message", (msg) => {
+    ws.send(msg.toString());
+  });
 
-    dgWs.on("message", (msg) => {
-      try {
-        const data = JSON.parse(msg.toString());
-        
-        // Send transcription results to all meeting participants
-        if (data.type === "Results" && meetingId && meetingRooms.has(meetingId)) {
-          const meeting = meetingRooms.get(meetingId);
-          meeting.participants.forEach((participant) => {
-            if (participant.ws.readyState === WebSocket.OPEN) {
-              participant.ws.send(JSON.stringify({
-                type: "transcription",
-                text: data.channel?.alternatives[0]?.transcript || "",
-                isFinal: data.is_final || false
-              }));
-            }
-          });
-        }
-        
-        // Handle Deepgram connection messages
-        if (data.type === "Connected") {
-          console.log("Deepgram connection established for meeting:", meetingId);
-        }
-      } catch (error) {
-        console.error("Error parsing Deepgram message:", error);
-      }
-    });
-
-    dgWs.on("error", (err) => {
-      console.error("Deepgram WS error:", err);
-    });
-
-    dgWs.on("close", () => {
-      console.log("Deepgram connection closed for meeting:", meetingId);
-    });
-
-    return { dgWs, ready, queue };
-  };
-
-  let deepgramConnection = null;
+  dgWs.on("error", (err) => {
+    console.error("Deepgram WS error:", err);
+  });
 
   ws.on("message", (message) => {
-    try {
-      // Handle binary audio data
-      if (message instanceof Buffer || message instanceof ArrayBuffer) {
-        if (deepgramConnection && deepgramConnection.ready && meetingId && meetingRooms.has(meetingId)) {
-          // Send audio to Deepgram for real-time transcription
-          deepgramConnection.dgWs.send(message);
-          
-          // Also store audio data for later processing if needed
-          const meeting = meetingRooms.get(meetingId);
-          if (meeting.isRecording) {
-            meeting.audioData.push({
-              participantId,
-              audioData: Buffer.from(message),
-              timestamp: Date.now()
-            });
-          }
-        }
-      } else {
-        // Handle JSON control messages
-        const data = JSON.parse(message.toString());
-
-        if (data.type === "join_meeting") {
-          meetingId = data.meetingId;
-          isHost = data.isHost || false;
-          
-          // Create meeting room if it doesn't exist
-          if (!meetingRooms.has(meetingId)) {
-            meetingRooms.set(meetingId, {
-              participants: [],
-              audioData: [],
-              createdAt: Date.now(),
-              isRecording: false,
-              deepgramConnection: null
-            });
-            
-            // Set up Deepgram connection for the meeting room
-            const meeting = meetingRooms.get(meetingId);
-            deepgramConnection = connectToDeepgram();
-            meeting.deepgramConnection = deepgramConnection;
-          } else {
-            // Use existing Deepgram connection
-            const meeting = meetingRooms.get(meetingId);
-            deepgramConnection = meeting.deepgramConnection;
-          }
-          
-          const meeting = meetingRooms.get(meetingId);
-          
-          // Add participant to meeting room
-          meeting.participants.push({
-            id: participantId,
-            ws: ws,
-            joinedAt: Date.now(),
-            isHost: isHost
-          });
-          
-          // Send participant list update to all participants
-          meeting.participants.forEach((participant) => {
-            if (participant.ws.readyState === WebSocket.OPEN) {
-              participant.ws.send(JSON.stringify({
-                type: "participants_update",
-                participants: meeting.participants.map((p) => ({
-                  id: p.id,
-                  isHost: p.isHost
-                }))
-              }));
-            }
-          });
-
-          console.log(`Participant ${participantId} joined meeting ${meetingId}`);
-        } 
-        else if (data.type === "recording_started" && meetingId && meetingRooms.has(meetingId)) {
-          const meeting = meetingRooms.get(meetingId);
-          meeting.isRecording = true;
-          meeting.audioData = [];
-          
-          console.log(`Recording started for meeting ${meetingId}`);
-        }
-        else if (data.type === "recording_stopped" && meetingId && meetingRooms.has(meetingId)) {
-          const meeting = meetingRooms.get(meetingId);
-          meeting.isRecording = false;
-          
-          // Combine and save audio data
-          combineAndSaveAudio(meetingId)
-            .then(filePath => {
-              console.log(`Audio saved for meeting ${meetingId}: ${filePath}`);
-              
-              // Notify host that audio is ready for processing
-              meeting.participants.forEach(participant => {
-                if (participant.isHost && participant.ws.readyState === WebSocket.OPEN) {
-                  participant.ws.send(JSON.stringify({
-                    type: "audio_ready",
-                    meetingId: meetingId
-                  }));
-                }
-              });
-            })
-            .catch(error => {
-              console.error("Error combining audio:", error);
-            });
-          
-          console.log(`Recording stopped for meeting ${meetingId}`);
-        }
-      }
-    } catch (error) {
-      console.error("Error processing message:", error);
-      ws.send(JSON.stringify({
-        type: "error",
-        message: "Invalid message format"
-      }));
-    }
+    if (ready) dgWs.send(message);
+    else queue.push(message);
   });
 
   ws.on("close", () => {
-    if (meetingId && meetingRooms.has(meetingId)) {
-      const meeting = meetingRooms.get(meetingId);
-      meeting.participants = meeting.participants.filter(
-        (p) => p.id !== participantId
-      );
-      
-      // Send updated participant list
-      meeting.participants.forEach((participant) => {
-        if (participant.ws.readyState === WebSocket.OPEN) {
-          participant.ws.send(JSON.stringify({
-            type: "participants_update",
-            participants: meeting.participants.map((p) => ({
-              id: p.id,
-              isHost: p.isHost
-            }))
-          }));
-        }
-      });
-      
-      // Clean up meeting room if empty
-      if (meeting.participants.length === 0) {
-        // Close Deepgram connection
-        if (meeting.deepgramConnection && meeting.deepgramConnection.dgWs) {
-          meeting.deepgramConnection.dgWs.close();
-        }
-        meetingRooms.delete(meetingId);
-        console.log(`Meeting ${meetingId} deleted (no participants)`);
-      }
-    }
-
-    if (dgWs) {
-      dgWs.close();
-    }
-    
-    console.log("Client disconnected:", participantId);
+    dgWs.close();
   });
-});
-
-// Function to combine and save audio from all participants
-async function combineAndSaveAudio(meetingId) {
-  if (!meetingRooms.has(meetingId)) {
-    throw new Error("Meeting not found");
-  }
-  
-  const meeting = meetingRooms.get(meetingId);
-  if (meeting.audioData.length === 0) {
-    throw new Error("No audio data to combine");
-  }
-  
-  // Sort audio data by timestamp
-  meeting.audioData.sort((a, b) => a.timestamp - b.timestamp);
-  
-  // Combine all audio data into a single buffer
-  // Note: This is a simplified approach. In a production system, you would
-  // need to properly decode, mix, and re-encode the audio streams
-  const combinedBuffers = meeting.audioData.map(data => data.audioData);
-  const combinedAudio = Buffer.concat(combinedBuffers);
-  
-  // Save to file
-  const fileName = `${meetingId}_combined_audio.webm`;
-  const filePath = path.join(uploadsDir, fileName);
-  
-  fs.writeFileSync(filePath, combinedAudio);
-  
-  return filePath;
-}
-
-// Add API endpoint to process meeting audio
-app.post("/api/process-meeting-audio", async (req, res) => {
-  try {
-    const { meetingId } = req.body;
-    
-    if (!meetingId) {
-      return res.status(400).json({ error: "Meeting ID is required" });
-    }
-    
-    const fileName = `${meetingId}_combined_audio.webm`;
-    const filePath = path.join(uploadsDir, fileName);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "Audio file not found" });
-    }
-    
-    // Create a mock request object for the transcribeAudio function
-    const mockReq = {
-      file: {
-        path: filePath,
-        originalname: fileName
-      }
-    };
-    
-    const mockRes = {
-      json: (data) => {
-        // Clean up the file after processing
-        setTimeout(() => {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }, 5000);
-        
-        return res.json(data);
-      },
-      status: (code) => {
-        return {
-          json: (data) => {
-            return res.status(code).json(data);
-          }
-        };
-      }
-    };
-    
-    // Use the existing transcribeAudio function
-    await transcribeAudio(mockReq, mockRes);
-    
-  } catch (error) {
-    console.error("Error processing meeting audio:", error);
-    res.status(500).json({ error: "Failed to process meeting audio" });
-  }
 });
 
 server.on("upgrade", (req, socket, head) => {
@@ -355,8 +71,179 @@ server.on("upgrade", (req, socket, head) => {
       wss.emit("connection", ws, req);
     });
   } else {
-    socket.destroy();
+    // DO NOT destroy here — this lets Socket.IO handle its own upgrades
   }
+});
+
+const io = new SocketIOServer(server, {
+  cors: { origin: process.env.CLIENT_ORIGIN, methods: ["GET", "POST"] },
+});
+
+const rooms = new Map();
+const liveStreams = new Map();
+
+function openDeepgramWS(roomId) {
+  const DG_URL =
+    process.env.DEEPGRAM_URL ||
+    "wss://api.deepgram.com/v1/listen?model=nova-3&encoding=linear16&sample_rate=16000&interim_results=true&punctuate=true&smart_format=true";
+
+  const ws = new WebSocket(DG_URL, {
+    headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+  });
+
+  const state = { ws, queue: [], open: false };
+  liveStreams.set(roomId, state);
+
+  ws.on("open", () => {
+    state.open = true;
+    for (const chunk of state.queue) ws.send(chunk);
+    state.queue.length = 0;
+  });
+
+  ws.on("message", (message) => {
+    try {
+      const msg = JSON.parse(message.toString());
+      const alt = msg?.channel?.alternatives?.[0];
+      if (!alt) return;
+      const text = alt.transcript || "";
+      if (!text) return;
+
+      const isFinal =
+        msg.is_final === true ||
+        msg.speech_final === true ||
+        msg.type === "UtteranceEnd";
+
+      io.to(roomId).emit("caption", { text, isFinal });
+    } catch (e) {
+      console.error("Deepgram parse error:", e);
+    }
+  });
+
+  ws.on("error", (err) => {
+    console.error(`Deepgram WS error (room ${roomId}):`, err);
+  });
+
+  ws.on("close", () => {
+    liveStreams.delete(roomId);
+  });
+
+  return state;
+}
+
+function closeDeepgramWS(roomId) {
+  const s = liveStreams.get(roomId);
+  if (!s) return;
+  try {
+    if (s.open) s.ws.send(Buffer.from([]));
+    s.ws.close();
+  } catch (e) {
+    console.error("Error closing Deepgram WS:", e);
+  } finally {
+    liveStreams.delete(roomId);
+  }
+}
+
+io.on("connection", (socket) => {
+  socket.on("host:join-room", ({ roomId }) => {
+    if (rooms.has(roomId)) {
+      const existingRoom = rooms.get(roomId);
+      if (existingRoom.hostSocketId !== socket.id) {
+        const previousHost = io.sockets.sockets.get(existingRoom.hostSocketId);
+        if (previousHost) {
+          previousHost.emit("host:replaced");
+          previousHost.leave(roomId);
+        }
+      }
+    }
+
+    rooms.set(roomId, {
+      hostSocketId: socket.id,
+      peers: rooms.get(roomId)?.peers || new Map(),
+    });
+
+    socket.join(roomId);
+    socket.data.roomId = roomId;
+    io.to(socket.id).emit("room:count", {
+      count: rooms.get(roomId).peers.size,
+    });
+  });
+
+  socket.on("guest:request-join", ({ roomId, name, deviceLabel }) => {
+    const room = rooms.get(roomId);
+    if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+
+    socket.join(roomId);
+    socket.data.roomId = roomId;
+    room.peers.set(socket.id, { name, deviceLabel });
+
+    socket.emit("host:socket-id", { hostId: room.hostSocketId });
+    io.to(room.hostSocketId).emit("host:join-request", {
+      socketId: socket.id,
+      name,
+      deviceLabel,
+    });
+    io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+  });
+
+  socket.on("host:approve", async ({ guestSocketId }) => {
+    const guest = io.sockets.sockets.get(guestSocketId);
+    if (guest) {
+      guest.emit("guest:approved");
+    }
+  });
+
+  socket.on("host:reject", ({ guestSocketId }) => {
+    const guest = io.sockets.sockets.get(guestSocketId);
+    if (guest) {
+      guest.emit("guest:denied", { reason: "Rejected by host" });
+      guest.leave();
+    }
+  });
+
+  socket.on("signal", ({ to, data }) => {
+    io.to(to).emit("signal", { from: socket.id, data });
+  });
+
+  socket.on("audio-chunk", (chunkData) => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    let state = liveStreams.get(roomId);
+    if (!state) state = openDeepgramWS(roomId);
+
+    const chunk = Buffer.isBuffer(chunkData)
+      ? chunkData
+      : Buffer.from(chunkData);
+
+    if (state.open) {
+      state.ws.send(chunk);
+    } else {
+      state.queue.push(chunk);
+    }
+  });
+
+  socket.on("disconnecting", () => {
+    for (const roomId of socket.rooms) {
+      if (roomId === socket.id) continue;
+      const room = rooms.get(roomId);
+      if (!room) continue;
+
+      if (room.peers.has(socket.id)) {
+        room.peers.delete(socket.id);
+        io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+      }
+
+      if (room.hostSocketId === socket.id) {
+        io.to(roomId).emit("room:ended");
+        rooms.delete(roomId);
+        closeDeepgramWS(roomId);
+      }
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`Client disconnected: ${socket.id}`);
+  });
 });
 
 const PORT = process.env.PORT || 5000;
