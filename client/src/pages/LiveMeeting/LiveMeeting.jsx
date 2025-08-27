@@ -382,7 +382,6 @@ const LiveMeeting = () => {
 
   const stopRecording = () => {
     setIsRecording(false);
-    setIsProcessing(false);
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop();
 
@@ -446,10 +445,10 @@ const LiveMeeting = () => {
       setFinalTranscript(res.data.text || "");
       setRecordedBlob(false);
       setAudioPreviews(new Map());
+      setIsProcessing(false);
     } catch (error) {
       addToast("error", "Failed to process file. Please try again.");
       console.error("Error processing notes:", error);
-      setIsProcessing(false);
     }
   };
 
@@ -715,9 +714,9 @@ const LiveMeeting = () => {
                   </div>
                   <button
                     onClick={handleStartMakingNotes}
-                    disabled={isProcessing || isRecording || audioPreviews}
+                    disabled={isProcessing || audioPreviews.size === 0}
                     className={`mt-10 w-full py-4 rounded-lg text-white font-semibold flex justify-center items-center gap-2 ${
-                      isProcessing || isRecording || audioPreviews
+                      isProcessing || audioPreviews.size === 0
                         ? "bg-gray-500 cursor-not-allowed"
                         : "bg-blue-400 hover:bg-blue-500 cursor-pointer"
                     }`}
