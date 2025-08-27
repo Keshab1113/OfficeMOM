@@ -59,7 +59,7 @@ const JoinMeeting = () => {
 
       setStatus("Requesting to join room…");
       sock.emit("guest:request-join", {
-        id,
+        roomId:id,
         deviceName: myDeviceName,
         deviceLabel,
       });

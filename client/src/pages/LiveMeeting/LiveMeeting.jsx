@@ -76,200 +76,14 @@ const LiveMeeting = () => {
   useEffect(() => {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
+    initializeMeeting();
+  }, []);
 
-    const initializeMeeting = async () => {
-      try {
-        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-        localMicRef.current = mic;
+  
 
-        const monitorHostAudio = () => {
-          if (mic) {
-            try {
-              const audioContext = new AudioContext();
-              const analyser = audioContext.createAnalyser();
-              const source = audioContext.createMediaStreamSource(mic);
-              source.connect(analyser);
-
-              const dataArray = new Uint8Array(analyser.frequencyBinCount);
-              analyser.getByteFrequencyData(dataArray);
-
-              const average =
-                dataArray.reduce((a, b) => a + b) / dataArray.length;
-
-              if (average > 5) {
-                console.log("🎤 HOST IS SPEAKING! Audio detected.");
-              }
-
-              audioContext.close();
-            } catch (error) {
-              console.log("Host audio level check error:", error);
-            }
-          }
-        };
-
-        const hostAudioInterval = setInterval(monitorHostAudio, 2000);
-        audioIntervalsRef.current.set("host", hostAudioInterval);
-
-        const mixer = await createHostMixerStream(mic);
-        mixerRef.current = mixer;
-        addRemoteRef.current = mixer.addRemote;
-
-        const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, {
-          transports: ["websocket"],
-        });
-        socketRef.current = sock;
-
-        sock.on("host:replaced", () => {
-          addToast(
-            "error",
-            "Another host has joined this room. You've been disconnected."
-          );
-        });
-
-        sock.on("connect", () => {
-          sock.emit("host:join-room", { meetingId });
-        });
-
-        sock.on("room:count", ({ count }) => {
-          setParticipants(count);
-        });
-
-        sock.on("host:join-request", ({ socketId, deviceName, deviceLabel }) => {
-          setRequests((prev) => [...prev, { socketId, deviceName, deviceLabel }]);
-        });
-
-        sock.on("signal", async ({ from, data }) => {
-          let pc = peersRef.current.get(from);
-          if (!pc) {
-            pc = new RTCPeerConnection({
-              iceServers: ICE,
-              sdpSemantics: "unified-plan",
-            });
-
-            const remoteStream = new MediaStream();
-
-            pc.ontrack = (e) => {
-              if (e.streams && e.streams[0]) {
-                e.streams[0].getTracks().forEach((track) => {
-                  remoteStream.addTrack(track);
-
-                  track.onmute = () =>
-                    console.log(`Track ${track.id} was muted!`);
-                  track.onunmute = () =>
-                    console.log(`Track ${track.id} was unmuted!`);
-                  track.onended = () => console.log(`Track ${track.id} ended`);
-                });
-
-                const monitorGuestAudio = () => {
-                  try {
-                    const audioContext = new AudioContext();
-                    const analyser = audioContext.createAnalyser();
-                    const source =
-                      audioContext.createMediaStreamSource(remoteStream);
-                    source.connect(analyser);
-
-                    const dataArray = new Uint8Array(
-                      analyser.frequencyBinCount
-                    );
-                    analyser.getByteFrequencyData(dataArray);
-
-                    const average =
-                      dataArray.reduce((a, b) => a + b) / dataArray.length;
-
-                    if (average > 5) {
-                      console.log(
-                        `🎤 GUEST ${from} IS SPEAKING! Audio received.`
-                      );
-                    }
-
-                    audioContext.close();
-                  } catch (error) {
-                    console.log("Guest audio level check error:", error);
-                  }
-                };
-
-                const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
-                audioIntervalsRef.current.set(from, guestAudioInterval);
-
-                addRemoteRef.current(remoteStream, from);
-                startIndividualRecording(from, remoteStream.clone());
-              }
-            };
-
-            peersRef.current.set(from, pc);
-
-            pc.onicecandidate = (ev) => {
-              if (ev.candidate) {
-                sock.emit("signal", {
-                  to: from,
-                  data: { candidate: ev.candidate },
-                });
-              }
-            };
-
-            pc.onconnectionstatechange = () => {
-              console.log(`Connection state for ${from}:`, pc.connectionState);
-            };
-
-            pc.oniceconnectionstatechange = () => {
-              console.log(
-                `ICE connection state for ${from}:`,
-                pc.iceConnectionState
-              );
-            };
-          }
-
-          if (data.sdp) {
-            await pc.setRemoteDescription(data.sdp);
-
-            const answer = await pc.createAnswer({
-              offerToReceiveAudio: true,
-              offerToReceiveVideo: false,
-            });
-
-            await pc.setLocalDescription(answer);
-
-            sock.emit("signal", {
-              to: from,
-              data: { sdp: pc.localDescription },
-            });
-          } else if (data.candidate) {
-            try {
-              await pc.addIceCandidate(data.candidate);
-            } catch (error) {
-              console.error("Error adding ICE candidate:", error);
-            }
-          }
-        });
-
-        const mr = new MediaRecorder(mixer.mixedStream, {
-          mimeType: "audio/webm",
-        });
-        mr.ondataavailable = (e) => {
-          if (e.data.size) recordedChunksRef.current.push(e.data);
-        };
-        mr.onstop = () => {
-          const blob = new Blob(recordedChunksRef.current, {
-            type: "audio/webm",
-          });
-          recordingBlobRef.current = blob;
-
-          const previews = new Map();
-          previews.set("mixed", URL.createObjectURL(blob));
-          individualChunksRef.current.forEach((b, id) => {
-            previews.set(id, URL.createObjectURL(b));
-          });
-          setAudioPreviews(previews);
-        };
-        mediaRecorderRef.current = mr;
-      } catch (err) {
-        console.log(err);
-        addToast(
-          "error",
-          "Error starting meeting. Please check your mic permissions."
-        );
-      }
-    };
+  useEffect(() => {
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
 
     initializeMeeting();
 
@@ -283,19 +97,209 @@ const LiveMeeting = () => {
       peersRef.current.forEach((pc) => pc.close());
       peersRef.current.clear();
 
-      audioIntervalsRef.current.forEach((interval, socketId) => {
-        clearInterval(interval);
-      });
+      audioIntervalsRef.current.forEach((interval) => clearInterval(interval));
       audioIntervalsRef.current.clear();
     };
-  }, [meetingId, nav]);
+  }, []);
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+  useEffect(() => {
+    if (socketRef.current && meetingId) {
+      socketRef.current.emit("host:join-room", { roomId: meetingId });
+    }
+  }, [meetingId]);
+
+  const initializeMeeting = async () => {
+    try {
+      const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localMicRef.current = mic;
+
+      const monitorHostAudio = () => {
+        if (mic) {
+          try {
+            const audioContext = new AudioContext();
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(mic);
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+
+            const average =
+              dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+            if (average > 5) {
+              console.log("🎤 HOST IS SPEAKING! Audio detected.");
+            }
+
+            audioContext.close();
+          } catch (error) {
+            console.log("Host audio level check error:", error);
+          }
+        }
+      };
+
+      const hostAudioInterval = setInterval(monitorHostAudio, 2000);
+      audioIntervalsRef.current.set("host", hostAudioInterval);
+
+      const mixer = await createHostMixerStream(mic);
+      mixerRef.current = mixer;
+      addRemoteRef.current = mixer.addRemote;
+
+      const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, {
+        transports: ["websocket"],
+      });
+      socketRef.current = sock;
+
+      sock.on("host:replaced", () => {
+        addToast(
+          "error",
+          "Another host has joined this room. You've been disconnected."
+        );
+      });
+
+      sock.on("connect", () => {
+        if (meetingId) {
+          sock.emit("host:join-room", { roomId: meetingId });
+        }
+      });
+
+      sock.on("room:count", ({ count }) => {
+        setParticipants(count);
+      });
+
+      sock.on("host:join-request", ({ socketId, deviceName, deviceLabel }) => {
+        setRequests((prev) => [...prev, { socketId, deviceName, deviceLabel }]);
+      });
+
+      sock.on("signal", async ({ from, data }) => {
+        let pc = peersRef.current.get(from);
+        if (!pc) {
+          pc = new RTCPeerConnection({
+            iceServers: ICE,
+            sdpSemantics: "unified-plan",
+          });
+
+          const remoteStream = new MediaStream();
+
+          pc.ontrack = (e) => {
+            if (e.streams && e.streams[0]) {
+              e.streams[0].getTracks().forEach((track) => {
+                remoteStream.addTrack(track);
+
+                track.onmute = () =>
+                  console.log(`Track ${track.id} was muted!`);
+                track.onunmute = () =>
+                  console.log(`Track ${track.id} was unmuted!`);
+                track.onended = () => console.log(`Track ${track.id} ended`);
+              });
+
+              const monitorGuestAudio = () => {
+                try {
+                  const audioContext = new AudioContext();
+                  const analyser = audioContext.createAnalyser();
+                  const source =
+                    audioContext.createMediaStreamSource(remoteStream);
+                  source.connect(analyser);
+
+                  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                  analyser.getByteFrequencyData(dataArray);
+
+                  const average =
+                    dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+                  if (average > 5) {
+                    console.log(
+                      `🎤 GUEST ${from} IS SPEAKING! Audio received.`
+                    );
+                  }
+
+                  audioContext.close();
+                } catch (error) {
+                  console.log("Guest audio level check error:", error);
+                }
+              };
+
+              const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
+              audioIntervalsRef.current.set(from, guestAudioInterval);
+
+              addRemoteRef.current(remoteStream, from);
+              startIndividualRecording(from, remoteStream.clone());
+            }
+          };
+
+          peersRef.current.set(from, pc);
+
+          pc.onicecandidate = (ev) => {
+            if (ev.candidate) {
+              sock.emit("signal", {
+                to: from,
+                data: { candidate: ev.candidate },
+              });
+            }
+          };
+
+          pc.onconnectionstatechange = () => {
+            console.log(`Connection state for ${from}:`, pc.connectionState);
+          };
+
+          pc.oniceconnectionstatechange = () => {
+            console.log(
+              `ICE connection state for ${from}:`,
+              pc.iceConnectionState
+            );
+          };
+        }
+
+        if (data.sdp) {
+          await pc.setRemoteDescription(data.sdp);
+
+          const answer = await pc.createAnswer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: false,
+          });
+
+          await pc.setLocalDescription(answer);
+
+          sock.emit("signal", {
+            to: from,
+            data: { sdp: pc.localDescription },
+          });
+        } else if (data.candidate) {
+          try {
+            await pc.addIceCandidate(data.candidate);
+          } catch (error) {
+            console.error("Error adding ICE candidate:", error);
+          }
+        }
+      });
+
+      const mr = new MediaRecorder(mixer.mixedStream, {
+        mimeType: "audio/webm",
+      });
+      mr.ondataavailable = (e) => {
+        if (e.data.size) recordedChunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "audio/webm",
+        });
+        recordingBlobRef.current = blob;
+
+        const previews = new Map();
+        previews.set("mixed", URL.createObjectURL(blob));
+        individualChunksRef.current.forEach((b, id) => {
+          previews.set(id, URL.createObjectURL(b));
+        });
+        setAudioPreviews(previews);
+      };
+      mediaRecorderRef.current = mr;
+    } catch (err) {
+      console.log(err);
+      addToast(
+        "error",
+        "Error starting meeting. Please check your mic permissions."
+      );
+    }
   };
 
   const startIndividualRecording = (socketId, stream) => {
@@ -394,18 +398,28 @@ const LiveMeeting = () => {
   };
   const endMeeting = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/${meetingId}/end`,
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/${meetingId}/end`,
         {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      addToast("success","Meeting ended successfully.");
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      addToast("success", "Meeting ended successfully.");
     } catch (err) {
       console.error("Error ending meeting:", err);
-      addToast("error","Error ending meeting.");
+      addToast("error", "Error ending meeting.");
     }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const getMeetingUrl = () => {
@@ -455,17 +469,17 @@ const LiveMeeting = () => {
   };
 
   const addHistory = async (token, historyData, addToast) => {
-  try {
-    await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-      historyData,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-  } catch (err) {
-    console.error("Add history error:", err);
-    addToast("error", "Failed to add history");
-  }
-};
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+        historyData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.error("Add history error:", err);
+      addToast("error", "Failed to add history");
+    }
+  };
 
   useEffect(() => {
     const updateBarCount = () => {
@@ -724,16 +738,16 @@ const LiveMeeting = () => {
                     🆓 Meeting transcription is completely free now
                   </p>
                   {recordedBlob && audioPreviews && (
-                      <div className="my-6">
-                        <h4 className="font-medium text-gray-600 mb-1">
-                          Meeting Preview
-                        </h4>
-                        <audio
-                          controls
-                          src={audioPreviews.get("mixed")}
-                          className="w-full"
-                        />
-                      </div>
+                    <div className="my-6">
+                      <h4 className="font-medium text-gray-600 mb-1">
+                        Meeting Preview
+                      </h4>
+                      <audio
+                        controls
+                        src={audioPreviews.get("mixed")}
+                        className="w-full"
+                      />
+                    </div>
                   )}
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
