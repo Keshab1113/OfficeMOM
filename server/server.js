@@ -76,7 +76,7 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 const io = new SocketIOServer(server, {
-  cors: { origin: process.env.CLIENT_ORIGIN, methods: ["GET", "POST"] },
+  cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
 const rooms = new Map();
