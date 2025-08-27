@@ -124,7 +124,6 @@ const LiveMeeting = () => {
             "error",
             "Another host has joined this room. You've been disconnected."
           );
-          nav("/dashboard");
         });
 
         sock.on("connect", () => {
@@ -135,8 +134,8 @@ const LiveMeeting = () => {
           setParticipants(count);
         });
 
-        sock.on("host:join-request", ({ socketId, name, deviceLabel }) => {
-          setRequests((prev) => [...prev, { socketId, name, deviceLabel }]);
+        sock.on("host:join-request", ({ socketId, deviceName, deviceLabel }) => {
+          setRequests((prev) => [...prev, { socketId, deviceName, deviceLabel }]);
         });
 
         sock.on("signal", async ({ from, data }) => {
@@ -431,6 +430,8 @@ const LiveMeeting = () => {
       );
       setShowModal(true);
       setFinalTranscript(res.data.text || "");
+      setRecordedBlob(false);
+      setAudioPreviews(new Map());
     } catch (error) {
       addToast("error", "Failed to process file. Please try again.");
       console.error("Error processing notes:", error);
@@ -700,9 +701,9 @@ const LiveMeeting = () => {
                   </div>
                   <button
                     onClick={handleStartMakingNotes}
-                    disabled={isProcessing || isRecording}
+                    disabled={isProcessing || isRecording || audioPreviews}
                     className={`mt-10 w-full py-4 rounded-lg text-white font-semibold flex justify-center items-center gap-2 ${
-                      isProcessing || isRecording
+                      isProcessing || isRecording || audioPreviews
                         ? "bg-gray-500 cursor-not-allowed"
                         : "bg-blue-400 hover:bg-blue-500 cursor-pointer"
                     }`}

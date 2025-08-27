@@ -30,7 +30,9 @@ const JoinMeeting = () => {
       setStatus("Connecting to server…");
       setStatusType("loading");
 
-      const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, { transports: ["websocket"] });
+      const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, {
+        transports: ["websocket"],
+      });
       socketRef.current = sock;
 
       let deviceLabel = navigator.userAgent;
@@ -44,9 +46,23 @@ const JoinMeeting = () => {
       } catch (error) {
         console.log("Error getting device info: ", error);
       }
+      let myDeviceName = "Unknown Device";
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const mic = devices.find((d) => d.kind === "audioinput");
+        if (mic) {
+          myDeviceName = mic.label || "Unnamed Microphone";
+        }
+      } catch (err) {
+        console.error("Could not enumerate devices:", err);
+      }
 
       setStatus("Requesting to join room…");
-      sock.emit("guest:request-join", { id, name: "Guest", deviceLabel });
+      sock.emit("guest:request-join", {
+        id,
+        deviceName: myDeviceName,
+        deviceLabel,
+      });
 
       sock.on("host:socket-id", ({ hostId }) => {
         console.log("Received host socket ID:", hostId);
@@ -120,7 +136,14 @@ const JoinMeeting = () => {
           pcRef.current = pc;
 
           for (const track of destination.stream.getTracks()) {
-            console.log("Adding processed track:", track.id, "enabled:", track.enabled, "muted:", track.muted);
+            console.log(
+              "Adding processed track:",
+              track.id,
+              "enabled:",
+              track.enabled,
+              "muted:",
+              track.muted
+            );
             pc.addTrack(track, destination.stream);
           }
 
@@ -186,7 +209,8 @@ const JoinMeeting = () => {
               const dataArray = new Uint8Array(analyser.frequencyBinCount);
               analyser.getByteFrequencyData(dataArray);
 
-              const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+              const average =
+                dataArray.reduce((a, b) => a + b) / dataArray.length;
               console.log("Audio level:", average);
 
               if (average > 5) {
@@ -200,7 +224,9 @@ const JoinMeeting = () => {
           setInterval(checkAudioLevels, 2000);
         } catch (error) {
           console.error("Error setting up audio:", error);
-          setStatus("Error setting up audio. Please check microphone permissions.");
+          setStatus(
+            "Error setting up audio. Please check microphone permissions."
+          );
           setStatusType("error");
         }
       });
@@ -308,7 +334,7 @@ const JoinMeeting = () => {
         return "text-gray-600";
     }
   };
-  
+
   return (
     <>
       <Helmet>

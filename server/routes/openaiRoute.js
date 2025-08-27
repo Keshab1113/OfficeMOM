@@ -19,15 +19,24 @@ router.post("/convert-transcript", async (req, res) => {
 
   try {
     const prompt = `
-Extract information from the text below and return ONLY a valid JSON array.
-- Use these keys exactly: ${headers.join(", ")}.
-- Return objects.
-- If there is insufficient data, fill missing fields with an empty string ("").
-- Ensure the output is strictly valid JSON — do NOT include any extra text, explanations, or markdown formatting.
+You are an information extraction system. 
+Your ONLY task is to extract structured data from the given text and return it as a STRICT JSON array. 
+Do not add explanations, comments, or any extra text outside the JSON.
+
+Rules:
+1. Output must be a valid JSON array of objects.
+2. Use these keys exactly (case-sensitive): ${headers.join(", ")}.
+3. For each object:
+   - Extract the value from the text if available.
+   - If a field is missing or unclear, set its value to an empty string "".
+   - Do not generate extra fields.
+4. Keep values as plain text only — do not infer, summarize, or transform unnecessarily.
+5. If multiple entities are found in the text, return multiple objects in the array.
+6. Ensure the final JSON passes validation (no trailing commas, no comments, no formatting errors).
 
 Text to extract from:
 ${transcript}
-    `;
+`;
 
     const response = await client.chat.completions.create({
       model: "deepseek-chat",

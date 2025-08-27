@@ -2,7 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import http from "http";
-import { WebSocketServer, WebSocket } from "ws";
+import { WebSocket } from "ws";
 import { Server as SocketIOServer } from "socket.io";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -29,54 +29,9 @@ app.use("/api/history", historyRoutes);
 app.use("/api", emailRoutes);
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ noServer: true });
-const deepgramUrl = process.env.DEEPGRAM_URL;
-
-wss.on("connection", (ws) => {
-
-  const dgWs = new WebSocket(deepgramUrl, {
-    headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
-  });
-
-  let ready = false;
-  let queue = [];
-
-  dgWs.on("open", () => {
-    ready = true;
-    queue.forEach((msg) => dgWs.send(msg));
-    queue = [];
-  });
-
-  dgWs.on("message", (msg) => {
-    ws.send(msg.toString());
-  });
-
-  dgWs.on("error", (err) => {
-    console.error("Deepgram WS error:", err);
-  });
-
-  ws.on("message", (message) => {
-    if (ready) dgWs.send(message);
-    else queue.push(message);
-  });
-
-  ws.on("close", () => {
-    dgWs.close();
-  });
-});
-
-server.on("upgrade", (req, socket, head) => {
-  if (req.url === "/transcribe") {
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req);
-    });
-  } else {
-    // DO NOT destroy here — this lets Socket.IO handle its own upgrades
-  }
-});
 
 const io = new SocketIOServer(server, {
-  cors: { origin: process.env.CLIENT_ORIGIN, methods: ["GET", "POST"] },
+  cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
 const rooms = new Map();
@@ -168,28 +123,27 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("guest:request-join", ({ roomId, name, deviceLabel }) => {
-    const room = rooms.get(roomId);
-    if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+  socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
+  const room = rooms.get(roomId);
+  if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
 
-    socket.join(roomId);
-    socket.data.roomId = roomId;
-    room.peers.set(socket.id, { name, deviceLabel });
+  socket.join(roomId);
+  socket.data.roomId = roomId;
+  room.peers.set(socket.id, { deviceName, deviceLabel });
 
-    socket.emit("host:socket-id", { hostId: room.hostSocketId });
-    io.to(room.hostSocketId).emit("host:join-request", {
-      socketId: socket.id,
-      name,
-      deviceLabel,
-    });
-    io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+  socket.emit("host:socket-id", { hostId: room.hostSocketId });
+  io.to(room.hostSocketId).emit("host:join-request", {
+    socketId: socket.id,
+    deviceName,
+    deviceLabel,
   });
+  io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+});
 
-  socket.on("host:approve", async ({ guestSocketId }) => {
+
+  socket.on("host:approve", ({ guestSocketId }) => {
     const guest = io.sockets.sockets.get(guestSocketId);
-    if (guest) {
-      guest.emit("guest:approved");
-    }
+    if (guest) guest.emit("guest:approved");
   });
 
   socket.on("host:reject", ({ guestSocketId }) => {

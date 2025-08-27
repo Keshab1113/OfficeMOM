@@ -14,6 +14,7 @@ import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { Helmet } from "react-helmet";
 import axios from "axios";
+import { io } from "socket.io-client";
 
 const meetingPlatforms = [
   {
@@ -68,100 +69,94 @@ const Meeting = () => {
       addToast("error", "Your browser doesn't support audio recording");
       return;
     }
+
     setIsMeetingActive(true);
-    const ws = new WebSocket(import.meta.env.VITE_WS_URL);
-    ws.binaryType = "arraybuffer";
-    wsRef.current = ws;
 
-    ws.onopen = async () => {
-      try {
-        let stream;
-        try {
-          const micStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
-          const systemStream = await navigator.mediaDevices.getDisplayMedia({
-            audio: true,
-          });
+    // Use Socket.IO instead of raw WebSocket
+    const socket = io(import.meta.env.VITE_BACKEND_URL, {
+      transports: ["websocket"],
+    });
+    wsRef.current = socket;
 
-          const audioContext = new AudioContext();
-          const destination = audioContext.createMediaStreamDestination();
+    socket.on("connect", () => {
+      console.log("Connected to server with Socket.IO", socket.id);
 
-          audioContext.createMediaStreamSource(micStream).connect(destination);
-          audioContext
-            .createMediaStreamSource(systemStream)
-            .connect(destination);
+      // Join a room (for example, using meetingLink as roomId)
+      socket.emit("host:join-room", { roomId: meetingLink });
+    });
 
-          stream = destination.stream;
-
-          addToast("info", "Using microphone for meeting audio");
-        } catch (micError) {
-          addToast(
-            "error",
-            "Microphone access denied. Please allow microphone permissions"
-          );
-          throw micError;
-        }
-
-        mediaStreamRef.current = stream;
-
-        const options = {};
-        const supportedTypes = [
-          "audio/webm;codecs=opus",
-          "audio/ogg;codecs=opus",
-          "audio/mp3",
-          "audio/wav",
-          "audio/mpeg",
-        ].find((type) => MediaRecorder.isTypeSupported(type));
-
-        if (supportedTypes) {
-          options.mimeType = supportedTypes;
-        }
-
-        try {
-          mediaRecorderRef.current = new MediaRecorder(stream, options);
-
-          mediaRecorderRef.current.ondataavailable = (event) => {
-            if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-              event.data.arrayBuffer().then((buffer) => ws.send(buffer));
-            }
-          };
-
-          mediaRecorderRef.current.start(250);
-
-          const tableSection = document.getElementById("listening");
-          if (tableSection) {
-            tableSection.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        } catch (recorderError) {
-          addToast("error", "Failed to initialize recorder");
-          stream.getTracks().forEach((track) => track.stop());
-          throw recorderError;
-        }
-      } catch (error) {
-        console.error("Meeting start failed:", error);
-        ws.close();
-      }
-    };
-
-    ws.onmessage = (message) => {
-      try {
-        const data = JSON.parse(message.data);
-        const transcriptText = data.channel?.alternatives?.[0]?.transcript;
-        if (transcriptText) {
-          setTranscript((prev) => [...prev, transcriptText]);
-        }
-      } catch (error) {
-        console.error("Error parsing transcript:", error);
-      }
-    };
-
-    ws.onerror = (error) => {
+    socket.on("error", (err) => {
+      console.error("Socket error:", err);
       addToast("error", "Connection error occurred");
-      console.error("WebSocket error:", error);
-    };
+    });
 
-    wsRef.current = ws;
+    // Listen for Deepgram captions instead of transcript
+    socket.on("caption", ({ text, isFinal }) => {
+      if (text) {
+        setTranscript((prev) => [
+          ...prev,
+          isFinal ? text : `${text} (interim)`,
+        ]);
+      }
+    });
+
+    // Start audio capture
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      const systemStream = await navigator.mediaDevices.getDisplayMedia({
+        audio: true,
+      });
+
+      const audioContext = new AudioContext();
+      const destination = audioContext.createMediaStreamDestination();
+
+      audioContext.createMediaStreamSource(micStream).connect(destination);
+      audioContext.createMediaStreamSource(systemStream).connect(destination);
+
+      const stream = destination.stream;
+      mediaStreamRef.current = stream;
+
+      const options = {};
+      const supportedTypes = [
+        "audio/webm;codecs=opus",
+        "audio/ogg;codecs=opus",
+        "audio/mp3",
+        "audio/wav",
+        "audio/mpeg",
+      ].find((type) => MediaRecorder.isTypeSupported(type));
+
+      if (supportedTypes) {
+        options.mimeType = supportedTypes;
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0 && socket.connected) {
+          event.data.arrayBuffer().then((buffer) => {
+            socket.emit("audio-chunk", buffer); // send as "audio-chunk"
+          });
+        }
+      };
+
+      mediaRecorderRef.current.start(250);
+
+      const tableSection = document.getElementById("listening");
+      if (tableSection) {
+        tableSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      addToast("info", "Using microphone for meeting audio");
+    } catch (error) {
+      addToast(
+        "error",
+        "Microphone access denied. Please allow microphone permissions"
+      );
+      console.error("Meeting start failed:", error);
+      socket.disconnect();
+    }
   };
 
   const endMeeting = async () => {
