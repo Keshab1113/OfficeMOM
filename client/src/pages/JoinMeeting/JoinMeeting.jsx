@@ -11,12 +11,14 @@ import {
   FaCheckCircle,
   FaTimesCircle,
 } from "react-icons/fa";
+import { useToast } from "../../components/ToastContext";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
 const JoinMeeting = () => {
   const { id } = useParams();
   const nav = useNavigate();
+  const { addToast } = useToast();
   const [status, setStatus] = useState("Requesting to join…");
   const [statusType, setStatusType] = useState("info");
   const [isMuted, setIsMuted] = useState(false);
@@ -235,7 +237,7 @@ const JoinMeeting = () => {
         setStatus(`Request denied: ${reason || "No reason provided"}`);
         setStatusType("error");
         setTimeout(() => {
-          alert(reason || "Denied");
+          addToast("error", reason || "Denied");
           nav("/");
         }, 2000);
       });
@@ -260,7 +262,7 @@ const JoinMeeting = () => {
         setStatus("Meeting ended by host.");
         setStatusType("info");
         setTimeout(() => {
-          alert("Meeting ended by host.");
+          addToast("success", "Meeting ended by host.");
           nav("/");
         }, 2000);
       });
@@ -353,7 +355,7 @@ const JoinMeeting = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen h-full w-full flex justify-center items-center">
-            <div className="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="md:max-w-md w-full max-w-[90vw] bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="bg-indigo-600 p-4 text-white">
                 <h1 className="text-xl font-semibold">Joining Meeting</h1>
                 <p className="text-sm opacity-90">Room ID: {id}</p>

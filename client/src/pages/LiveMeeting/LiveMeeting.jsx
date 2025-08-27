@@ -18,13 +18,11 @@ import { QRCodeCanvas } from "qrcode.react";
 import { Helmet } from "react-helmet";
 import JoinRequestModal from "../../components/LittleComponent/JoinRequestModal";
 import io from "socket.io-client";
-import { useNavigate } from "react-router-dom";
 import { createHostMixerStream } from "../../hooks/useHostMixer";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
 const LiveMeeting = () => {
-  const nav = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSending, setIsSending] = useState(false);
