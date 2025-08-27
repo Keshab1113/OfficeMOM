@@ -4,7 +4,7 @@ import { FaCheck, FaTimes, FaUser } from 'react-icons/fa';
 export default function JoinRequestModal({ reqs, onApprove, onReject }) {
   if (!reqs.length) return null;
   return (
-    <div className="fixed inset-0 bg-black/80 dark:backdrop-blur-none backdrop-blur-xs flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40  flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl md:w-full w-[90vw] max-w-md overflow-hidden">
         <div className="bg-indigo-600 text-white p-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">

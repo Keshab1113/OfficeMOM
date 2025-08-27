@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { cn } from "../../lib/utils";
-import Footer from "../../components/Footer/Footer";
 import io from "socket.io-client";
 import {
   FaMicrophone,
@@ -12,6 +11,7 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import { useToast } from "../../components/ToastContext";
+import SideBar from "../../components/SideBar/SideBar"
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
@@ -61,7 +61,7 @@ const JoinMeeting = () => {
 
       setStatus("Requesting to join room…");
       sock.emit("guest:request-join", {
-        roomId:id,
+        roomId: id,
         deviceName: myDeviceName,
         deviceLabel,
       });
@@ -92,34 +92,6 @@ const JoinMeeting = () => {
           localStreamRef.current = stream;
 
           console.log("Guest audio tracks:", stream.getAudioTracks());
-
-          // const monitorAudioLevels = () => {
-          //   if (stream) {
-          //     try {
-          //       const audioContext = new AudioContext();
-          //       const analyser = audioContext.createAnalyser();
-          //       const source = audioContext.createMediaStreamSource(stream);
-          //       source.connect(analyser);
-
-          //       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          //       analyser.getByteFrequencyData(dataArray);
-
-          //       const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-          //       console.log("Guest Audio level:", average);
-
-          //       if (average > 5) {
-          //         console.log("🎤 GUEST IS SPEAKING! Audio detected.");
-          //       }
-
-          //       audioContext.close();
-          //     } catch (error) {
-          //       console.log("Audio level check error:", error);
-          //     }
-          //   }
-          // };
-
-          // const audioInterval = setInterval(monitorAudioLevels, 2000);
-
           const audioContext = new AudioContext();
           const source = audioContext.createMediaStreamSource(stream);
           const destination = audioContext.createMediaStreamDestination();
@@ -198,7 +170,7 @@ const JoinMeeting = () => {
             });
           }
 
-          setStatus("Connected to meeting - Speak now!");
+          setStatus("Connected to meeting - Recording in progress...");
           setStatusType("success");
 
           const checkAudioLevels = () => {
@@ -353,57 +325,72 @@ const JoinMeeting = () => {
           )}
         />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
-          <div className=" min-h-screen h-full w-full flex justify-center items-center">
-            <div className="md:max-w-md w-full max-w-[90vw] bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="bg-indigo-600 p-4 text-white">
-                <h1 className="text-xl font-semibold">Joining Meeting</h1>
-                <p className="text-sm opacity-90">Room ID: {id}</p>
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-center justify-center mb-6">
-                  <div className={`text-4xl mr-3 ${getStatusColor()}`}>
-                    {getStatusIcon()}
-                  </div>
-                  <div>
-                    <p className={`font-medium ${getStatusColor()}`}>
-                      {status}
-                    </p>
-                  </div>
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll flex">
+          <SideBar />
+          <div className=" min-h-screen flex flex-col justify-center items-center px-4 w-[100%] md:w-[80%]">
+            <p className=" text-center dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-[34px] font-bold text-transparent md:text-5xl">
+              Welcome to Office<span className="text-blue-400">MoM</span>
+            </p>
+            <p className="md:mt-3 mt-1 md:max-w-full max-w-[90%] text-center bg-gradient-to-b dark:from-white from-black to-blue-500 bg-clip-text text-base font-bold text-transparent md:text-xl">
+              Automate Meeting Minutes Seamlessly
+            </p>
+            <p className="md:mt-20 mt-10  max-w-[90%] md:max-w-[80%] text-center  bg-gradient-to-b dark:from-white from-black to-blue-500 bg-clip-text text-lg font-bold text-transparent md:text-2xl">
+              Automate meeting minutes seamlessly with AI-powered transcription
+              and smart formatting. Capture every detail without lifting a pen,
+              from key points to action items. Get organized summaries
+              instantly, ready to share with your team. Save time, improve
+              accuracy, and keep every meeting productive.
+            </p>
+            <div className="fixed inset-0 bg-black/80  flex items-center justify-center z-50 p-4 backdrop-blur-[3px]">
+              <div className="md:max-w-md absolute w-full max-w-[90vw] bg-white/80 backdrop-blur-xl rounded-xl shadow-lg overflow-hidden">
+                <div className="bg-indigo-600 p-4 text-white">
+                  <h1 className="text-xl font-semibold">Joining Meeting</h1>
+                  <p className="text-sm opacity-90">Room ID: {id}</p>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      Microphone
-                    </span>
+                <div className="p-6">
+                  <div className="flex items-center justify-center mb-6">
+                    <div className={`text-4xl mr-3 ${getStatusColor()}`}>
+                      {getStatusIcon()}
+                    </div>
+                    <div>
+                      <p className={`font-medium ${getStatusColor()}`}>
+                        {status}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">
+                        Microphone
+                      </span>
+                      <button
+                        onClick={toggleMute}
+                        className={`flex cursor-pointer items-center gap-2 px-4 py-2 rounded-full ${
+                          isMuted
+                            ? "bg-red-100 text-red-700 hover:bg-red-200"
+                            : "bg-green-100 text-green-700 hover:bg-green-200"
+                        } transition-colors`}
+                      >
+                        {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
+                        {isMuted ? "Unmute" : "Mute"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="text-center">
                     <button
-                      onClick={toggleMute}
-                      className={`flex cursor-pointer items-center gap-2 px-4 py-2 rounded-full ${
-                        isMuted
-                          ? "bg-red-100 text-red-700 hover:bg-red-200"
-                          : "bg-green-100 text-green-700 hover:bg-green-200"
-                      } transition-colors`}
+                      onClick={() => nav("/")}
+                      className="px-4 py-2 cursor-pointer bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                     >
-                      {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
-                      {isMuted ? "Unmute" : "Mute"}
+                      Leave Meeting
                     </button>
                   </div>
-                </div>
-
-                <div className="text-center">
-                  <button
-                    onClick={() => nav("/")}
-                    className="px-4 py-2 cursor-pointer bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Leave Meeting
-                  </button>
                 </div>
               </div>
             </div>
           </div>
-          <Footer />
         </div>
       </section>
     </>
