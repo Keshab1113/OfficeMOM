@@ -8,7 +8,7 @@ import { MdRecordVoiceOver } from "react-icons/md";
 import Footer from "../../components/Footer/Footer";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import axios from "axios";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import AllHistory from "../../components/History/History";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import Heading from "../../components/LittleComponent/Heading";
@@ -19,12 +19,16 @@ import { Helmet } from "react-helmet";
 import JoinRequestModal from "../../components/LittleComponent/JoinRequestModal";
 import io from "socket.io-client";
 import { createHostMixerStream } from "../../hooks/useHostMixer";
+import StylishAudioPreview from "../../components/LittleComponent/StylishAudioPreview";
+import MultipleAudioPlayer from "../../components/LittleComponent/MultipleAudioPlayer";
+import { addAudioPreview } from "../../redux/audioSlice";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
 const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const mediaRecorderRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
@@ -56,6 +60,7 @@ const LiveMeeting = () => {
   const addRemoteRef = useRef(null);
   const mixerRef = useRef(null);
   const recordingBlobRef = useRef(null);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (isRecording) {
@@ -76,8 +81,6 @@ const LiveMeeting = () => {
     hasInitializedRef.current = true;
     initializeMeeting();
   }, []);
-
-  
 
   useEffect(() => {
     if (hasInitializedRef.current) return;
@@ -121,13 +124,6 @@ const LiveMeeting = () => {
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(dataArray);
-
-            const average =
-              dataArray.reduce((a, b) => a + b) / dataArray.length;
-
-            if (average > 5) {
-              console.log("🎤 HOST IS SPEAKING! Audio detected.");
-            }
 
             audioContext.close();
           } catch (error) {
@@ -344,6 +340,7 @@ const LiveMeeting = () => {
   };
 
   const startRecording = async () => {
+    setRecordingTime(0);
     const { data } = await axios.post(
       `${import.meta.env.VITE_BACKEND_URL}/api/createlive`,
       {},
@@ -393,6 +390,7 @@ const LiveMeeting = () => {
     setRecordedBlob(true);
     endMeeting();
   };
+
   const endMeeting = async () => {
     try {
       await axios.post(
@@ -554,6 +552,70 @@ const LiveMeeting = () => {
     }
   };
 
+  const handleNewPreview = async (blobUrl) => {
+    const res = await fetch(blobUrl);
+    const blob = await res.blob();
+
+    const file = new File([blob], `recording_${Date.now()}.mp3`, {
+      type: "audio/mpeg",
+    });
+
+    const formData = new FormData();
+    formData.append("recordedAudio", file);
+
+    const response = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    if (response.data && response.data.audioUrl) {
+      const { audioUrl, id, uploadedAt } = response.data;
+      dispatch(addAudioPreview({ audioUrl, id, uploadedAt }));
+    } else {
+      addToast("error", "Upload failed or audioUrl missing");
+    }
+  };
+
+  const handleRecordAgain = (blobUrl) => {
+    if (blobUrl) {
+      handleNewPreview(blobUrl);
+      setAudioPreviews(new Map());
+      setRecordedBlob(false);
+      startRecording();
+    } else {
+      addToast("error", "No valid mixed blob available in audioPreviews");
+    }
+  };
+
+  const continueNextProcess = async (audioFile) => {
+    setIsPreviewProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("audioUrl", audioFile);
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio-from-url`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowModal(true);
+      setFinalTranscript(res.data.text || "");
+      setRecordedBlob(false);
+      setAudioPreviews(new Map());
+      setIsPreviewProcessing(false);
+    } catch (err) {
+      console.error("Error uploading or processing audio:", err);
+      setIsPreviewProcessing(false);
+    } finally {
+      setIsPreviewProcessing(false);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -710,6 +772,12 @@ const LiveMeeting = () => {
                       )}
                     </div>
                   </div>
+                  {recordedBlob && (
+                    <StylishAudioPreview
+                      recordedBlob={audioPreviews.get("mixed")}
+                      onRecordAgain={handleRecordAgain}
+                    />
+                  )}
                   <button
                     onClick={handleStartMakingNotes}
                     disabled={isProcessing || audioPreviews.size === 0}
@@ -734,18 +802,8 @@ const LiveMeeting = () => {
                   <p className="text-xs text-gray-400 mt-3 text-center">
                     🆓 Meeting transcription is completely free now
                   </p>
-                  {recordedBlob && audioPreviews && (
-                    <div className="my-6">
-                      <h4 className="font-medium text-gray-600 mb-1">
-                        Meeting Preview
-                      </h4>
-                      <audio
-                        controls
-                        src={audioPreviews.get("mixed")}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
+
+                  <MultipleAudioPlayer onContinue={continueNextProcess} isPreviewProcessing={isPreviewProcessing}/>
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
                   <DownloadOptions onChange={setDownloadOptions} />

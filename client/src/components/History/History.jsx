@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { History, FileText } from "lucide-react";
-import {Link} from "react-router-dom"
+import { Link } from "react-router-dom";
 
-const AllHistory = () => {
+const AllHistory = ({ title, sampleHistory }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [history, setHistory] = useState([]);
   const controls = useAnimation();
@@ -49,11 +49,15 @@ const AllHistory = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setHistory(res.data);
+        if (sampleHistory) {
+          setHistory(sampleHistory);
+        } else {
+          const res = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setHistory(res.data);
+        }
         if (!isPaused && history.length > 0) {
           controls.start({
             y: ["0%", "-100%"],
@@ -69,7 +73,7 @@ const AllHistory = () => {
       }
     };
     fetchHistory();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, history.length]);
 
   return (
@@ -77,7 +81,7 @@ const AllHistory = () => {
       <div className="flex items-center gap-3 mb-4">
         <History className="text-purple-500 w-6 h-6" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Recent Meetings
+          {title ? title : "Recent Meetings"}
         </h2>
       </div>
       {history.length === 0 ? (
@@ -91,35 +95,42 @@ const AllHistory = () => {
             animate={history.length > 2 && controls}
           >
             <ol className="space-y-3">
-              {(history.length > 2 ? [...history, ...history] : history).map((item, index) => {
-                const HDate = new Date(item.date);
-                const localDate =
-                  HDate.getFullYear() +
-                  "-" +
-                  String(HDate.getMonth() + 1).padStart(2, "0") +
-                  "-" +
-                  String(HDate.getDate()).padStart(2, "0");
-                return (
-                  <li
-                    key={index}
-                    onMouseEnter={() => setIsPaused(true)}
-                    onMouseLeave={() => setIsPaused(false)}
-                    className="bg-gray-100 dark:bg-gray-800 bg-opacity-80 rounded-lg p-3 shadow-sm flex flex-col cursor-pointer transition-transform duration-300"
-                  >
-                    <span className=" flex gap-2 justify-start items-center">
-                      <FileText className="w-4 h-4 text-blue-500" />
-                      <Link to={`/meeting-history/${item.id}`} className="text-gray-800 dark:text-gray-300 hover:text-blue-700 font-medium">
-                        {item.source}
-                      </Link>
-                    </span>
+              {(history.length > 2 ? [...history, ...history] : history).map(
+                (item, index) => {
+                  const HDate = new Date(item.date || item.time);
+                  const localDate =
+                    HDate.getFullYear() +
+                    "-" +
+                    String(HDate.getMonth() + 1).padStart(2, "0") +
+                    "-" +
+                    String(HDate.getDate()).padStart(2, "0");
+                  return (
+                    <li
+                      key={index}
+                      onMouseEnter={() => setIsPaused(true)}
+                      onMouseLeave={() => setIsPaused(false)}
+                      className="bg-gray-100 dark:bg-gray-800 bg-opacity-80 rounded-lg p-3 shadow-sm flex flex-col cursor-pointer transition-transform duration-300"
+                    >
+                      <span className=" flex gap-2 justify-start items-center">
+                        <FileText className="w-4 h-4 text-blue-500" />
+                        <Link
+                          to={`/meeting-history/${sampleHistory?"":item.id}`}
+                          className="text-gray-800 dark:text-gray-300 hover:text-blue-700 font-medium"
+                        >
+                          {item.source || "Live Transcript Conversion"}
+                        </Link>
+                      </span>
 
-                    <div className="text-sm text-gray-600 dark:text-gray-400 ml-6 flex justify-between">
-                      {localDate}
-                      <span className=" capitalize">{timeAgo(localDate)}</span>
-                    </div>
-                  </li>
-                );
-              })}
+                      <div className="text-sm text-gray-600 dark:text-gray-400 ml-6 flex justify-between">
+                        {localDate}
+                        <span className=" capitalize">
+                          {timeAgo(localDate)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                }
+              )}
             </ol>
           </motion.div>
         </div>

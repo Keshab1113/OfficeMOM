@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import meetingReducer from "./meetingSlice";
+import audioReducer from "./audioSlice";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { logout } from "./authSlice";
@@ -15,8 +16,14 @@ const meetingPersistConfig = {
   storage,
 };
 
+const audioPersistConfig = {
+  key: "audio",
+  storage,
+};
+
 const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
 const persistedMeetingReducer = persistReducer(meetingPersistConfig, meetingReducer);
+const persistedAudioReducer = persistReducer(audioPersistConfig, audioReducer);
 
 const tokenExpirationMiddleware = (store) => (next) => (action) => {
   const state = store.getState();
@@ -34,6 +41,7 @@ export const store = configureStore({
   reducer: {
     auth: persistedAuthReducer,
     meeting: persistedMeetingReducer,
+    audio: persistedAudioReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ serializableCheck: false }).concat(tokenExpirationMiddleware),
