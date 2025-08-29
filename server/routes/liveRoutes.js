@@ -1,11 +1,17 @@
 import express from "express";
 import multer from "multer";
-import { transcribeAudio } from "../controllers/liveController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
-import { createMeeting, endMeeting, uploadAudio, getAllAudios, deleteAudio, transcribeAudioFromURL } from "../controllers/liveController.js";
+import { createMeeting, endMeeting, uploadAudio, getAllAudios, deleteAudio, transcribeAudioFromURL, transcribeAudio } from "../controllers/liveController.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
+});
+
+const upload2 = multer({ storage });
+
 
 
 router.post("/createlive", authMiddleware, createMeeting);

@@ -8,17 +8,16 @@ const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
 const TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";
 
-async function uploadFileToAssemblyAI(filePath) {
-  const stat = fs.statSync(filePath);
-  const fileStream = fs.createReadStream(filePath);
+async function uploadFileToAssemblyAI(buffer, filename) {
 
-  const res = await axios.post(UPLOAD_URL, fileStream, {
-    headers: {
-      Authorization: ASSEMBLY_KEY,
-      "Transfer-Encoding": "chunked",
-      "Content-Type": "application/octet-stream",
-      "Content-Length": stat.size,
-    },
+  const headers = {
+    authorization: ASSEMBLY_KEY,
+    "transfer-encoding": "chunked",
+    "content-type": "application/octet-stream",
+  };
+
+  const res = await axios.post(UPLOAD_URL, buffer, {
+    headers,
     maxContentLength: Infinity,
     maxBodyLength: Infinity,
   });
@@ -60,10 +59,10 @@ export const transcribeAudio = async (req, res) => {
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
   try {
-    const audioUrl = await uploadFileToAssemblyAI(file.path);
+    const audioUrl = await uploadFileToAssemblyAI(file.buffer, file.originalname);
     const created = await createTranscription(audioUrl);
     const result = await pollTranscription(created.id);
-    fs.unlink(file.path, () => {});
+    // fs.unlink(file.path, () => {});
 
     res.json({ text: result.text, full: result });
   } catch (err) {
