@@ -263,7 +263,7 @@ const GenerateNotes = () => {
                               e.dataTransfer.clearData();
                             }
                           }}
-                          className={`mt-4 h-40 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors ${
+                          className={`mt-4 md:h-40 h-fit flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors ${
                             selectedFile
                               ? "border-blue-400 bg-blue-50 dark:bg-transparent"
                               : "border-gray-300 hover:border-blue-400"
