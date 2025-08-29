@@ -35,6 +35,12 @@ const meetingPlatforms = [
     match: "teams.microsoft.com",
     color: "bg-purple-500",
   },
+  {
+    name: "Other Meeting",
+    icon: "/Icons/other.webp",
+    match: "",
+    color: "bg-gray-500",
+  },
 ];
 
 const Meeting = () => {
@@ -228,10 +234,20 @@ const Meeting = () => {
   };
 
   const handleInputChange = (e) => {
-    const value = e.target.value;
+    const value = e.target.value.trim();
     setMeetingLink(value);
-    const matched = meetingPlatforms.find((p) => value.includes(p.match));
-    setActivePlatform(matched ? matched.name : null);
+    if (value === "") {
+      setActivePlatform(null);
+      return;
+    }
+    const matched = meetingPlatforms.find(
+      (p) => p.match && value.includes(p.match)
+    );
+    if (matched) {
+      setActivePlatform(matched.name);
+    } else {
+      setActivePlatform("Other Meeting");
+    }
   };
 
   return (
@@ -409,7 +425,7 @@ const Meeting = () => {
                     </section>
                     <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
                       <DownloadOptions onChange={setDownloadOptions} />
-                      <AllHistory />
+                      <AllHistory NeedFor={"Online Meeting Conversion"} />
                     </section>
                   </div>
                 )}

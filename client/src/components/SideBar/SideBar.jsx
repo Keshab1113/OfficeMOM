@@ -12,6 +12,7 @@ import { useToast } from "../ToastContext";
 import { IoPerson } from "react-icons/io5";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { IoPersonCircleSharp } from "react-icons/io5";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
 
 const SideBar = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const SideBar = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const dropdownRef = useRef(null);
 
   const navItems = [
@@ -54,6 +56,31 @@ const SideBar = () => {
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
+
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   const handleHomeClick = () => {
     if (isMobile) setIsSidebarOpen(false);
@@ -107,14 +134,35 @@ const SideBar = () => {
             </h1>
           )}
         </button>
-        {isMobile && (
-          <button
-            className="text-2xl text-blue-400"
-            onClick={() => setIsSidebarOpen(false)}
+        
+        {/* Theme Toggle Button */}
+        <div className="flex items-center gap-3">
+          <motion.button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+              shadow-lg border border-white/30 dark:border-gray-700/50
+              hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
+              text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
-            <RxCross2 />
-          </button>
-        )}
+            {isDarkMode ? (
+              <MdLightMode className="text-xl" />
+            ) : (
+              <MdDarkMode className="text-xl" />
+            )}
+          </motion.button>
+          
+          {isMobile && (
+            <button
+              className="text-2xl text-blue-400"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <RxCross2 />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-8">

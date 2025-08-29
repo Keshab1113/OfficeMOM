@@ -13,6 +13,7 @@ import NoPage from "./pages/NoPage/NoPage";
 import GenerateNotes from "./pages/GenerateNotes/GenerateNotes";
 import MeetingHistory from "./pages/MeetingHistory/MeetingHistory";
 import JoinMeeting from "./pages/JoinMeeting/JoinMeeting";
+import AboutUs from "./pages/AboutUs/AboutUs";
 
 function App() {
   return (
@@ -64,6 +65,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MeetingHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/about-us"
+            element={
+              <ProtectedRoute>
+                <AboutUs />
               </ProtectedRoute>
             }
           />

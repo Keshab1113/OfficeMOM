@@ -44,7 +44,7 @@ const Timing = () => {
       <div className="relative mt-1 border border-white dark:border-white/20 shadow-lg rounded-lg p-3 bg-white dark:bg-gray-900">
         <p className="text-gray-800 dark:text-gray-400 text-sm mb-1">
           Recommended based on your location:{" "}
-          <b>{userCountry ? `🇺🇳 ${userCountry}` : "Detecting..."}</b>
+          <b>{userCountry ? ` ${userCountry}` : "Detecting..."}</b>
         </p>
         <div
           className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"

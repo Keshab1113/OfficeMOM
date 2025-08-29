@@ -7,7 +7,7 @@ import { History, FileText, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-const AllHistory = ({ title, sampleHistory }) => {
+const AllHistory = ({ title, sampleHistory, NeedFor }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [history, setHistory] = useState([]);
   const controls = useAnimation();
@@ -48,42 +48,58 @@ const AllHistory = ({ title, sampleHistory }) => {
   }, [isPaused, controls, history.length]);
 
   const token = useSelector((state) => state.auth.token);
+  
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        if (sampleHistory) {
-          setHistory(sampleHistory);
-        } else {
-          const res = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-            { headers: { Authorization: `Bearer ${token}` } }
+  const fetchHistory = async () => {
+    try {
+      if (sampleHistory) {
+        setHistory(sampleHistory);
+      } else {
+        const res = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        let filteredData = res.data;
+        if (
+          NeedFor === "Online Meeting Conversion" ||
+          NeedFor === "Generate Notes Conversion" ||
+          NeedFor === "Live Transcript Conversion"
+        ) {
+          filteredData = res.data.filter(
+            item => item.source === NeedFor
           );
-          setHistory(res.data);
         }
-        if (!isPaused && history.length > 0) {
-          controls.start({
-            y: ["0%", "-100%"],
-            transition: {
-              repeat: Infinity,
-              duration: history.length * 5,
-              ease: "linear",
-            },
-          });
-        }
-      } catch (err) {
-        console.error("Get history error:", err);
+
+        setHistory(filteredData);
       }
-    };
-    fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, history.length]);
+
+      if (!isPaused && history.length > 0) {
+        controls.start({
+          y: ["0%", "-100%"],
+          transition: {
+            repeat: Infinity,
+            duration: history.length * 5,
+            ease: "linear",
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Get history error:", err);
+    }
+  };
+
+  fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [token, history.length, NeedFor]);
+
 
   return (
     <div className=" h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 overflow-hidden flex flex-col ">
       <div className="flex items-center gap-3 mb-4">
         <History className="text-purple-500 w-6 h-6" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {title ? title : "Recent Meetings"}
+          {title ? title : "Recent Meetings - MoM Generated"}
         </h2>
       </div>
       {history.length === 0 ? (

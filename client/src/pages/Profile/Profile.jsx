@@ -5,33 +5,6 @@ import History from "../../components/History/History";
 import { Helmet } from "react-helmet";
 import { useSelector } from "react-redux";
 
-const sampleHistory = [
-  {
-    id: "1",
-    source: "Team Sync Meeting",
-    date: "2025-08-27T10:30:00Z",
-    link:"/"
-  },
-  {
-    id: "2",
-    source: "Project Kickoff",
-    date: "2025-08-26T15:00:00Z",
-    link:"/"
-  },
-  {
-    id: "3",
-    source: "Client Review Call",
-    date: "2025-08-25T09:15:00Z",
-    link:"/"
-  },
-  {
-    id: "4",
-    source: "Sprint Retrospective",
-    date: "2025-08-23T13:45:00Z",
-    link:"/"
-  },
-];
-
 
 const Profile = () => {
   const { previews } = useSelector((state) => state.audio);
@@ -55,7 +28,7 @@ const Profile = () => {
           <div className=" min-h-screen lg:px-20 md:px-10 px-4 py-20 lg:py-28 flex flex-col md:gap-20 gap-10">
             <ProfilImageUploader />
             <div className=" grid md:grid-cols-2 grid-cols-1 gap-10 ">
-              <History title="Not Completed History" sampleHistory={previews}/>
+              <History title="History - Meeting Under Progress" sampleHistory={previews}/>
               <History />
             </div>
           </div>

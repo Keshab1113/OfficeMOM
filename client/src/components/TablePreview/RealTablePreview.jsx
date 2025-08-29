@@ -61,12 +61,12 @@ const RealTablePreview = ({ showFullData, onSaveTable }) => {
     <section className="p-0 mb-10 mt-10 md:mt-10 bg-amber-50 dark:bg-gray-800 rounded-2xl w-full overflow-hidden lg:max-w-[70vw] max-w-[90vw] mx-auto">
       <div className="block overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-800">
         {/* Horizontally Scrollable Table for All Screen Sizes */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[50vh] hidescrollbar">
 
           <div className="min-w-max">
             <table className="w-full border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-b-2 border-gray-200 dark:border-gray-600">
+                <tr className="bg-gradient-to-r sticky top-0 z-20 from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-b-2 border-gray-200 dark:border-gray-600">
                   <th className=" z-20 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-r-2 border-gray-200 dark:border-gray-600 px-3 sm:px-6 py-4 sm:py-8 text-left font-bold text-gray-800 dark:text-gray-100 shadow-xl backdrop-blur-sm text-sm sm:text-lg min-w-[80px]">
                     <div className="flex items-center space-x-2">
                       <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>

@@ -807,7 +807,7 @@ const LiveMeeting = () => {
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
                   <DownloadOptions onChange={setDownloadOptions} />
-                  <AllHistory />
+                  <AllHistory NeedFor="Live Transcript Conversion"/>
                 </section>
               </div>
             )}

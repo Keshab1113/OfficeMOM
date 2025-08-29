@@ -182,7 +182,7 @@ const GenerateNotes = () => {
           <div className=" min-h-screen">
             <Heading
               heading="Generate Notes from Audio/Video Files"
-              subHeading="Upload recorded audio and get notes generated within seconds."
+              subHeading="Upload recorded audio/video and get notes generated within seconds."
             />
 
             {showModal ? (
@@ -434,7 +434,7 @@ const GenerateNotes = () => {
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
                   <DownloadOptions onChange={setDownloadOptions} />
-                  <AllHistory />
+                  <AllHistory NeedFor={"Generate Notes Conversion"}/>
                 </section>
               </div>
             )}

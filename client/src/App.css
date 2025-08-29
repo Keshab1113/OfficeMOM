@@ -16,6 +16,23 @@
   border: 1px solid transparent;
 }
 
+.hidescrollbar {
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.hidescrollbar::-webkit-scrollbar:vertical {
+  display: none;
+}
+
+.hidescrollbar {
+  scrollbar-width: thin;
+}
+.hidescrollbar::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+
+
 /* Firefox */
 body {
   scrollbar-width: thin;
@@ -298,3 +315,32 @@ body {
 .animate-spin-slow {
   animation: spin-slow 2s linear infinite;
 }
+
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
