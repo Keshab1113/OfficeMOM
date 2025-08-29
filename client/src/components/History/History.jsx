@@ -97,7 +97,7 @@ const AllHistory = ({ title, sampleHistory }) => {
             <ol className="space-y-3">
               {(history.length > 2 ? [...history, ...history] : history).map(
                 (item, index) => {
-                  const HDate = new Date(item.date || item.time);
+                  const HDate = new Date(item.date || item.uploadedAt);
                   const localDate =
                     HDate.getFullYear() +
                     "-" +
