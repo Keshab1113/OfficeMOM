@@ -29,6 +29,13 @@ const audioSlice = createSlice({
         target.duration = duration;
       }
     },
+    updateNeedToShow: (state, action) => {
+      const { id, needToShow } = action.payload;
+      const target = state.previews.find((item) => item.id === id);
+      if (target) {
+        target.needToShow = needToShow;
+      }
+    },
   },
 });
 
@@ -38,5 +45,6 @@ export const {
   clearAudioPreviews,
   removeAudioPreview,
   updateAudioDuration,
+  updateNeedToShow,
 } = audioSlice.actions;
 export default audioSlice.reducer;

@@ -34,10 +34,28 @@ export default function MultipleAudioPlayer({
 
   const { token } = useSelector((state) => state.auth);
   const { previews } = useSelector((state) => state.audio);
+  const lastPreview = previews.at(-1);
+
   useEffect(() => {
-    setAudioData(previews || []);
-    setLoading(false);
-  }, [previews]);
+    const fetchHistory = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const incomplete = res.data.filter(
+          (item) =>
+            item.isMoMGenerated === 0 &&
+            item.source === "Live Transcript Conversion"
+        );
+        setAudioData(incomplete);
+        setLoading(false);
+      } catch (err) {
+        console.error("Get history error:", err);
+      }
+    };
+    fetchHistory();
+  }, [token, previews]);
 
   useEffect(() => {
     if (!isPreviewProcessing) {
@@ -144,7 +162,6 @@ export default function MultipleAudioPlayer({
       );
 
       setAudioData((prev) => prev.filter((item) => item.id !== audioId));
-      // dispatch(clearAudioPreviews());
       dispatch(removeAudioPreview(audioId));
       addToast("success", `Audio ${audioId} deleted successfully`);
     } catch (err) {
@@ -176,7 +193,7 @@ export default function MultipleAudioPlayer({
           </h4>
           <button
             onClick={() => setShowAllAudio(!showAllAudio)}
-            disabled={audioData.length===0}
+            disabled={audioData.length === 0}
             className="flex items-center disabled:cursor-not-allowed gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 border border-gray-200 dark:border-gray-700"
           >
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -197,96 +214,111 @@ export default function MultipleAudioPlayer({
           style={{ maxHeight: showAllAudio ? "300px" : "0" }}
         >
           <div className="space-y-4">
-            {audioData.map((audio, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-xl p-4 border border-gray-200/70 dark:border-gray-700/70"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                      {getTimeAgo(audio.uploadedAt)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(audio.id)}
-                    disabled={processingId !== null} 
-                    className="flex cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2 md:px-4 px-2 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
-                  >
-                    <span className=" md:block hidden">Delete</span>
-                    <Trash className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={async () => {
-                      setProcessingId(audio.id);
-                      await onContinue(audio.audioUrl);
-                      handleDelete(audio.id);
-                    }}
-                    disabled={processingId !== null} 
-                    className="flex cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center md:ml-4 ml-2 gap-2 md:px-4 px-2 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
-                  >
-                    {processingId === audio.id ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className=" md:block hidden">Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className=" md:block hidden">Continue</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
+            {audioData.map((audio, index) => {
+              const isLastPreview =
+                audio?.id === lastPreview?.id &&
+                lastPreview.needToShow === true;
+              return (
+                <div
+                  key={index}
+                  className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-xl p-4 border border-gray-200/70 dark:border-gray-700/70"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex-1 md:max-w-[60%] max-w-[70%] overflow-hidden">
+                      <p className="text-base text-gray-800 dark:text-gray-300 font-medium truncate max-w-[90%]">
+                        {audio.title || "Unknown Meeting"}
+                      </p>
+                      <span className="text-[12px] text-gray-600 dark:text-gray-300">
+                        {getTimeAgo(audio.uploadedAt)}
+                      </span>
+                    </div>
 
-                <audio
-                  ref={(el) => (audioRefs.current[index] = el)}
-                  src={audio.audioUrl}
-                  onTimeUpdate={() => handleTimeUpdate(index)}
-                  onLoadedMetadata={() => handleLoadedMetadata(index)}
-                  onError={(e) => console.error("Audio load error:", e)}
-                  onEnded={() =>
-                    setPlayingStates((prev) => ({ ...prev, [index]: false }))
-                  }
-                  className="hidden"
-                />
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => togglePlayPause(index)}
-                    className="group cursor-pointer relative w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-105"
-                  >
-                    {playingStates[index] ? (
-                      <Pause className="w-4 h-4 text-white relative z-10" />
-                    ) : (
-                      <Play className="w-4 h-4 text-white ml-0.5 relative z-10" />
-                    )}
-                  </button>
-
-                  <div className="flex-1">
-                    <div
-                      className="w-full h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer relative overflow-hidden group"
-                      onClick={(e) => handleProgressClick(e, index)}
+                    <button
+                      onClick={() => handleDelete(audio.id)}
+                      disabled={processingId !== null || isLastPreview}
+                      className="flex cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2 md:px-4 px-2 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
                     >
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full relative transition-all duration-150 ease-out"
-                        style={{ width: `${getProgressPercent(index)}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-2 text-xs text-gray-600 dark:text-gray-400">
-                      <span>{formatTime(currentTimes[index])}</span>
-                      <span>{formatTime(durations[index])}</span>
-                    </div>
+                      <span className=" md:block hidden">Delete</span>
+                      <Trash className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setProcessingId(audio.id);
+                        await onContinue(audio.audioUrl);
+                        handleDelete(audio.id);
+                      }}
+                      disabled={processingId !== null || isLastPreview}
+                      className="flex cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center md:ml-4 ml-2 gap-2 md:px-4 px-2 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
+                    >
+                      {processingId === audio.id ? (
+                        <>
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                          <span className=" md:block hidden">
+                            Processing...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className=" md:block hidden">Create MoM</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  <div className="flex items-center justify-center w-8 h-8 bg-gray-200/50 dark:bg-gray-700/50 rounded-full">
-                    <Volume2 className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                  <audio
+                    ref={(el) => (audioRefs.current[index] = el)}
+                    src={audio.audioUrl}
+                    onTimeUpdate={() => handleTimeUpdate(index)}
+                    onLoadedMetadata={() => handleLoadedMetadata(index)}
+                    onError={(e) => console.error("Audio load error:", e)}
+                    onEnded={() =>
+                      setPlayingStates((prev) => ({ ...prev, [index]: false }))
+                    }
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => togglePlayPause(index)}
+                      className="group cursor-pointer relative w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-105"
+                    >
+                      {playingStates[index] ? (
+                        <Pause className="w-4 h-4 text-white relative z-10" />
+                      ) : (
+                        <Play className="w-4 h-4 text-white ml-0.5 relative z-10" />
+                      )}
+                    </button>
+
+                    <div className="flex-1">
+                      <div
+                        className="w-full h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer relative overflow-hidden group"
+                        onClick={(e) => handleProgressClick(e, index)}
+                      >
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full relative transition-all duration-150 ease-out"
+                          style={{ width: `${getProgressPercent(index)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-2 text-xs text-gray-600 dark:text-gray-400">
+                        <span>{formatTime(currentTimes[index])}</span>
+                        <span>{formatTime(durations[index])}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-center w-8 h-8 bg-gray-200/50 dark:bg-gray-700/50 rounded-full">
+                      <Volume2 className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-        {audioData.length===0 && <h4 className=" text-sm text-center dark:text-white opacity-50">No Data Found</h4>}
+        {audioData.length === 0 && (
+          <h4 className=" text-sm text-center dark:text-white opacity-50">
+            No Data Found
+          </h4>
+        )}
         <div className="mt-6 flex justify-center">
           <div className="w-12 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full"></div>
         </div>

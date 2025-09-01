@@ -9,7 +9,6 @@ const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
 const TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";
 
 async function uploadFileToAssemblyAI(buffer, filename) {
-
   const headers = {
     authorization: ASSEMBLY_KEY,
     "transfer-encoding": "chunked",
@@ -59,7 +58,10 @@ export const transcribeAudio = async (req, res) => {
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
   try {
-    const audioUrl = await uploadFileToAssemblyAI(file.buffer, file.originalname);
+    const audioUrl = await uploadFileToAssemblyAI(
+      file.buffer,
+      file.originalname
+    );
     const created = await createTranscription(audioUrl);
     const result = await pollTranscription(created.id);
     // fs.unlink(file.path, () => {});
@@ -110,9 +112,14 @@ export const uploadAudio = async (req, res) => {
       return res.status(400).json({ message: "No audio file uploaded" });
     }
 
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: no user ID" });
+    }
+
     const buffer = req.file.buffer;
     const originalName = req.file.originalname;
+
     const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
 
     const [user] = await db.query("SELECT id FROM users WHERE id = ?", [
@@ -122,21 +129,44 @@ export const uploadAudio = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const curDate = new Date();
+    const year = curDate.getFullYear();
+    const month = String(curDate.getMonth() + 1).padStart(2, "0");
+    const day = String(curDate.getDate()).padStart(2, "0");
+    const hours = String(curDate.getHours()).padStart(2, "0");
+    const minutes = String(curDate.getMinutes()).padStart(2, "0");
+    const seconds = String(curDate.getSeconds()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
     const [result] = await db.query(
-      "INSERT INTO user_audios (userId, audioUrl, uploadedAt) VALUES (?, ?, NOW())",
-      [userId, ftpUrl]
+      "INSERT INTO history (user_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        userId,
+        originalName,
+        ftpUrl,
+        formattedDate,
+        false,
+        "Live Transcript Conversion",
+        null,
+        null,
+      ]
     );
 
-    const newId = result.insertId;
     res.status(200).json({
       message: "Audio uploaded successfully",
-      id: newId,
+      id: result.insertId,
       userId,
+      title: originalName,
       audioUrl: ftpUrl,
-      uploadedAt: new Date().toISOString(),
+      isMoMGenerated: false,
+      uploadedAt: formattedDate,
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error while uploading audio" });
+    console.error("Upload audio error:", err);
+    res.status(500).json({
+      message: "Server error while uploading audio",
+      error: err.message,
+    });
   }
 };
 
@@ -165,19 +195,24 @@ export const deleteAudio = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
+    // First check if the record exists for this user
     const [audio] = await db.query(
-      "SELECT audioUrl FROM user_audios WHERE id = ? AND userId = ?",
+      "SELECT audioUrl FROM history WHERE id = ? AND user_id = ?",
       [id, userId]
     );
+
     if (audio.length === 0) {
       return res.status(404).json({ message: "Audio not found" });
     }
 
     const audioUrl = audio[0].audioUrl;
-    await db.query("DELETE FROM user_audios WHERE id = ? AND userId = ?", [
+
+    // Now delete the record
+    await db.query("DELETE FROM history WHERE id = ? AND user_id = ?", [
       id,
       userId,
     ]);
+
     res.status(200).json({
       message: "Audio deleted successfully",
       id,
@@ -187,3 +222,53 @@ export const deleteAudio = async (req, res) => {
     res.status(500).json({ message: "Server error while deleting audio" });
   }
 };
+
+export const updateAudioHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const { data } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: "Missing history record ID" });
+    }
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: no user ID" });
+    }
+
+    // Ensure record belongs to user
+    const [existing] = await db.query(
+      "SELECT id FROM history WHERE id = ? AND user_id = ?",
+      [id, userId]
+    );
+    if (existing.length === 0) {
+      return res.status(404).json({ message: "History record not found" });
+    }
+
+    // Generate current timestamp
+    const curDate = new Date();
+    const year = curDate.getFullYear();
+    const month = String(curDate.getMonth() + 1).padStart(2, "0");
+    const day = String(curDate.getDate()).padStart(2, "0");
+    const hours = String(curDate.getHours()).padStart(2, "0");
+    const minutes = String(curDate.getMinutes()).padStart(2, "0");
+    const seconds = String(curDate.getSeconds()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+    // Update in one query since all fields always updated
+    await db.query(
+      "UPDATE history SET isMoMGenerated = ?, date = ?, data = ? WHERE id = ? AND user_id = ?",
+      [1, formattedDate, data ? JSON.stringify(data) : null, id, userId]
+    );
+
+    res.status(200).json({ message: "History record updated successfully" });
+  } catch (err) {
+    console.error("Update history error:", err);
+    res.status(500).json({
+      message: "Server error while updating history",
+      error: err.message,
+    });
+  }
+};
+
+

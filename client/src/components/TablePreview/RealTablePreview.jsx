@@ -58,11 +58,10 @@ const RealTablePreview = ({ showFullData, onSaveTable }) => {
   };
 
   return (
-    <section className="p-0 mb-10 mt-10 md:mt-10 bg-amber-50 dark:bg-gray-800 rounded-2xl w-full overflow-hidden lg:max-w-[70vw] max-w-[90vw] mx-auto">
+    <section className="p-0 mb-6 mt-10 md:mt-6 bg-amber-50 dark:bg-gray-800 rounded-2xl w-full overflow-hidden lg:max-w-[70vw] max-w-[90vw] mx-auto">
       <div className="block overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-800">
         {/* Horizontally Scrollable Table for All Screen Sizes */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[50vh] hidescrollbar">
-
+        <div className="overflow-x-auto overflow-y-auto max-h-[71vh] hidescrollbar">
           <div className="min-w-max">
             <table className="w-full border-collapse min-w-[800px]">
               <thead>
@@ -102,9 +101,9 @@ const RealTablePreview = ({ showFullData, onSaveTable }) => {
                   >
                     <td className=" px-3 sm:px-8 py-3 sm:py-6 text-center border-r border-gray-100 dark:border-gray-700 ">
                       <div className="flex justify-center">
-                      <div className="w-8 h-8 my-auto sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 dark:from-blue-600 dark:via-indigo-600 dark:to-purple-700 rounded-lg sm:rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-lg  group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ">
-                        {rowIndex + 1}
-                      </div>
+                        <div className="w-8 h-8 my-auto sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 dark:from-blue-600 dark:via-indigo-600 dark:to-purple-700 rounded-lg sm:rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-lg  group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ">
+                          {rowIndex + 1}
+                        </div>
                       </div>
                     </td>
                     {allColumns.map((col) => {
@@ -207,7 +206,7 @@ const RealTablePreview = ({ showFullData, onSaveTable }) => {
           </div>
         </div>
       </div>
-      <div className="md:py-15 py-6 flex flex-col sm:flex-row justify-center gap-4   w-fit mx-auto ">
+      <div className="py-6 flex flex-col sm:flex-row justify-center gap-4 w-fit mx-auto ">
         <button
           onClick={handleAddRow}
           disabled={isSubmitting}

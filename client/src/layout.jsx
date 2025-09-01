@@ -1,8 +1,9 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Footer from "./components/Footer/Footer";
 import SideBar from "./components/SideBar/SideBar";
 
 function Layout() {
+  const location = useLocation();
   const hideSidebar = location.pathname.startsWith('/join-meeting/');
   return (
     <section className=" max-w-screen overflow-x-hidden">

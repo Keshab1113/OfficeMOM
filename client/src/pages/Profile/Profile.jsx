@@ -28,7 +28,7 @@ const Profile = () => {
           <div className=" min-h-screen lg:px-20 md:px-10 px-4 py-20 lg:py-28 flex flex-col md:gap-20 gap-10">
             <ProfilImageUploader />
             <div className=" grid md:grid-cols-2 grid-cols-1 gap-10 ">
-              <History title="History - Meeting Under Progress" sampleHistory={previews}/>
+              <History title="History - Meeting Under Progress"/>
               <History />
             </div>
           </div>

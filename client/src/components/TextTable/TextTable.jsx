@@ -142,22 +142,18 @@ export const saveTranscriptFiles = async (
   }
 
   try {
-    const formData = new FormData();
-    // eslint-disable-next-line no-unused-vars
-    attachments.forEach((file, idx) => {
-      formData.append(`files`, file.blob, file.fileName);
-    });
-    formData.append("email", email);
-    formData.append("name", fullName);
-
     await axios.post(
       `${import.meta.env.VITE_BACKEND_URL}/api/send-meeting-email`,
-      formData,
+      {
+        email,
+        name: fullName,
+        tableData,
+        downloadOptions
+      },
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-
     addToast("success", "Files processed and emailed successfully");
   } catch (err) {
     console.error(err);

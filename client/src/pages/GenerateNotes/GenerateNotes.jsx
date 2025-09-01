@@ -139,7 +139,15 @@ const GenerateNotes = () => {
 
   const HandleSaveTable = async (data) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
-    const dateCreated = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+
+    const dateCreated = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     const historyData = {
       source: "Generate Notes Conversion",
       date: dateCreated,
@@ -180,13 +188,14 @@ const GenerateNotes = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
-            <Heading
-              heading="Generate Notes from Audio/Video Files"
-              subHeading="Upload recorded audio/video and get notes generated within seconds."
-            />
-
+            {!showModal && (
+              <Heading
+                heading="Generate Notes from Audio/Video Files"
+                subHeading="Upload recorded audio/video and get notes generated within seconds."
+              />
+            )}
             {showModal ? (
-              <section className=" p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen">
+              <section className=" p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen flex justify-center items-center h-full">
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
@@ -434,7 +443,7 @@ const GenerateNotes = () => {
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
                   <DownloadOptions onChange={setDownloadOptions} />
-                  <AllHistory NeedFor={"Generate Notes Conversion"}/>
+                  <AllHistory NeedFor={"Generate Notes Conversion"} />
                 </section>
               </div>
             )}
