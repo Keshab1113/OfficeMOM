@@ -256,3 +256,97 @@ export const uploadProfilePicture = async (req, res) => {
     res.status(500).json({ message: "Server error while uploading profile picture" });
   }
 };
+
+export const sendPasswordResetOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email)
+      return res.status(400).json({ message: "Email is required" });
+
+    const [rows] = await db.query("SELECT id, fullName FROM users WHERE email = ?", [email]);
+    if (rows.length === 0) {
+      return res.status(200).json({ message: "If the email exists, an OTP has been sent" });
+    }
+
+    const otp = String(crypto.randomInt(100000, 1000000)).padStart(6, "0");
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await db.query(
+      "UPDATE users SET resetOtp = ?, resetOtpExpires = ? WHERE email = ?",
+      [otp, expires, email]
+    );
+
+    await transporter.sendMail({
+      from: `"OfficeMoM" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: "Password Reset OTP - OfficeMoM",
+      html: `
+        <div style="font-family:Arial,sans-serif">
+          <h2>OfficeMoM Password Reset</h2>
+          <p>Hello${rows[0].fullName ? ` ${rows[0].fullName}` : ""},</p>
+          <p>Use the OTP below to reset your password. It is valid for <b>10 minutes</b>.</p>
+          <div style="margin:20px 0">
+            <span style="display:inline-block;padding:12px 24px;background:#4a90e2;color:#fff;font-size:20px;border-radius:6px;letter-spacing:2px">${otp}</span>
+          </div>
+          <p>If you did not request this, you can ignore this email.</p>
+          <p>— OfficeMoM Team</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({ message: "OTP sent if email exists" });
+  } catch (err) {
+    console.error("sendPasswordResetOtp error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const resetPasswordWithOtp = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP, and newPassword are required" });
+    }
+
+    const [rows] = await db.query(
+      "SELECT id, resetOtp, resetOtpExpires FROM users WHERE email = ?",
+      [email]
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ message: "Invalid email or OTP" });
+    }
+
+    const user = rows[0];
+    if (!user.resetOtp || !user.resetOtpExpires) {
+      return res.status(400).json({ message: "No active reset request. Please request a new OTP." });
+    }
+
+    const isExpired = new Date(user.resetOtpExpires).getTime() < Date.now();
+    if (isExpired) {
+      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+    }
+
+    if (String(user.resetOtp) !== String(otp)) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+    const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword);
+    if (!strong) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters long and include uppercase, lowercase, and a number",
+      });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await db.query(
+      "UPDATE users SET password = ?, resetOtp = NULL, resetOtpExpires = NULL WHERE email = ?",
+      [hashed, email]
+    );
+
+    return res.status(200).json({ message: "Password reset successful" });
+  } catch (err) {
+    console.error("resetPasswordWithOtp error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

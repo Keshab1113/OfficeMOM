@@ -84,7 +84,7 @@ export const saveTranscriptFiles = async (
           },
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "SmartMom", bold: true, size: 48 })],
+              children: [new TextRun({ text: "OfficeMoM", bold: true, size: 48 })],
               alignment: AlignmentType.CENTER,
             }),
             new Paragraph({

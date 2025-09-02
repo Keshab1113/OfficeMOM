@@ -131,7 +131,7 @@ const Signup = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="flex items-center justify-center relative z-20 w-full">
           <form
-            className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border border-gray-200 dark:border-gray-700 p-8 rounded-2xl shadow-2xl w-[90%] md:w-[50%] transform transition-all duration-500 hover:scale-105"
+            className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border border-gray-200 dark:border-gray-700 p-8 rounded-2xl shadow-2xl w-[90%] md:w-[50%] max-w-[90vw] transform transition-all duration-500 hover:scale-105"
             onSubmit={handleSignupForm}
           >
             <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full mx-auto flex items-center justify-center shadow-lg mb-4 animate-bounce-slow">
@@ -341,7 +341,7 @@ const Signup = () => {
                     </p>
                   </div>
 
-                  <div className="flex justify-center space-x-3 mb-6">
+                  <div className="flex justify-center md:space-x-3 space-x-2 mb-6">
                     {otp.map((digit, index) => (
                       <input
                         key={index}
@@ -350,7 +350,7 @@ const Signup = () => {
                         inputMode="numeric"
                         pattern="[0-9]*"
                         maxLength="1"
-                        className="w-14 h-14 text-center text-2xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300 text-gray-900 dark:text-white shadow-sm hover:border-blue-400 dark:hover:border-blue-500"
+                        className="md:w-14 md:h-14 w-11 h-11 text-center text-2xl font-bold bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300 text-gray-900 dark:text-white shadow-sm hover:border-blue-400 dark:hover:border-blue-500"
                         value={digit}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}

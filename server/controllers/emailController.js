@@ -84,13 +84,13 @@ const sendMeetingEmail = async (req, res) => {
     });
 
     const mailOptions = {
-      from: `"SmartMom Notifications" <${process.env.MAIL_USER}>`,
+      from: `"OfficeMoM Notifications" <${process.env.MAIL_USER}>`,
       to: email,
-      subject: "Your SmartMom Meeting Notes",
+      subject: "Your OfficeMoM Meeting Notes",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 700px; margin:auto;">
           <div style="background-color:#007bff; padding:20px; text-align:center; color:white; font-weight:bold; font-size:18px;">
-            SmartMom
+            OfficeMoM
           </div>
           <div style="padding:30px; background-color:#fff; color:#333;">
             <p>Dear <strong>${name}</strong>,</p>
@@ -99,10 +99,10 @@ const sendMeetingEmail = async (req, res) => {
             <div style="margin-top:20px;text-align:center;">
               ${buttonsHtml}
             </div>
-            <p style="margin-top:20px;">Best regards,<br/><strong>SmartMom Team</strong></p>
+            <p style="margin-top:20px;">Best regards,<br/><strong>OfficeMoM Team</strong></p>
           </div>
           <div style="background-color:#f5f5f5; text-align:center; padding:10px; font-size:12px; color:#777;">
-            SmartMom • Automated Meeting Organizer
+            OfficeMoM • Automated Meeting Organizer
           </div>
         </div>
       `,

@@ -10,11 +10,16 @@ export const signupSchema = Joi.object({
     "string.empty": "Email is required",
     "string.email": "Invalid email format",
   }),
-  password: Joi.string().min(6).max(30).required().messages({
-    "string.empty": "Password is required",
-    "string.min": "Password must be at least 6 characters",
-    "string.max": "Password must be less than or equal to 30 characters",
-  }),
+  password: Joi.string()
+    .pattern(
+      new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,30}$")
+    )
+    .required()
+    .messages({
+      "string.empty": "Password is required",
+      "string.pattern.base":
+        "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character",
+    }),
 });
 
 export const loginSchema = Joi.object({

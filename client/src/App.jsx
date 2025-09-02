@@ -14,6 +14,7 @@ import GenerateNotes from "./pages/GenerateNotes/GenerateNotes";
 import MeetingHistory from "./pages/MeetingHistory/MeetingHistory";
 import JoinMeeting from "./pages/JoinMeeting/JoinMeeting";
 import AboutUs from "./pages/AboutUs/AboutUs";
+import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
 
 function App() {
   return (
@@ -74,6 +75,12 @@ function App() {
               <ProtectedRoute>
                 <AboutUs />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+                <ForgotPassword/>
             }
           />
           <Route path="*" element={<NoPage/>} />

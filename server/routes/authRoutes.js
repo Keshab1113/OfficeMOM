@@ -6,6 +6,8 @@ import {
   resendOtp,
   updateUserProfile,
   uploadProfilePicture,
+  sendPasswordResetOtp,
+  resetPasswordWithOtp,
 } from "../controllers/authController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import multer from "multer";
@@ -24,5 +26,7 @@ router.post(
   upload.single("profilePic"),
   uploadProfilePicture
 );
+router.post("/forgot-password/send-otp", sendPasswordResetOtp);
+router.post("/forgot-password/reset", resetPasswordWithOtp);
 
 export default router;
