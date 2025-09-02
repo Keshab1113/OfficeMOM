@@ -23,6 +23,7 @@ const GenerateNotes = () => {
   const [activeTab, setActiveTab] = useState("computer");
   const [selectedFile, setSelectedFile] = useState(null);
   const [driveUrl, setDriveUrl] = useState("");
+  const [detectLanguage, setDetectLanguage] = useState("");
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -78,8 +79,6 @@ const GenerateNotes = () => {
       apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;
     }
 
-    formData.append("language_code", "en_us");
-
     try {
       const resp = await fetch(apiUrl, {
         method: "POST",
@@ -91,6 +90,7 @@ const GenerateNotes = () => {
       }
 
       const data = await resp.json();
+      setDetectLanguage(data.language);
       setFinalTranscript(data.text);
       setShowModal(true);
       setSelectedFile(null);
@@ -118,6 +118,7 @@ const GenerateNotes = () => {
           body: JSON.stringify({
             transcript: finalTranscript,
             headers: headers,
+            detectLanguage: detectLanguage,
           }),
         }
       );
@@ -170,6 +171,8 @@ const GenerateNotes = () => {
     }
   };
 
+  
+
   return (
     <>
       <Helmet>
@@ -199,6 +202,7 @@ const GenerateNotes = () => {
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
+                    detectLanguage={detectLanguage}
                     onSaveTable={(data) => HandleSaveTable(data)}
                   />
                 ) : (

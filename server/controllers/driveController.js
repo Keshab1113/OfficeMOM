@@ -23,7 +23,7 @@ async function uploadFileToAssemblyAI(buffer) {
 async function createTranscription(audioUrl) {
   const res = await axios.post(
     TRANSCRIPT_URL,
-    { audio_url: audioUrl },
+    { audio_url: audioUrl, language_detection: true, },
     { headers: { Authorization: ASSEMBLY_KEY, "Content-Type": "application/json" } }
   );
   return res.data;
@@ -113,6 +113,7 @@ export const processDrive = async (req, res) => {
 
     res.json({
       text: result.text,
+      language: result.language_code,
       wordBase64: docxBuffer.toString("base64"),
       excelBase64: Buffer.from(excelBuffer).toString("base64"),
     });

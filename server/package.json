@@ -11,8 +11,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@deepgram/sdk": "^4.11.2",
-    "archiver": "^7.0.1",
     "assemblyai": "^4.15.0",
     "axios": "^1.11.0",
     "basic-ftp": "^5.0.5",

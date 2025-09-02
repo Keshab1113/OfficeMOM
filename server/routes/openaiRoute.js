@@ -11,7 +11,7 @@ const client = new OpenAI({
 });
 
 router.post("/convert-transcript", async (req, res) => {
-  const { transcript, headers } = req.body;
+  const { transcript, headers, detectLanguage } = req.body;
 
   if (!transcript || !Array.isArray(headers) || headers.length === 0) {
     return res.status(400).json({ error: "Transcript and headers are required" });

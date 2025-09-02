@@ -1,16 +1,38 @@
 import nodemailer from "nodemailer";
+import uploadToFTP from "../config/uploadToFTP.js";
 
 const sendMeetingEmail = async (req, res) => {
-  const { name, email, tableData, downloadOptions } = req.body;
+  let { name, email, tableData, downloadOptions } = req.body;
+  if (typeof downloadOptions === "string") {
+    try {
+      downloadOptions = JSON.parse(downloadOptions);
+    } catch {
+      downloadOptions = {};
+    }
+  }
   const { word, excel } = downloadOptions || {};
 
-  if (!email || !Array.isArray(tableData)) {
+  const parsedTableData = JSON.parse(tableData || "[]");
+
+  if (!email || !Array.isArray(parsedTableData)) {
     return res
       .status(400)
-      .json({ success: false, message: "Missing email or tableData" });
+      .json({ success: false, message: "Missing email or invalid tableData" });
   }
 
-  const headers = Object.keys(tableData[0] || {});
+  let uploadedFiles = [];
+  if (req.files && req.files.length > 0) {
+    for (const file of req.files) {
+      const ftpUrl = await uploadToFTP(
+        file.buffer,
+        file.originalname,
+        "meeting_notes"
+      );
+      uploadedFiles.push({ name: file.originalname, url: ftpUrl });
+    }
+  }
+
+  const headers = Object.keys(parsedTableData[0] || {});
   const tableHeaders = headers.includes("Sr No")
     ? headers
     : ["Sr No", ...headers];
@@ -29,7 +51,7 @@ const sendMeetingEmail = async (req, res) => {
         </tr>
       </thead>
       <tbody>
-        ${tableData
+        ${parsedTableData
           .map(
             (row, i) => `
           <tr>
@@ -49,23 +71,29 @@ const sendMeetingEmail = async (req, res) => {
   </div>
 `;
 
+  const wordFile = uploadedFiles.find((f) =>
+    f.name.toLowerCase().endsWith(".docx")
+  );
+  const excelFile = uploadedFiles.find((f) =>
+    f.name.toLowerCase().endsWith(".xlsx")
+  );
 
   // Buttons for download
   let buttonsHtml = "";
-  if (word) {
-    buttonsHtml += `<a href="${process.env.FRONTEND_URL}/download/word" 
+  if (word && wordFile) {
+    buttonsHtml += `<a href="${wordFile.url}" 
                       style="display:inline-block;margin:10px;padding:10px 20px;background:#28a745;color:white;text-decoration:none;border-radius:4px;">
                       Download Word File
                     </a>`;
   }
-  if (excel) {
-    buttonsHtml += `<a href="${process.env.FRONTEND_URL}/download/excel" 
+  if (excel && excelFile) {
+    buttonsHtml += `<a href="${excelFile.url}" 
                       style="display:inline-block;margin:10px;padding:10px 20px;background:#007bff;color:white;text-decoration:none;border-radius:4px;">
                       Download Excel File
                     </a>`;
   }
-  if (!word && !excel) {
-    buttonsHtml += `<a href="${process.env.FRONTEND_URL}/download/word"
+  if (!word && !excel && wordFile) {
+    buttonsHtml += `<a href="${wordFile.url}"
                       style="display:inline-block;margin:10px;padding:10px 20px;background:#28a745;color:white;text-decoration:none;border-radius:4px;">
                       Download Word File
                     </a>`;
@@ -109,7 +137,11 @@ const sendMeetingEmail = async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ success: true, message: "Email sent successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Email sent successfully",
+      files: uploadedFiles,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Email failed to send" });

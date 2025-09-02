@@ -28,7 +28,7 @@ export const countryToLanguage = {
   'Portugal': 'Portuguese',
   'Russia': 'Russian',
   'China': 'Chinese (Simplified)',
-  'India': 'English', // English is widely used in India
+  'India': 'English',
   'Brazil': 'Portuguese',
   'Mexico': 'Spanish',
   'Argentina': 'Spanish',
@@ -49,7 +49,7 @@ export const countryToLanguage = {
   'Uruguay': 'Spanish',
   'Bolivia': 'Spanish',
   'Netherlands': 'Dutch',
-  'Belgium': 'Dutch', // Flemish (Dutch) is primary in Flanders
+  'Belgium': 'Dutch',
   'Sweden': 'Swedish',
   'Finland': 'Finnish',
   'Norway': 'Norwegian',
@@ -62,7 +62,7 @@ export const countryToLanguage = {
   'Czech Republic': 'Czech',
   'Slovakia': 'Slovak',
   'Austria': 'German',
-  'Switzerland': 'German', // German is most widely spoken
+  'Switzerland': 'German',
   'Greece': 'Greek',
   'Turkey': 'Turkish',
   'Israel': 'Hebrew',
@@ -80,14 +80,14 @@ export const countryToLanguage = {
   'Philippines': 'Filipino',
   'South Korea': 'Korean',
   'North Korea': 'Korean',
-  'South Africa': 'English', // Along with Afrikaans, Zulu, etc.
-  'Nigeria': 'English', // Along with Hausa, Yoruba, Igbo
-  'Kenya': 'English', // Along with Swahili
+  'South Africa': 'English',
+  'Nigeria': 'English',
+  'Kenya': 'English',
   'Ethiopia': 'Amharic',
   'Morocco': 'Arabic',
   'Algeria': 'Arabic',
   'Tunisia': 'Arabic',
-  'Canada': 'English', // English is more widely spoken than French
+  'Canada': 'English',
   'Australia': 'English',
   'New Zealand': 'English',
   'United Kingdom': 'English',

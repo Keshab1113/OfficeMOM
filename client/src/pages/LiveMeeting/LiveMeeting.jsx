@@ -52,6 +52,7 @@ const LiveMeeting = () => {
     word: false,
     excel: false,
   });
+  const [detectLanguage, setDetectLanguage] = useState("");
   const [requests, setRequests] = useState([]);
   const timerRef = useRef(null);
   const localMicRef = useRef(null);
@@ -499,6 +500,7 @@ const LiveMeeting = () => {
       );
       setShowModal(true);
       setFinalTranscript(res.data.text || "");
+      setDetectLanguage(res.data.language);
       setRecordedBlob(false);
       setIsProcessing(false);
     } catch (error) {
@@ -595,6 +597,7 @@ const LiveMeeting = () => {
           body: JSON.stringify({
             transcript: finalTranscript,
             headers: headers,
+            detectLanguage: detectLanguage,
           }),
         }
       );
@@ -688,6 +691,7 @@ const LiveMeeting = () => {
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
+                    detectLanguage={detectLanguage}
                     onSaveTable={(data) => HandleSaveTable(data)}
                   />
                 ) : (

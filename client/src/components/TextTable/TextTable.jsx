@@ -122,7 +122,7 @@ export const saveTranscriptFiles = async (
   if (word) {
     const wordBlob = await createWordFile();
     const wordFileName = `Mom.docx`;
-    saveAs(wordBlob, wordFileName);
+    saveAs(wordBlob, wordFileName); // download locally
     attachments.push({ blob: wordBlob, fileName: wordFileName });
   }
 
@@ -130,28 +130,36 @@ export const saveTranscriptFiles = async (
     const excelBuffer = createExcelFile();
     const excelBlob = new Blob([excelBuffer], { type: "application/octet-stream" });
     const excelFileName = `Mom.xlsx`;
-    saveAs(excelBlob, excelFileName);
+    saveAs(excelBlob, excelFileName); // download locally
     attachments.push({ blob: excelBlob, fileName: excelFileName });
   }
 
   if (!word && !excel) {
     const wordBlob = await createWordFile();
     const wordFileName = `Mom.docx`;
-    // saveAs(wordBlob, wordFileName);
     attachments.push({ blob: wordBlob, fileName: wordFileName });
   }
+
+  // --- SEND FILES USING FORMDATA ---
+  const formData = new FormData();
+  formData.append("email", email);
+  formData.append("name", fullName);
+  formData.append("tableData", JSON.stringify(tableData));
+  formData.append("downloadOptions", JSON.stringify(downloadOptions));
+
+  attachments.forEach((file) => {
+    formData.append("files", file.blob, file.fileName);
+  });
 
   try {
     await axios.post(
       `${import.meta.env.VITE_BACKEND_URL}/api/send-meeting-email`,
+      formData,
       {
-        email,
-        name: fullName,
-        tableData,
-        downloadOptions
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       }
     );
     addToast("success", "Files processed and emailed successfully");
