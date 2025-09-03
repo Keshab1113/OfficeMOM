@@ -198,7 +198,7 @@ const GenerateNotes = () => {
               />
             )}
             {showModal ? (
-              <section className=" p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen flex justify-center items-center h-full">
+              <section className="  p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen flex justify-center items-center h-full">
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
@@ -213,7 +213,7 @@ const GenerateNotes = () => {
                 )}
               </section>
             ) : (
-              <div className="h-full w-full flex lg:flex-row flex-col pb-10">
+              <div className="h-full w-full flex lg:flex-row flex-col pb-10 ">
                 <section className="h-full pb-10 lg:w-[65%] w-screen md:px-10 px-4">
                   <Timing />
                   <div className="bg-white/80 mt-6 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/20 animate-fade-in-up">

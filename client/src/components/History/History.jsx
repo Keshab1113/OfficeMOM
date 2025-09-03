@@ -276,7 +276,7 @@ const AllHistory = ({ title, NeedFor }) => {
                               );
                               setIsPaused(menuOpenId !== item.id);
                             }}
-                            className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
+                            className="p-1.5 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
                           >
                             <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                           </motion.button>

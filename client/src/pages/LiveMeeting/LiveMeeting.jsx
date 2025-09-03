@@ -664,6 +664,11 @@ const LiveMeeting = () => {
     }
   };
 
+  const onRemove = () => {
+    setRecordedBlob(false);
+    dispatch(updateNeedToShow({ id: lastPreview?.id, needToShow: false }));
+  };
+
   return (
     <>
       <Helmet>
@@ -822,7 +827,10 @@ const LiveMeeting = () => {
                     </div>
                   </div>
                   {lastPreview?.needToShow === true ? (
-                    <StylishAudioPreview onRecordAgain={handleRecordAgain} />
+                    <StylishAudioPreview
+                      onRecordAgain={handleRecordAgain}
+                      onRemove={onRemove}
+                    />
                   ) : (
                     recordedBlob && (
                       <div className=" text-xl font-medium text-black dark:text-white flex  justify-center items-center gap-2 my-4 py-4 px-4">
@@ -833,9 +841,15 @@ const LiveMeeting = () => {
                   )}
                   <button
                     onClick={handleStartMakingNotes}
-                    disabled={lastPreview?.needToShow ===false || isProcessing || previews.length === 0}
+                    disabled={
+                      lastPreview?.needToShow === false ||
+                      isProcessing ||
+                      previews.length === 0
+                    }
                     className={`mt-10 w-full py-4 rounded-lg text-white font-semibold flex justify-center items-center gap-2 ${
-                      lastPreview?.needToShow ===false || isProcessing || previews.length === 0
+                      lastPreview?.needToShow === false ||
+                      isProcessing ||
+                      previews.length === 0
                         ? "bg-gray-500 cursor-not-allowed"
                         : "bg-blue-400 hover:bg-blue-500 cursor-pointer"
                     }`}

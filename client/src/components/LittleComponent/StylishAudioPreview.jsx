@@ -3,9 +3,9 @@ import { motion, useAnimation } from "framer-motion";
 import React, { useState, useRef } from "react";
 import { Play, Pause, Volume2, RotateCcw, ArrowRight } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { updateAudioDuration, updateNeedToShow } from "../../redux/audioSlice";
+import { updateAudioDuration } from "../../redux/audioSlice";
 
-export default function StylishAudioPreview({ onRecordAgain }) {
+export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -109,14 +109,14 @@ export default function StylishAudioPreview({ onRecordAgain }) {
                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
                 className="absolute right-10 top-full mt-[-30px] w-fit flex flex-col bg-white dark:bg-gray-800 border dark:border-gray-600 border-amber-100 rounded-lg shadow-lg z-[9999]"
               >
-                <button
+                {/* <button
                   // onClick={() => startEditing(item)}
                   className="w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
                 >
                   Add Meeting Name
-                </button>
+                </button> */}
                 <button
-                  onClick={() => dispatch(updateNeedToShow({ id: lastPreview?.id, needToShow: false }))}
+                  onClick={() =>onRemove()}
                   className="w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400"
                 >
                   Remove the preview

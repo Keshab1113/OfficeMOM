@@ -139,7 +139,7 @@ const SideBar = () => {
         <div className="flex items-center gap-3">
           <motion.button
             onClick={toggleTheme}
-            className="p-2 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+            className="p-2 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
               shadow-lg border border-white/30 dark:border-gray-700/50
               hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
               text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
