@@ -13,15 +13,15 @@ const Signup = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [timer, setTimer] = useState(30);
+  const [timer, setTimer] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [canResend, setCanResend] = useState(false);
   const navigate = useNavigate();
   const { addToast } = useToast();
 
   const handleSignupForm = async (e) => {
-    setIsProcessing(true);
     e.preventDefault();
+    setIsProcessing(true);
     try {
       await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/signup`, {
         fullName,
@@ -31,6 +31,8 @@ const Signup = () => {
       addToast("success", "OTP sent to email");
       setIsProcessing(false);
       setCurrentStep(2);
+      setTimer(30);
+      setCanResend(false);
     } catch (error) {
       setIsProcessing(false);
       const errors = error?.response?.data?.errors;
@@ -60,6 +62,7 @@ const Signup = () => {
       const prevInput = document.getElementById(`otp-${index - 1}`);
       if (prevInput) prevInput.focus();
     }
+    if (e.key === "Enter") e.preventDefault();
   };
 
   const handleResendOtp = async () => {
@@ -103,15 +106,16 @@ const Signup = () => {
   };
 
   useEffect(() => {
-    if (timer > 0) {
-      const interval = setInterval(() => {
+    let interval;
+    if (currentStep === 2 && timer > 0) {
+      interval = setInterval(() => {
         setTimer((prev) => prev - 1);
       }, 1000);
-      return () => clearInterval(interval);
-    } else {
+    } else if (timer === 0 && currentStep === 2) {
       setCanResend(true);
     }
-  }, [timer]);
+    return () => clearInterval(interval);
+  }, [timer, currentStep]);
 
   return (
     <>
@@ -151,7 +155,7 @@ const Signup = () => {
                 </svg>
               ) : (
                 <svg
-                  className="w-10 h-10 text-white"
+                  className="w-8 h-8 text-blue-100"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -160,7 +164,7 @@ const Signup = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
               )}
@@ -180,7 +184,7 @@ const Signup = () => {
                   Verify Your Email
                 </h1>
                 <p className="text-gray-700 text-center dark:text-gray-300 text-lg font-medium mb-1">
-                  Enter the 6-digit code sent to
+                  We've sent a 6-digit verification code to your email
                 </p>
                 <p className="text-blue-500 text-center dark:text-blue-400 text-sm font-medium break-all mb-2">
                   {email}
@@ -320,27 +324,6 @@ const Signup = () => {
             ) : (
               <div className="space-y-6">
                 <div className="animate-slide-up">
-                  <div className="text-center mb-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full mb-4">
-                      <svg
-                        className="w-8 h-8 text-blue-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      We've sent a verification code to your email
-                    </p>
-                  </div>
-
                   <div className="flex justify-center md:space-x-3 space-x-2 mb-6">
                     {otp.map((digit, index) => (
                       <input
@@ -401,11 +384,11 @@ const Signup = () => {
                   </button>
                 </div>
 
-                {canResend && (
+                {canResend && timer === 0 && (
                   <div className="text-center animate-slide-up animation-delay-200">
                     <button
                       type="button"
-                      className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-semibold transition-colors duration-300 hover:underline"
+                      className="text-blue-500 cursor-pointer hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-semibold transition-colors duration-300 hover:underline"
                       onClick={handleResendOtp}
                     >
                       Resend Verification Code
@@ -416,11 +399,11 @@ const Signup = () => {
                 <div className="text-center animate-slide-up animation-delay-300">
                   <button
                     type="button"
-                    className="text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-300 flex items-center justify-center mx-auto"
+                    className="text-gray-500 cursor-pointer hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-300 flex items-center justify-center mx-auto"
                     onClick={() => {
                       setCurrentStep(1);
                       setOtp(["", "", "", "", "", ""]);
-                      setTimer(30);
+                      setTimer(0);
                       setCanResend(false);
                     }}
                   >

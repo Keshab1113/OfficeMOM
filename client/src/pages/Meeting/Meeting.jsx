@@ -4,7 +4,6 @@ import { cn } from "../../lib/utils";
 import { FcConferenceCall } from "react-icons/fc";
 import { useToast } from "../../components/ToastContext";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
-import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import Footer from "../../components/Footer/Footer";
 import { useSelector } from "react-redux";
@@ -56,11 +55,6 @@ const Meeting = () => {
   const [showFullData, setShowFullData] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [activePlatform, setActivePlatform] = useState(null);
-  const [downloadOptions, setDownloadOptions] = useState({
-    word: false,
-    excel: false,
-  });
-
   const wsRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -181,18 +175,19 @@ const Meeting = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const response = await fetch(
+      const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcript: finalTranscript,
-            headers: headers,
-          }),
+          transcript: finalTranscript,
+          headers: headers,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
-      const tableData = await response.json();
+      const tableData = await response?.data;
       if (!Array.isArray(tableData)) {
         addToast("error", "Could not process meeting notes");
         return;
@@ -207,7 +202,7 @@ const Meeting = () => {
     }
   };
 
-  const HandleSaveTable = async (data) => {
+  const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
     const now = new Date();
     const year = now.getFullYear();
@@ -285,7 +280,9 @@ const Meeting = () => {
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
-                    onSaveTable={(data) => HandleSaveTable(data)}
+                    onSaveTable={(data, downloadOptions) => {
+                      HandleSaveTable(data, downloadOptions);
+                    }}
                   />
                 ) : (
                   <TablePreview
@@ -432,7 +429,6 @@ const Meeting = () => {
                       </div>
                     </section>
                     <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
-                      <DownloadOptions onChange={setDownloadOptions} />
                       <AllHistory NeedFor={"Online Meeting Conversion"} />
                     </section>
                   </div>

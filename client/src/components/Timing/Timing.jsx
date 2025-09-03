@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { countryToLanguage, languages } from "../Language";
 import { FiChevronDown } from "react-icons/fi";
+import axios from "axios"
 
 const Timing = () => {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
@@ -12,8 +13,8 @@ const Timing = () => {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_LANGUAGE_URL}`);
-        const data = await res.json();
+        const res = await axios.get(`${import.meta.env.VITE_LANGUAGE_URL}`);
+        const data = res.data;
         setUserCountry(data.country);
         if (data.country && countryToLanguage[data.country]) {
           setSelectedLanguage(countryToLanguage[data.country]);
@@ -50,8 +51,14 @@ const Timing = () => {
           className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          <span className=" text-black dark:text-gray-300">{selectedLanguage}</span>
-          {showDropdown ? <FiChevronDown className=" text-black dark:text-gray-300 rotate-180"/>: <FiChevronDown className=" text-black dark:text-gray-300"/>}
+          <span className=" text-black dark:text-gray-300">
+            {selectedLanguage}
+          </span>
+          {showDropdown ? (
+            <FiChevronDown className=" text-black dark:text-gray-300 rotate-180" />
+          ) : (
+            <FiChevronDown className=" text-black dark:text-gray-300" />
+          )}
         </div>
         {showDropdown && (
           <div className="absolute dark:text-white left-3 right-3 mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-56 overflow-y-auto z-50">

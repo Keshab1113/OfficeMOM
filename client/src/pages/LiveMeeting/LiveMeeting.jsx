@@ -48,10 +48,6 @@ const LiveMeeting = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [participants, setParticipants] = useState(0);
-  const [downloadOptions, setDownloadOptions] = useState({
-    word: false,
-    excel: false,
-  });
   const [detectLanguage, setDetectLanguage] = useState("");
   const [requests, setRequests] = useState([]);
   const timerRef = useRef(null);
@@ -511,7 +507,7 @@ const LiveMeeting = () => {
 
   const { email, fullName, token } = useSelector((state) => state.auth);
 
-  const HandleSaveTable = async (data) => {
+  const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
     const historyData = {
       source: "Live Transcript Conversion",
@@ -589,19 +585,20 @@ const LiveMeeting = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const response = await fetch(
+      const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcript: finalTranscript,
-            headers: headers,
-            detectLanguage: detectLanguage,
-          }),
+          transcript: finalTranscript,
+          headers: headers,
+          detectLanguage: detectLanguage,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
-      const tableData = await response.json();
+      const tableData = await response?.data;
       if (!Array.isArray(tableData)) {
         addToast("error", "Could not process meeting notes");
         return;
@@ -697,7 +694,9 @@ const LiveMeeting = () => {
                   <RealTablePreview
                     showFullData={showFullData}
                     detectLanguage={detectLanguage}
-                    onSaveTable={(data) => HandleSaveTable(data)}
+                    onSaveTable={(data, downloadOptions) => {
+                      HandleSaveTable(data, downloadOptions);
+                    }}
                   />
                 ) : (
                   <TablePreview
@@ -876,7 +875,6 @@ const LiveMeeting = () => {
                   />
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
-                  <DownloadOptions onChange={setDownloadOptions} />
                   <AllHistory NeedFor="Live Transcript Conversion" />
                 </section>
               </div>

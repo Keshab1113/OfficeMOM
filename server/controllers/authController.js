@@ -3,19 +3,24 @@ import jwt from "jsonwebtoken";
 import db from "../config/db.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-import { signupSchema, loginSchema, updateProfileSchema } from "../validations/authValidation.js";
-import uploadToFTP from "../config/uploadToFTP.js"
-
+import {
+  signupSchema,
+  loginSchema,
+  updateProfileSchema,
+} from "../validations/authValidation.js";
+import uploadToFTP from "../config/uploadToFTP.js";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.hostinger.com",
-  port: 465,
-  secure: true,
+  host: process.env.MAILTRAP_HOST,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS || "S9867867878$#@4delta",
+    pass: process.env.MAIL_PASS,
   },
-  tls: { rejectUnauthorized: false },
+  tls: {
+    rejectUnauthorized: false,
+  },
 });
 
 export const signup = async (req, res) => {
@@ -200,18 +205,22 @@ export const resendOtp = async (req, res) => {
 
 export const updateUserProfile = async (req, res) => {
   try {
-    const { error } = updateProfileSchema.validate(req.body, { abortEarly: false });
+    const { error } = updateProfileSchema.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         message: "Validation failed",
-        errors: error.details.map(err => err.message),
+        errors: error.details.map((err) => err.message),
       });
     }
 
     const { fullName, email, profilePic } = req.body;
     const userId = req.user.id;
 
-    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
+    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [
+      userId,
+    ]);
     if (user.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -237,35 +246,45 @@ export const uploadProfilePicture = async (req, res) => {
     const buffer = req.file.buffer;
     const originalName = req.file.originalname;
     const ftpUrl = await uploadToFTP(buffer, originalName, "profile_pictures");
-    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
+    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [
+      userId,
+    ]);
     if (user.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
-    await db.query(
-      "UPDATE users SET profilePic = ? WHERE id = ?",
-      [ftpUrl, userId]
-    );
+    await db.query("UPDATE users SET profilePic = ? WHERE id = ?", [
+      ftpUrl,
+      userId,
+    ]);
 
-    console.log(`✅ [Profile Upload] Profile picture updated for user ${userId}`);
+    console.log(
+      `✅ [Profile Upload] Profile picture updated for user ${userId}`
+    );
     res.status(200).json({
       message: "Profile picture uploaded successfully",
-      profilePic: ftpUrl
+      profilePic: ftpUrl,
     });
   } catch (err) {
     console.error("❌ [Profile Upload] Error:", err);
-    res.status(500).json({ message: "Server error while uploading profile picture" });
+    res
+      .status(500)
+      .json({ message: "Server error while uploading profile picture" });
   }
 };
 
 export const sendPasswordResetOtp = async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email)
-      return res.status(400).json({ message: "Email is required" });
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const [rows] = await db.query("SELECT id, fullName FROM users WHERE email = ?", [email]);
+    const [rows] = await db.query(
+      "SELECT id, fullName FROM users WHERE email = ?",
+      [email]
+    );
     if (rows.length === 0) {
-      return res.status(200).json({ message: "If the email exists, an OTP has been sent" });
+      return res
+        .status(200)
+        .json({ message: "If the email exists, an OTP has been sent" });
     }
 
     const otp = String(crypto.randomInt(100000, 1000000)).padStart(6, "0");
@@ -305,7 +324,9 @@ export const resetPasswordWithOtp = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) {
-      return res.status(400).json({ message: "Email, OTP, and newPassword are required" });
+      return res
+        .status(400)
+        .json({ message: "Email, OTP, and newPassword are required" });
     }
 
     const [rows] = await db.query(
@@ -318,12 +339,18 @@ export const resetPasswordWithOtp = async (req, res) => {
 
     const user = rows[0];
     if (!user.resetOtp || !user.resetOtpExpires) {
-      return res.status(400).json({ message: "No active reset request. Please request a new OTP." });
+      return res
+        .status(400)
+        .json({
+          message: "No active reset request. Please request a new OTP.",
+        });
     }
 
     const isExpired = new Date(user.resetOtpExpires).getTime() < Date.now();
     if (isExpired) {
-      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      return res
+        .status(400)
+        .json({ message: "OTP expired. Please request a new one." });
     }
 
     if (String(user.resetOtp) !== String(otp)) {

@@ -16,10 +16,6 @@ import { Helmet } from "react-helmet";
 import axios from "axios";
 
 const GenerateNotes = () => {
-  const [downloadOptions, setDownloadOptions] = useState({
-    word: false,
-    excel: false,
-  });
   const [activeTab, setActiveTab] = useState("computer");
   const [selectedFile, setSelectedFile] = useState(null);
   const [driveUrl, setDriveUrl] = useState("");
@@ -80,16 +76,17 @@ const GenerateNotes = () => {
     }
 
     try {
-      const resp = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
+      const resp = await axios.post(apiUrl, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      if (!resp.ok) {
+      if (resp.statusText !== "OK") {
         throw new Error(`Server error: ${resp.status}`);
       }
 
-      const data = await resp.json();
+      const data = await resp?.data;
       setDetectLanguage(data.language);
       setFinalTranscript(data.text);
       setShowModal(true);
@@ -110,19 +107,20 @@ const GenerateNotes = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const response = await fetch(
+      const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcript: finalTranscript,
-            headers: headers,
-            detectLanguage: detectLanguage,
-          }),
+          transcript: finalTranscript,
+          headers: headers,
+          detectLanguage: detectLanguage,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
-      const tableData = await response.json();
+      const tableData = await response?.data;
       if (!Array.isArray(tableData)) {
         addToast("error", "Could not process meeting notes");
         return;
@@ -138,7 +136,7 @@ const GenerateNotes = () => {
     }
   };
 
-  const HandleSaveTable = async (data) => {
+  const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
     const now = new Date();
     const year = now.getFullYear();
@@ -171,8 +169,6 @@ const GenerateNotes = () => {
     }
   };
 
-  
-
   return (
     <>
       <Helmet>
@@ -198,12 +194,14 @@ const GenerateNotes = () => {
               />
             )}
             {showModal ? (
-              <section className="  p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen flex justify-center items-center h-full">
+              <section className=" min-h-screen h-full lg:max-w-full max-w-screen flex justify-center items-center">
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
                     detectLanguage={detectLanguage}
-                    onSaveTable={(data) => HandleSaveTable(data)}
+                    onSaveTable={(data, downloadOptions) =>{
+                       HandleSaveTable(data ,downloadOptions)
+                    }}
                   />
                 ) : (
                   <TablePreview
@@ -446,7 +444,6 @@ const GenerateNotes = () => {
                   </div>
                 </section>
                 <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
-                  <DownloadOptions onChange={setDownloadOptions} />
                   <AllHistory NeedFor={"Generate Notes Conversion"} />
                 </section>
               </div>

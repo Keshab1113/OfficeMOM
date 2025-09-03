@@ -38,37 +38,35 @@ const sendMeetingEmail = async (req, res) => {
     : ["Sr No", ...headers];
 
   const tableHtml = `
-  <div style="overflow-x:auto; overflow-y:auto; max-height:300px; display:block; border:1px solid #ddd; margin-top:10px;">
-    <table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 14px; min-width:600px;">
-      <thead>
-        <tr>
-          ${tableHeaders
-            .map(
-              (h) =>
-                `<th style="border:1px solid #ddd; padding:8px; background:#007bff; color:white;">${h}</th>`
-            )
-            .join("")}
-        </tr>
-      </thead>
-      <tbody>
-        ${parsedTableData
+<table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 14px; width:100%; max-width:100%; margin-top:10px;">
+  <thead>
+    <tr>
+      ${tableHeaders
+        .map(
+          (h) =>
+            `<th style="border:1px solid #ddd; padding:8px; background:#007bff; color:white; text-align:center; font-size:12px;">${h}</th>`
+        )
+        .join("")}
+    </tr>
+  </thead>
+  <tbody>
+    ${parsedTableData
+      .map(
+        (row, i) => `
+      <tr>
+        ${tableHeaders
           .map(
-            (row, i) => `
-          <tr>
-            ${tableHeaders
-              .map(
-                (key) =>
-                  `<td style="border:1px solid #ddd; padding:8px; text-align:center;">
-                ${key === "Sr No" ? i + 1 : row[key] ?? ""}
-              </td>`
-              )
-              .join("")}
-          </tr>`
+            (key) =>
+              `<td style="border:1px solid #ddd; padding:8px; text-align:center; font-size:12px;">
+            ${key === "Sr No" ? i + 1 : row[key] ?? ""}
+          </td>`
           )
           .join("")}
-      </tbody>
-    </table>
-  </div>
+      </tr>`
+      )
+      .join("")}
+  </tbody>
+</table>
 `;
 
   const wordFile = uploadedFiles.find((f) =>
@@ -101,14 +99,16 @@ const sendMeetingEmail = async (req, res) => {
 
   try {
     const transporter = nodemailer.createTransport({
-      host: "smtp.hostinger.com",
-      port: 465,
-      secure: true,
+      host: process.env.MAILTRAP_HOST,
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS || "S9867867878$#@4delta",
+        pass: process.env.MAIL_PASS,
       },
-      tls: { rejectUnauthorized: false },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
     const mailOptions = {
@@ -116,24 +116,38 @@ const sendMeetingEmail = async (req, res) => {
       to: email,
       subject: "Your OfficeMoM Meeting Notes",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 700px; margin:auto;">
-          <div style="background-color:#007bff; padding:20px; text-align:center; color:white; font-weight:bold; font-size:18px;">
-            OfficeMoM
-          </div>
-          <div style="padding:30px; background-color:#fff; color:#333;">
-            <p>Dear <strong>${name}</strong>,</p>
-            <p>Your meeting notes have been successfully generated. Please review below:</p>
-            ${tableHtml}
-            <div style="margin-top:20px;text-align:center;">
-              ${buttonsHtml}
-            </div>
-            <p style="margin-top:20px;">Best regards,<br/><strong>OfficeMoM Team</strong></p>
-          </div>
-          <div style="background-color:#f5f5f5; text-align:center; padding:10px; font-size:12px; color:#777;">
-            OfficeMoM • Automated Meeting Organizer
-          </div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; -webkit-text-size-adjust: 100%;">
+      <div style="max-width: 100%; width: 100%; margin: 0 auto;">
+        <div style="background-color:#007bff; padding:15px; text-align:center; color:white; font-weight:bold; font-size:16px;">
+          OfficeMoM
         </div>
-      `,
+        <div style="padding:20px; background-color:#fff; color:#333;">
+          <p>Dear <strong>${name}</strong>,</p>
+          <p>Your meeting notes have been successfully generated. Please review below:</p>
+          
+          <!-- Responsive table container -->
+          <div style="max-height:300px; overflow:auto; border:1px solid #ddd; margin-top:10px;">
+            ${tableHtml}
+          </div>
+          
+          <div style="margin-top:20px; text-align:center;">
+            ${buttonsHtml}
+          </div>
+          <p style="margin-top:20px;">Best regards,<br/><strong>OfficeMoM Team</strong></p>
+        </div>
+        <div style="background-color:#f5f5f5; text-align:center; padding:10px; font-size:12px; color:#777;">
+          OfficeMoM • Automated Meeting Organizer
+        </div>
+      </div>
+    </body>
+    </html>
+  `,
     };
 
     await transporter.sendMail(mailOptions);

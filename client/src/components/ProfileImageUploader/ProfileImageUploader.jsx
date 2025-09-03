@@ -12,12 +12,8 @@ import { useToast } from "../ToastContext";
 
 const ProfileImageUploader = () => {
   const dispatch = useDispatch();
-  const { email, fullName, token } = useSelector(
-    (state) => state.auth
-  );
-  const { profileImage } = useSelector(
-    (state) => state.auth
-  );
+  const { email, fullName, token } = useSelector((state) => state.auth);
+  const { profileImage } = useSelector((state) => state.auth);
 
   const [imageSrc, setImageSrc] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -53,13 +49,20 @@ const ProfileImageUploader = () => {
     setUploading(true);
     try {
       const croppedImgBase64 = await getCroppedImg(imageSrc, croppedAreaPixels);
-      const res = await fetch(croppedImgBase64);
-      const blob = await res.blob();
+
+      // Convert base64 to Blob using Axios
+      const blobResponse = await axios.get(croppedImgBase64, {
+        responseType: "blob",
+      });
+      const blob = blobResponse.data;
+
       const croppedFile = new File([blob], imageFile?.name || "profile.jpg", {
         type: blob.type,
       });
+
       const formData = new FormData();
       formData.append("profilePic", croppedFile);
+
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/upload-profile-picture`,
         formData,
@@ -70,12 +73,14 @@ const ProfileImageUploader = () => {
           },
         }
       );
-      dispatch(setProfileImage({profileImage: response?.data?.profilePic}));
+
+      dispatch(setProfileImage({ profileImage: response?.data?.profilePic }));
       setShowCropper(false);
       setUploading(false);
       addToast("success", "Profile picture updated Successfully");
     } catch (e) {
       console.error(e);
+      setUploading(false);
     }
   };
 
@@ -128,7 +133,11 @@ const ProfileImageUploader = () => {
     try {
       await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/update-user`,
-        { fullName: name, email: emailID, profilePic: profileImage?.profileImage },
+        {
+          fullName: name,
+          email: emailID,
+          profilePic: profileImage?.profileImage,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       dispatch(
@@ -376,8 +385,8 @@ const ProfileImageUploader = () => {
                 >
                   {uploading ? (
                     <>
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                    Uploading...
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      Uploading...
                     </>
                   ) : (
                     <>

@@ -163,8 +163,8 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
   }, []);
 
   return (
-    <div className="my-10 w-full lg:max-w-[71vw] animate-fade-in">
-      <div className="dark:bg-gray-900 bg-white w-full h-full min-h-[40vh] p-4 md:p-6 rounded-xl  shadow-2xl hover:shadow-3xl transform hover:scale-[1.01] transition-all duration-500 ease-out backdrop-blur-sm">
+    <div className="my-10 w-full lg:max-w-[71vw] max-w-[90vw] animate-fade-in h-fit ">
+      <div className="dark:bg-gray-900 bg-white w-full h-full min-h-[40vh] p-4 md:p-6 py-16 rounded-xl  shadow-2xl hover:shadow-3xl transform hover:scale-[1.01] transition-all duration-500 ease-out backdrop-blur-sm">
         <div className="flex justify-center items-center gap-4 mb-8 animate-bounce-slow">
           <h1 className=" dark:text-white text-xl font-medium">Add Columns</h1>
           <button

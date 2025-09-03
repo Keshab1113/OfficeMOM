@@ -168,7 +168,7 @@ const AllHistory = ({ title, NeedFor }) => {
   }, [allData.length, isPaused, editingId, menuOpenId, controls]);
 
   return (
-    <div className="h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 flex flex-col border dark:border-gray-700 border-gray-200 relative">
+    <div className={`h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900 bg-white p-4 flex flex-col border dark:border-gray-700 border-gray-200 relative ${NeedFor && " md:h-[80vh]"}`}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
           <History className="text-purple-600 dark:text-purple-400 w-5 h-5" />
