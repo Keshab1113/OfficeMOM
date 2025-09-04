@@ -2,15 +2,15 @@ import db from "../config/db.js";
 
 export const addHistory = async (req, res) => {
   try {
-    const { source, date, data, title } = req.body;
+    const { source, date, data, title, language } = req.body;
     if (!source || !date || !data) {
       return res.status(400).json({ message: "All fields are required" });
     }
     const userId = req.user.id;
     const isMoMGenerated = source !== "Live Transcript Conversion" ? 1 : 0;
     await db.query(
-      "INSERT INTO history (user_id, source, date, data, title, isMoMGenerated) VALUES (?, ?, ?, ?, ?, ?)",
-      [userId, source, date, data ? JSON.stringify(data) : null, title, isMoMGenerated]
+      "INSERT INTO history (user_id, source, date, data, title, isMoMGenerated, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [userId, source, date, data ? JSON.stringify(data) : null, title, isMoMGenerated, language]
     );
     res.status(201).json({ message: "History added successfully" });
   } catch (err) {
@@ -23,7 +23,7 @@ export const getHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     const [rows] = await db.query(
-      "SELECT id, source, date, created_at, data, title, isMoMGenerated, uploadedAt, audioUrl FROM history WHERE user_id = ? ORDER BY created_at DESC",
+      "SELECT id, source, date, created_at, data, title, isMoMGenerated, uploadedAt, audioUrl, language FROM history WHERE user_id = ? ORDER BY created_at DESC",
       [userId]
     );
     res.status(200).json(rows);

@@ -14,6 +14,7 @@ import NoPage from "../NoPage/NoPage";
 const MeetingHistory = () => {
   const [showFullData, setShowFullData] = useState(null);
   const [error, setError] = useState(null);
+  const [detectLanguage, setDetectLanguage] = useState("");
   const { email, fullName, token } = useSelector((state) => state.auth);
   const { id } = useParams();
   const { addToast } = useToast();
@@ -35,6 +36,7 @@ const MeetingHistory = () => {
             ? foundItem.data
             : [foundItem.data];
           setShowFullData(transformedData);
+          setDetectLanguage(foundItem?.language);
         } else {
           setError("History item not found");
         }
@@ -85,6 +87,7 @@ const MeetingHistory = () => {
                 onSaveTable={(data, downloadOptions) => {
                   HandleSaveTable(data, downloadOptions);
                 }}
+                detectLanguage={detectLanguage}
               />
             )}
           </div>

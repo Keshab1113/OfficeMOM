@@ -513,6 +513,7 @@ const LiveMeeting = () => {
       source: "Live Transcript Conversion",
       data: data,
       title: historyTitle,
+      language:detectLanguage,
     };
     await addHistory(token, historyData, addToast, updatedMeetingId);
     setShowModal2(false);

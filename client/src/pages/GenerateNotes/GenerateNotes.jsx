@@ -151,6 +151,7 @@ const GenerateNotes = () => {
       source: "Generate Notes Conversion",
       date: dateCreated,
       data: data,
+      language:detectLanguage,
     };
     await addHistory(token, historyData, addToast);
     setShowModal2(false);

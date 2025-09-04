@@ -4,7 +4,7 @@ import { FiChevronDown, FiX } from "react-icons/fi";
 import axios from "axios";
 
 const Timing = () => {
-  const [selectedLanguages, setSelectedLanguages] = useState([]);
+  const [selectedLanguages, setSelectedLanguages] = useState(["English"]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [userCountry, setUserCountry] = useState("");

@@ -178,7 +178,7 @@ export default function MultipleAudioPlayer({
       <div className="my-8 flex justify-center">
         <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
         <span className="ml-2 text-gray-600 dark:text-gray-400">
-          Loading audio files...
+          Loading Previous Recorded Meeting...
         </span>
       </div>
     );

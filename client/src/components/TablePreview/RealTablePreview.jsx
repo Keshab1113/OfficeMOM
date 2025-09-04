@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { Plus, Trash2, Download } from "lucide-react";
 import DownloadOptions from "../DownloadOptions/DownloadOptions";
+import { translateText } from "../../lib/translateText";
 
 const RealTablePreview = ({
   showFullData = [],
@@ -76,9 +77,12 @@ const RealTablePreview = ({
         setTranslatedAction("Actions");
         setTranslatedSerial("S. No");
       } else {
-        setTranslatedColumns(allColumns);
-        setTranslatedAction("Actions");
-        setTranslatedSerial("S. No");
+        const actionsLang = await translateText(detectLanguage, "Actions");
+        const sNoLang = await translateText(detectLanguage, "S. No");
+        const allColLang = await translateText(detectLanguage, allColumns);
+        setTranslatedColumns(allColLang);
+        setTranslatedAction(actionsLang);
+        setTranslatedSerial(sNoLang);
       }
     };
 
@@ -204,6 +208,7 @@ const RealTablePreview = ({
   const confirmDownloadOptions = () => {
     setIsModalOpen(true);
   };
+  
 
   const getColumnWidth = (index) =>
     columnWidths[index] || 82 / allColumns.length;

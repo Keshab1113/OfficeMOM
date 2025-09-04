@@ -93,4 +93,14 @@ export const countryToLanguage = {
   "United Kingdom": ["English"],
   Ireland: ["English", "Irish"],
   "United States": ["English", "Spanish"],
+  Bahrain: ["Arabic"],
+  Cyprus: ["Greek", "Turkish"],
+  Jordan: ["Arabic"],
+  Kuwait: ["Arabic", "English"],
+  Lebanon: ["Arabic", "French", "English"],
+  Oman: ["Arabic"],
+  Qatar: ["Arabic"],
+  "United Arab Emirates": ["Arabic", "English"],
+  Yemen: ["Arabic"],
 };
+
