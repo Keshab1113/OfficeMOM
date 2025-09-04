@@ -11,12 +11,12 @@ import {
 import uploadToFTP from "../config/uploadToFTP.js";
 
 const transporter = nodemailer.createTransport({
-  host: process.env.MAILTRAP_HOST,
+  host:process.env.MAILTRAP_HOST,
   port: 587,
   secure: false,
   auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
+    user:process.env.MAIL_USER_NOREPLY,
+    pass:process.env.MAIL_PASS,
   },
   tls: {
     rejectUnauthorized: false,
@@ -51,7 +51,7 @@ export const signup = async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER}>`,
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY}>`,
       to: email,
       subject: "Verify your email - OfficeMoM",
       html: `
@@ -189,7 +189,7 @@ export const resendOtp = async (req, res) => {
     await db.query("UPDATE users SET otp = ? WHERE email = ?", [otp, email]);
 
     await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER}>`,
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY}>`,
       to: email,
       subject: "Resend OTP",
       text: `Your new OTP is ${otp}`,
@@ -296,7 +296,7 @@ export const sendPasswordResetOtp = async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER}>`,
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY}>`,
       to: email,
       subject: "Password Reset OTP - OfficeMoM",
       html: `

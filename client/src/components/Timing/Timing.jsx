@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { countryToLanguage, languages } from "../Language";
-import { FiChevronDown } from "react-icons/fi";
-import axios from "axios"
+import { FiChevronDown, FiX } from "react-icons/fi";
+import axios from "axios";
 
 const Timing = () => {
-  const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [userCountry, setUserCountry] = useState("");
@@ -16,8 +16,16 @@ const Timing = () => {
         const res = await axios.get(`${import.meta.env.VITE_LANGUAGE_URL}`);
         const data = res.data;
         setUserCountry(data.country);
+
         if (data.country && countryToLanguage[data.country]) {
-          setSelectedLanguage(countryToLanguage[data.country]);
+          const recommended = Array.isArray(countryToLanguage[data.country])
+            ? countryToLanguage[data.country]
+            : [countryToLanguage[data.country]];
+
+          // merge recommended with already selected (no duplicates)
+          setSelectedLanguages((prev) => [
+            ...new Set([...prev, ...recommended]),
+          ]);
         }
       } catch (error) {
         console.error("Location fetch error:", error);
@@ -40,6 +48,16 @@ const Timing = () => {
     lang.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const toggleLanguage = (lang) => {
+    setSelectedLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
+  };
+
+  const removeLanguage = (lang) => {
+    setSelectedLanguages((prev) => prev.filter((l) => l !== lang));
+  };
+
   return (
     <div className="w-full" ref={dropdownRef}>
       <div className="relative mt-1 border border-white dark:border-white/20 shadow-lg rounded-lg p-3 bg-white dark:bg-gray-900">
@@ -47,21 +65,41 @@ const Timing = () => {
           Recommended based on your location:{" "}
           <b>{userCountry ? ` ${userCountry}` : "Detecting..."}</b>
         </p>
+
         <div
-          className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
+          className="flex items-center justify-between flex-wrap gap-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          <span className=" text-black dark:text-gray-300">
-            {selectedLanguage}
-          </span>
-          {showDropdown ? (
-            <FiChevronDown className=" text-black dark:text-gray-300 rotate-180" />
+          {selectedLanguages.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedLanguages.map((lang, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1 bg-blue-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {lang}
+                  <FiX
+                    className="cursor-pointer"
+                    onClick={() => removeLanguage(lang)}
+                  />
+                </span>
+              ))}
+            </div>
           ) : (
-            <FiChevronDown className=" text-black dark:text-gray-300" />
+            <span className="text-gray-400 dark:text-gray-500">
+              Select languages...
+            </span>
           )}
+          <FiChevronDown
+            className={`text-black dark:text-gray-300 transition-transform ${
+              showDropdown ? "rotate-180" : ""
+            }`}
+          />
         </div>
+
         {showDropdown && (
-          <div className="absolute dark:text-white left-3 right-3 mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-56 overflow-y-auto z-50">
+          <div className="absolute left-3 right-3 mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-56 overflow-y-auto z-50">
             <input
               type="text"
               placeholder="Search language..."
@@ -74,14 +112,18 @@ const Timing = () => {
               filteredLanguages.map((lang, i) => (
                 <div
                   key={i}
-                  className="px-3 py-2 hover:bg-blue-100 dark:hover:bg-gray-800 cursor-pointer select-none"
-                  onClick={() => {
-                    setSelectedLanguage(lang);
-                    setShowDropdown(false);
-                    setSearchTerm("");
-                  }}
+                  className={`px-3 py-2 dark:text-white cursor-pointer select-none flex justify-between items-center
+                    ${
+                      selectedLanguages.includes(lang)
+                        ? "bg-blue-100 dark:bg-gray-700 font-semibold"
+                        : "hover:bg-blue-100 dark:hover:bg-gray-800"
+                    }`}
+                  onClick={() => toggleLanguage(lang)}
                 >
                   {lang}
+                  {selectedLanguages.includes(lang) && (
+                    <span className="text-blue-600 dark:text-blue-400">✓</span>
+                  )}
                 </div>
               ))
             ) : (
