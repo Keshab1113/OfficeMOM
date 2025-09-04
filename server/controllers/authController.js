@@ -51,8 +51,9 @@ export const signup = async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY}>`,
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
       to: email,
+      replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
       subject: "Verify your email - OfficeMoM",
       html: `
   <!DOCTYPE html>
@@ -189,9 +190,10 @@ export const resendOtp = async (req, res) => {
     await db.query("UPDATE users SET otp = ? WHERE email = ?", [otp, email]);
 
     await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY}>`,
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
       to: email,
       subject: "Resend OTP",
+      replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
       text: `Your new OTP is ${otp}`,
       html: `<p>Your new OTP is <b>${otp}</b></p>`,
     });
@@ -296,8 +298,9 @@ export const sendPasswordResetOtp = async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY}>`,
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
       to: email,
+      replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
       subject: "Password Reset OTP - OfficeMoM",
       html: `
         <div style="font-family:Arial,sans-serif">
