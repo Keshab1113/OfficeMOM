@@ -312,6 +312,7 @@ const LiveMeeting = () => {
 
         const formData = new FormData();
         formData.append("recordedAudio", file);
+        formData.append("source", "Live Transcript Conversion")
 
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,

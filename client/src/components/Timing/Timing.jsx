@@ -65,14 +65,13 @@ const Timing = () => {
           Recommended based on your location:{" "}
           <b>{userCountry ? ` ${userCountry}` : "Detecting..."}</b>
         </p>
-
         <div
-          className="flex items-center justify-between flex-wrap gap-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
+          className="relative bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          {selectedLanguages.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedLanguages.map((lang, i) => (
+          <div className="flex flex-wrap gap-2 pr-6">
+            {selectedLanguages.length > 0 ? (
+              selectedLanguages.map((lang, i) => (
                 <span
                   key={i}
                   className="flex items-center gap-1 bg-blue-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg"
@@ -84,15 +83,16 @@ const Timing = () => {
                     onClick={() => removeLanguage(lang)}
                   />
                 </span>
-              ))}
-            </div>
-          ) : (
-            <span className="text-gray-400 dark:text-gray-500">
-              Select languages...
-            </span>
-          )}
+              ))
+            ) : (
+              <span className="text-gray-400 dark:text-gray-500">
+                Select languages...
+              </span>
+            )}
+          </div>
+
           <FiChevronDown
-            className={`text-black dark:text-gray-300 transition-transform ${
+            className={`absolute right-2 top-1/2 -translate-y-1/2 text-black dark:text-gray-300 transition-transform ${
               showDropdown ? "rotate-180" : ""
             }`}
           />

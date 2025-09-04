@@ -51,14 +51,19 @@ const Meeting = () => {
   const [transcript, setTranscript] = useState([]);
   const [finalTranscript, setFinalTranscript] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showEndingModal, setShowEndingModal] = useState(false);
   const [showModal2, setShowModal2] = useState(false);
   const [showFullData, setShowFullData] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [activePlatform, setActivePlatform] = useState(null);
+  const [showCaptions, setShowCaptions] = useState(false);
+  const [detectLanguage, setDetectLanguage] = useState("");
+  const [updatedMeetingId, setUpdatedMeetingId] = useState(null);
   const wsRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const { addToast } = useToast();
+  const recordedChunksRef = useRef([]);
 
   const startMeeting = async () => {
     if (!meetingLink) {
@@ -136,6 +141,7 @@ const Meeting = () => {
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0 && socket.connected) {
           event.data.arrayBuffer().then((buffer) => {
+            recordedChunksRef.current.push(event.data);
             socket.emit("audio-chunk", buffer); // send as "audio-chunk"
           });
         }
@@ -160,16 +166,57 @@ const Meeting = () => {
   };
 
   const endMeeting = async () => {
-    if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
-    if (mediaStreamRef.current)
+    setShowEndingModal(true);
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.onstop = async () => {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "audio/mpeg",
+        });
+        const file = new File([blob], `recording_${Date.now()}.mp3`, {
+          type: "audio/mpeg",
+        });
+        const formData = new FormData();
+        formData.append("recordedAudio", file);
+        formData.append("source", "Online Meeting Conversion")
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,
+            formData,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
+          setUpdatedMeetingId(response?.data?.id);
+          const formData2 = new FormData();
+          formData2.append("audioUrl", response?.data?.audioUrl);
+          const res = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio-from-url`,
+            formData2,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setShowEndingModal(false);
+          setFinalTranscript(res.data.text || "");
+          setDetectLanguage(res?.data?.full?.language_code);
+          setShowModal(true);
+          setIsMeetingActive(false);
+        } catch (error) {
+          console.error("AssemblyAI transcription failed:", error);
+          addToast("error", "Failed to transcribe audio");
+        }
+      };
+    }
+
+    if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-    if (wsRef.current) wsRef.current.close();
-    const transcriptText = transcript.join(" ");
-    setFinalTranscript(transcriptText);
+    }
+
     setMeetingLink("");
-    setShowModal(true);
-    setIsMeetingActive(false);
   };
+
   const { email, fullName, token } = useSelector((state) => state.auth);
 
   const handleSaveHeaders = async (headers) => {
@@ -180,6 +227,7 @@ const Meeting = () => {
         {
           transcript: finalTranscript,
           headers: headers,
+          detectLanguage: detectLanguage,
         },
         {
           headers: {
@@ -211,22 +259,25 @@ const Meeting = () => {
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const seconds = String(now.getSeconds()).padStart(2, "0");
-
     const dateCreated = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
     const historyData = {
       source: "Online Meeting Conversion",
       date: dateCreated,
       data: data,
+      language:detectLanguage,
     };
-    await addHistory(token, historyData, addToast);
+    await addHistory(token, historyData, addToast, updatedMeetingId);
     setShowModal2(false);
     setShowModal(false);
   };
 
-  const addHistory = async (token, historyData, addToast) => {
+  const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
     try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+      await axios.patch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/audio-files/${updatedMeetingId}`,
         historyData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -271,15 +322,18 @@ const Meeting = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
-            <Heading
-              heading="Take Notes from Online Meeting"
-              subHeading="Connect Zoom, Google Meet, or Teams link and generate automatic MoM."
-            />
+            {!isMeetingActive && (
+              <Heading
+                heading="Take Notes from Online Meeting"
+                subHeading="Connect Zoom, Google Meet, or Teams link and generate automatic MoM."
+              />
+            )}
             {showModal ? (
               <section className=" p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen">
                 {showModal2 ? (
                   <RealTablePreview
                     showFullData={showFullData}
+                    detectLanguage={detectLanguage}
                     onSaveTable={(data, downloadOptions) => {
                       HandleSaveTable(data, downloadOptions);
                     }}
@@ -294,26 +348,144 @@ const Meeting = () => {
             ) : (
               <>
                 {isMeetingActive ? (
-                  <section
-                    id="listening"
-                    className=" px-10 flex flex-col my-10"
-                  >
-                    <p className=" mb-6 text-green-600 animate-pulse text-center md:text-4xl text-xl font-medium">
-                      Meeting is live. Listening...
-                    </p>
-                    <div className="mt-4 w-full h-40 overflow-y-auto bg-white text-black dark:text-white dark:bg-gray-900 p-3 border rounded-lg border-gray-300 dark:border-black">
-                      {transcript.map((line, i) => (
-                        <p key={i}>{line}</p>
-                      ))}
+                  <div className=" h-screen flex items-center justify-center p-4">
+                    <div className="w-full max-w-4xl">
+                      <section className="px-8 flex flex-col items-center">
+                        {/* Live Recording Status */}
+                        <div className="mb-8 text-center">
+                          <div className="flex items-center justify-center mb-4">
+                            <div className="relative">
+                              {/* Pulsing circles animation */}
+                              <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>
+                              <div className="absolute inset-0 rounded-full bg-red-500 animate-pulse opacity-50"></div>
+                              <div className="relative w-6 h-6 bg-red-500 rounded-full"></div>
+                            </div>
+                          </div>
+
+                          <h1 className="text-4xl pb-4 md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 animate-pulse mb-2">
+                            Meeting is Live
+                          </h1>
+
+                          {/* Audio Wave Animation */}
+                          <div className="flex items-center justify-center space-x-1 mb-6">
+                            {[...Array(5)].map((_, i) => (
+                              <div
+                                key={i}
+                                className="w-1 bg-gradient-to-t from-green-400 to-blue-500 rounded-full animate-pulse"
+                                style={{
+                                  height: `${Math.random() * 40 + 20}px`,
+                                  animationDelay: `${i * 0.1}s`,
+                                  animationDuration: `${
+                                    Math.random() * 0.5 + 0.5
+                                  }s`,
+                                }}
+                              ></div>
+                            ))}
+                            <span className="ml-4 text-green-400 font-semibold text-lg animate-pulse">
+                              Listening...
+                            </span>
+                            {[...Array(5)].map((_, i) => (
+                              <div
+                                key={i + 5}
+                                className="w-1 bg-gradient-to-t from-blue-500 to-green-400 rounded-full animate-pulse"
+                                style={{
+                                  height: `${Math.random() * 40 + 20}px`,
+                                  animationDelay: `${(i + 5) * 0.1}s`,
+                                  animationDuration: `${
+                                    Math.random() * 0.5 + 0.5
+                                  }s`,
+                                }}
+                              ></div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Control Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                          <button
+                            onClick={() => setShowCaptions(!showCaptions)}
+                            className={`px-8 cursor-pointer py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 shadow-lg ${
+                              showCaptions
+                                ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/25"
+                                : "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-blue-500 hover:to-purple-600"
+                            }`}
+                          >
+                            {showCaptions
+                              ? "🔊 Hide Live Captions"
+                              : "📝 Show Live Captions"}
+                          </button>
+
+                          <button
+                            onClick={endMeeting}
+                            disabled={showEndingModal}
+                            className="px-8 cursor-pointer py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-red-400 disabled:to-pink-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg shadow-red-500/25 disabled:transform-none"
+                          >
+                            {showEndingModal
+                              ? "⏹️ Ending..."
+                              : "🔴 End Meeting"}
+                          </button>
+                        </div>
+
+                        {/* Live Captions */}
+                        <div
+                          className={`w-full transition-all duration-500 ease-in-out transform ${
+                            showCaptions
+                              ? "opacity-100 translate-y-0 max-h-96"
+                              : "opacity-0 -translate-y-4 max-h-0 overflow-hidden"
+                          }`}
+                        >
+                          <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
+                            <div className="flex items-center mb-4">
+                              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
+                              <h3 className="text-xl font-semibold text-white">
+                                Live Captions
+                              </h3>
+                            </div>
+
+                            <div className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                              <div className="space-y-2">
+                                {transcript.map((line, i) => (
+                                  <div
+                                    key={i}
+                                    className="text-white/90 leading-relaxed animate-fadeIn"
+                                    style={{
+                                      animationDelay: `${i * 0.1}s`,
+                                      animationDuration: "0.5s",
+                                      animationFillMode: "both",
+                                    }}
+                                  >
+                                    <span className="text-blue-400 text-sm mr-2">
+                                      [{new Date().toLocaleTimeString()}]
+                                    </span>
+                                    {line}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Modal */}
+                        {showEndingModal && (
+                          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+                            <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl shadow-2xl border border-white/10 animate-scaleIn">
+                              <div className="text-center">
+                                <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                                  <span className="text-2xl">🔴</span>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white mb-2">
+                                  Meeting Ended
+                                </h3>
+                                <p className="text-gray-300">
+                                  Please wait, we are creating MoM...
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </section>
                     </div>
-                    <button
-                      onClick={endMeeting}
-                      disabled={showModal}
-                      className="mt-6 cursor-pointer disabled:cursor-not-allowed w-fit py-3 px-10 mx-auto rounded-lg text-white font-semibold bg-red-500 hover:bg-red-600 disabled:bg-red-400 disabled:hover:bg-red-400 transition-colors duration-300"
-                    >
-                      Meeting End
-                    </button>
-                  </section>
+                  </div>
                 ) : (
                   <div className="h-full w-full flex lg:flex-row flex-col pb-10">
                     <section className="h-fit pb-10 lg:w-[65%] w-screen md:px-10 px-4">

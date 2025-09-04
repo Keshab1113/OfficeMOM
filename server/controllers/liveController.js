@@ -107,6 +107,7 @@ export const endMeeting = async (req, res) => {
 };
 
 export const uploadAudio = async (req, res) => {
+  const { source } = req.body;
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No audio file uploaded" });
@@ -146,7 +147,7 @@ export const uploadAudio = async (req, res) => {
         ftpUrl,
         formattedDate,
         false,
-        "Live Transcript Conversion",
+        source,
         null,
         null,
       ]
