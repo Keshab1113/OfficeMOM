@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import Footer from "../../components/Footer/Footer";
 import { cn } from "../../lib/utils";
 import { Helmet } from "react-helmet";
+import FAQ from "../../components/FAQ/FAQ";
+import PricingOptions from "../../components/PricingOptions/PricingOptions";
+import CTASection from "../../components/CTASection/CTASection";
 
 const features = [
   {
@@ -267,6 +270,9 @@ const Home = () => {
               ))}
             </div>
           </div>
+          <CTASection/>
+          <PricingOptions />
+          <FAQ />
           <Footer />
         </div>
       </section>

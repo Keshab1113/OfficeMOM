@@ -14,10 +14,14 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import Footer from "../../components/Footer/Footer";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 export default function AboutUs() {
   const [isVisible, setIsVisible] = useState({});
   const [activeFeature, setActiveFeature] = useState(0);
+  const nav = useNavigate();
+  const { token } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -110,7 +114,7 @@ export default function AboutUs() {
               {/* Hero Section */}
               <section
                 id="hero"
-                className={`relative px-6 py-20 md:px-20 transform transition-all duration-1000 ${
+                className={`relative flex justify-center items-center px-6 py-20 md:px-20 transform transition-all duration-1000 h-screen ${
                   isVisible.hero
                     ? "translate-y-0 opacity-100"
                     : "translate-y-10 opacity-0"
@@ -121,9 +125,8 @@ export default function AboutUs() {
                     🚀 AI-Powered Meeting Intelligence
                   </div>
 
-                  <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent leading-tight">
-                    Welcome to
-                    <br />
+                  <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent leading-tight">
+                    Welcome to {" "}
                     <span className="">
                       OfficeMoM
                       <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transform scale-x-0 animate-[scaleX_1s_ease-in-out_0.5s_forwards]"></div>
@@ -142,7 +145,7 @@ export default function AboutUs() {
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up delay-700">
-                    <button className=" cursor-pointer group relative inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
+                    <button onClick={() => nav(token?"/meeting":"/login")} className=" cursor-pointer group relative inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
                       <span className="relative z-10 flex items-center">
                         Get Started Free
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -150,7 +153,7 @@ export default function AboutUs() {
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </button>
 
-                    <button className=" cursor-pointer inline-flex items-center justify-center px-8 py-4 border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-semibold rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all duration-300 transform hover:scale-105">
+                    <button onClick={() => nav(token?"/meeting":"/login")} className=" cursor-pointer inline-flex items-center justify-center px-8 py-4 border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-semibold rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all duration-300 transform hover:scale-105">
                       Watch Demo
                     </button>
                   </div>
@@ -351,14 +354,14 @@ export default function AboutUs() {
                     meeting management.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                    <button className=" cursor-pointer group relative inline-flex items-center justify-center px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
+                    <button onClick={() => nav(token?"/meeting":"/login")} className=" cursor-pointer group relative inline-flex items-center justify-center px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
                       <span className="relative z-10 flex items-center">
                         Start Free Trial
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </button>
-                    <button className=" cursor-pointer inline-flex items-center justify-center px-10 py-5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-lg rounded-xl hover:border-blue-600 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-105">
+                    <button onClick={() => nav(token?"/meeting":"/login")} className=" cursor-pointer inline-flex items-center justify-center px-10 py-5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-lg rounded-xl hover:border-blue-600 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-105">
                       Schedule Demo
                     </button>
                   </div>

@@ -51,7 +51,7 @@ const Login = () => {
       navigate("/");
     } catch (error) {
       setIsProcessing(false);
-      addToast("error", error?.response?.data?.message);
+      addToast("error", error?.response?.data?.message || "Login failed!");
       console.log(error);
     }
   };

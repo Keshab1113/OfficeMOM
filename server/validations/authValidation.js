@@ -46,3 +46,19 @@ export const updateProfileSchema = Joi.object({
     "string.uri": "Profile picture must be a valid URL",
   }),
 });
+
+export const contactSchema = Joi.object({
+  name: Joi.string().min(3).max(100).required().messages({
+    "string.empty": "Name is required",
+    "string.min": "Name must be at least 3 characters",
+    "string.max": "Name must be less than or equal to 100 characters",
+  }),
+  email: Joi.string().email().required().messages({
+    "string.empty": "Email is required",
+    "string.email": "Invalid email format",
+  }),
+  message: Joi.string().min(5).required().messages({
+    "string.empty": "Message is required",
+    "string.min": "Message must be at least 5 characters",
+  }),
+});

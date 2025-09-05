@@ -2,7 +2,6 @@ import ftp from "basic-ftp";
 import { Readable } from "stream";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
-import url from "url";
 
 export default async function uploadToFTP(buffer, originalName, subDir = "") {
   const client = new ftp.Client();
@@ -24,13 +23,21 @@ export default async function uploadToFTP(buffer, originalName, subDir = "") {
 
     const stream = Readable.from(buffer);
     await client.uploadFrom(stream, uniqueName);
+
+    // ✅ Verify upload
+    const fileList = await client.list();
+    const uploadedFile = fileList.find(f => f.name === uniqueName);
+
+    if (!uploadedFile) {
+      throw new Error("Upload failed: file not found on FTP server");
+    }
+
     client.close();
 
     return `${process.env.FTP_BASE_URL}/${subDir ? subDir + "/" : ""}${uniqueName}`;
   } catch (err) {
     client.close();
-    console.error("❌ [FTP Upload] Error:", err);
+    console.error("❌ [FTP Upload] Error:", err.message);
     throw err;
   }
 }
-

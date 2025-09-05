@@ -15,6 +15,11 @@ import MeetingHistory from "./pages/MeetingHistory/MeetingHistory";
 import JoinMeeting from "./pages/JoinMeeting/JoinMeeting";
 import AboutUs from "./pages/AboutUs/AboutUs";
 import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
+import ContactPage from "./pages/ContactPage/ContactPage";
+import Pricing from "./pages/Pricing/Pricing";
+import DemoVideo from "./pages/DemoVideo/DemoVideo";
+import PrivacyPolicy from "./pages/PrivacyPolicy/PrivacyPolicy";
+import Documentation from "./pages/Documentation/Documentation";
 
 function App() {
   return (
@@ -72,15 +77,43 @@ function App() {
           <Route
             path="/about-us"
             element={
-              <ProtectedRoute>
                 <AboutUs />
-              </ProtectedRoute>
             }
           />
           <Route
             path="/forgot-password"
             element={
                 <ForgotPassword/>
+            }
+          />
+          <Route
+            path="/contact-us"
+            element={
+                <ContactPage/>
+            }
+          />
+          <Route
+            path="/pricing"
+            element={
+                <Pricing/>
+            }
+          />
+          <Route
+            path="/features"
+            element={
+                <DemoVideo/>
+            }
+          />
+          <Route
+            path="/privacy-policy"
+            element={
+                <PrivacyPolicy/>
+            }
+          />
+          <Route
+            path="/documentation"
+            element={
+                <Documentation/>
             }
           />
           <Route path="*" element={<NoPage/>} />

@@ -26,29 +26,29 @@ const Footer = () => {
 
     const footerLinks = {
         product: [
-            { name: "Features", href: "/" },
-            { name: "Pricing", href: "/" },
-            { name: "Integrations", href: "/" },
-            { name: "API", href: "/" }
+            { name: "Features", href: "/features" },
+            { name: "Pricing", href: "/pricing" },
+            { name: "Integrations", href: "/integrations" },
+            { name: "API", href: "/api" }
         ],
         company: [
             { name: "About", href: "/about-us" },
-            { name: "Blog", href: "/" },
-            { name: "Careers", href: "/" },
-            { name: "Contact", href: "/" }
+            { name: "Blog", href: "/blog" },
+            { name: "Careers", href: "/career" },
+            { name: "Contact", href: "/contact-us" }
         ],
         support: [
-            { name: "Help Center", href: "/" },
-            { name: "Documentation", href: "/" },
-            { name: "Privacy Policy", href: "/" },
-            { name: "Terms of Service", href: "/" }
+            { name: "Help Center", href: "/contact-us" },
+            { name: "Documentation", href: "/documentation" },
+            { name: "Privacy Policy", href: "/privacy-policy" },
+            { name: "Terms of Service", href: "/terms" }
         ]
     };
 
     return (
         <footer 
             id="animated-footer"
-            className="relative dark:bg-[linear-gradient(135deg,#06080D_0%,#0D121C_50%,#1A1F2E_100%)] bg-[linear-gradient(135deg,white_0%,#d3e4f0_50%,#b8d4e8_100%)] text-white py-16 md:w-full w-screen border-t border-white/20 overflow-hidden"
+            className="relative dark:bg-[linear-gradient(135deg,#06080D_0%,#0D121C_50%,#1A1F2E_100%)] bg-[linear-gradient(135deg,#b8d4e8_0%,#d3e4f0_50%,#b8d4e8_100%)] text-white py-16 md:w-full w-screen border-t border-white/20 overflow-hidden"
         >
             {/* Animated background elements */}
             <div className="absolute inset-0 opacity-30">

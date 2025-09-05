@@ -26,6 +26,7 @@ import {
   removeAudioPreview,
   updateNeedToShow,
 } from "../../redux/audioSlice";
+import Trancript from "../../components/LittleComponent/Trancript";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
@@ -876,7 +877,8 @@ const LiveMeeting = () => {
                     isPreviewProcessing={isPreviewProcessing}
                   />
                 </section>
-                <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">
+                <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0 flex flex-col gap-8">
+                  {/* <Trancript/> */}
                   <AllHistory NeedFor="Live Transcript Conversion" />
                 </section>
               </div>

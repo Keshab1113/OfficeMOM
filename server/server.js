@@ -12,6 +12,7 @@ import driveRoutes from "./routes/driveRoutes.js";
 import openaiRoute from "./routes/openaiRoute.js";
 import historyRoutes from "./routes/historyRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use("/api", driveRoutes);
 app.use("/api/openai", openaiRoute);
 app.use("/api/history", historyRoutes);
 app.use("/api", emailRoutes);
+app.use("/api/contact", contactRoutes);
 
 const server = http.createServer(app);
 
