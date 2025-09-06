@@ -1,8 +1,9 @@
-import fs from "fs";
-import axios from "axios";
-import { v4 as uuidv4 } from "uuid";
-import db from "../config/db.js";
-import uploadToFTP from "../config/uploadToFTP.js";
+const fs = require("fs");
+const axios = require("axios");
+const { v4: uuidv4 } = require("uuid");
+const db = require("../config/db.js");
+const uploadToFTP = require("../config/uploadToFTP.js");
+
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
@@ -53,7 +54,7 @@ async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
   }
 }
 
-export const transcribeAudio = async (req, res) => {
+const transcribeAudio = async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -73,7 +74,7 @@ export const transcribeAudio = async (req, res) => {
     res.status(500).json({ error: err.message || "Server error" });
   }
 };
-export const transcribeAudioFromURL = async (req, res) => {
+const transcribeAudioFromURL = async (req, res) => {
   const { audioUrl } = req.body;
   if (!audioUrl) {
     return res.status(400).json({ error: "No audio URL provided" });
@@ -88,7 +89,7 @@ export const transcribeAudioFromURL = async (req, res) => {
   }
 };
 
-export const createMeeting = async (req, res) => {
+const createMeeting = async (req, res) => {
   const room_id = uuidv4();
   const [r] = await db.query(
     "INSERT INTO meetings (room_id, host_user_id) VALUES (?,?)",
@@ -97,7 +98,7 @@ export const createMeeting = async (req, res) => {
   res.json({ roomId: room_id, meetingId: r.insertId });
 };
 
-export const endMeeting = async (req, res) => {
+const endMeeting = async (req, res) => {
   const { meetingId } = req.params;
   await db.query(
     'UPDATE meetings SET status="ended", ended_at=NOW() WHERE room_id=?',
@@ -106,7 +107,7 @@ export const endMeeting = async (req, res) => {
   res.json({ ok: true });
 };
 
-export const uploadAudio = async (req, res) => {
+const uploadAudio = async (req, res) => {
   const { source } = req.body;
   try {
     if (!req.file) {
@@ -171,7 +172,7 @@ export const uploadAudio = async (req, res) => {
   }
 };
 
-export const getAllAudios = async (req, res) => {
+const getAllAudios = async (req, res) => {
   try {
     const userId = req.user.id;
     const [audios] = await db.query(
@@ -191,7 +192,7 @@ export const getAllAudios = async (req, res) => {
   }
 };
 
-export const deleteAudio = async (req, res) => {
+const deleteAudio = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
@@ -224,7 +225,7 @@ export const deleteAudio = async (req, res) => {
   }
 };
 
-export const updateAudioHistory = async (req, res) => {
+const updateAudioHistory = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -272,4 +273,13 @@ export const updateAudioHistory = async (req, res) => {
   }
 };
 
-
+module.exports = {
+  updateAudioHistory,
+  deleteAudio,
+  getAllAudios,
+  uploadAudio,
+  endMeeting,
+  createMeeting,
+  transcribeAudioFromURL,
+  transcribeAudio
+};

@@ -27,6 +27,7 @@ import {
   updateNeedToShow,
 } from "../../redux/audioSlice";
 import Trancript from "../../components/LittleComponent/Trancript";
+import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
@@ -313,7 +314,7 @@ const LiveMeeting = () => {
 
         const formData = new FormData();
         formData.append("recordedAudio", file);
-        formData.append("source", "Live Transcript Conversion")
+        formData.append("source", "Live Transcript Conversion");
 
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,
@@ -515,7 +516,7 @@ const LiveMeeting = () => {
       source: "Live Transcript Conversion",
       data: data,
       title: historyTitle,
-      language:detectLanguage,
+      language: detectLanguage,
     };
     await addHistory(token, historyData, addToast, updatedMeetingId);
     setShowModal2(false);
@@ -588,20 +589,12 @@ const LiveMeeting = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
-        {
-          transcript: finalTranscript,
-          headers: headers,
-          detectLanguage: detectLanguage,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const apiKey = `${import.meta.env.VITE_DEEPSEEK_API_KEY}`;
+      const tableData = await processTranscriptWithDeepSeek(
+        apiKey,
+        finalTranscript,
+        headers
       );
-      const tableData = await response?.data;
       if (!Array.isArray(tableData)) {
         addToast("error", "Could not process meeting notes");
         return;
@@ -612,6 +605,8 @@ const LiveMeeting = () => {
     } catch (error) {
       console.error("Error converting transcript:", error);
       addToast("error", "Failed to convert transcript");
+      setShowModal2(false);
+      setShowModal(false);
     } finally {
       setIsProcessing(false);
     }

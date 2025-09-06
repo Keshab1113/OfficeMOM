@@ -1,8 +1,9 @@
-import db from "../config/db.js";
-import { contactSchema } from "../validations/authValidation.js";
-import nodemailer from "nodemailer";
+const db = require("../config/db.js");
+const { contactSchema } = require("../validations/authValidation.js");
+const nodemailer = require("nodemailer");
 
-export const createContact = async (req, res) => {
+
+const createContact = async (req, res) => {
   try {
     const { error, value } = contactSchema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -68,3 +69,5 @@ export const createContact = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+module.exports = createContact;

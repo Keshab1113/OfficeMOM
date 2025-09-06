@@ -1,5 +1,6 @@
-import nodemailer from "nodemailer";
-import uploadToFTP from "../config/uploadToFTP.js";
+const nodemailer = require("nodemailer");
+const uploadToFTP = require("../config/uploadToFTP.js");
+
 
 const sendMeetingEmail = async (req, res) => {
   let { name, email, tableData, downloadOptions } = req.body;
@@ -162,4 +163,4 @@ const sendMeetingEmail = async (req, res) => {
   }
 };
 
-export default sendMeetingEmail;
+module.exports = sendMeetingEmail;

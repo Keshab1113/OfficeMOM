@@ -1,6 +1,7 @@
-import axios from "axios";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import ExcelJS from "exceljs";
+const axios = require("axios");
+const { Document, Packer, Paragraph, TextRun } = require("docx");
+const ExcelJS = require("exceljs");
+
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
@@ -60,7 +61,7 @@ async function makeExcelBuffer(text) {
   return wb.xlsx.writeBuffer();
 }
 
-export const processAudio = async (req, res) => {
+const processAudio = async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -80,4 +81,8 @@ export const processAudio = async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message || "Server error" });
   }
+};
+
+module.exports = {
+  processAudio
 };

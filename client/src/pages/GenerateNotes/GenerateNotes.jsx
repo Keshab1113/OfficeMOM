@@ -14,6 +14,7 @@ import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { Helmet } from "react-helmet";
 import axios from "axios";
+import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 
 const GenerateNotes = () => {
   const [activeTab, setActiveTab] = useState("computer");
@@ -107,20 +108,13 @@ const GenerateNotes = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
-        {
-          transcript: finalTranscript,
-          headers: headers,
-          detectLanguage: detectLanguage,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const apiKey = `${import.meta.env.VITE_DEEPSEEK_API_KEY}`;
+      const tableData = await processTranscriptWithDeepSeek(
+        apiKey, 
+        finalTranscript, 
+        headers,
       );
-      const tableData = await response?.data;
+      
       if (!Array.isArray(tableData)) {
         addToast("error", "Could not process meeting notes");
         return;
@@ -131,6 +125,8 @@ const GenerateNotes = () => {
     } catch (error) {
       console.error("Error converting transcript:", error);
       addToast("error", "Failed to convert transcript");
+      setShowModal2(false);
+      setShowModal(false);
     } finally {
       setIsProcessing(false);
     }

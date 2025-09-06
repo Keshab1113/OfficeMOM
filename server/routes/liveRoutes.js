@@ -1,8 +1,16 @@
-import express from "express";
-import multer from "multer";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
-import { createMeeting, endMeeting, uploadAudio, getAllAudios, deleteAudio, transcribeAudioFromURL, transcribeAudio, updateAudioHistory } from "../controllers/liveController.js";
-
+const express = require("express");
+const multer = require("multer");
+const authMiddleware = require("../middlewares/authMiddleware.js");
+const {
+  createMeeting,
+  endMeeting,
+  uploadAudio,
+  getAllAudios,
+  deleteAudio,
+  transcribeAudioFromURL,
+  transcribeAudio,
+  updateAudioHistory,
+} = require("../controllers/liveController.js");
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -35,4 +43,4 @@ router.delete("/audio-files/:id", authMiddleware, deleteAudio);
 router.patch("/audio-files/:id", authMiddleware, updateAudioHistory);
 
 
-export default router;
+module.exports = router;

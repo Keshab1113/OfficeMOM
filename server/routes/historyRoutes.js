@@ -1,6 +1,11 @@
-import express from "express";
-import { addHistory, getHistory, updateHistoryTitle, deleteHistory } from "../controllers/historyController.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+const express = require("express");
+const {
+  addHistory,
+  getHistory,
+  updateHistoryTitle,
+  deleteHistory,
+} = require("../controllers/historyController.js");
+const authMiddleware = require("../middlewares/authMiddleware.js");
 
 const router = express.Router();
 
@@ -9,4 +14,4 @@ router.get("/", authMiddleware, getHistory);
 router.put("/:id", authMiddleware, updateHistoryTitle);
 router.delete("/:id", authMiddleware, deleteHistory);
 
-export default router;
+module.exports = router;

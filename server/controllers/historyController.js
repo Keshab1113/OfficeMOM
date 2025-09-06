@@ -1,6 +1,6 @@
-import db from "../config/db.js";
+const db = require("../config/db.js");
 
-export const addHistory = async (req, res) => {
+const addHistory = async (req, res) => {
   try {
     const { source, date, data, title, language } = req.body;
     if (!source || !date || !data) {
@@ -19,7 +19,7 @@ export const addHistory = async (req, res) => {
   }
 };
 
-export const getHistory = async (req, res) => {
+const getHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     const [rows] = await db.query(
@@ -33,7 +33,7 @@ export const getHistory = async (req, res) => {
   }
 };
 
-export const updateHistoryTitle = async (req, res) => {
+const updateHistoryTitle = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
@@ -59,7 +59,7 @@ export const updateHistoryTitle = async (req, res) => {
   }
 };
 
-export const deleteHistory = async (req, res) => {
+const deleteHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
@@ -86,4 +86,11 @@ export const deleteHistory = async (req, res) => {
     console.error("❌ [Audio Delete] Error:", err);
     res.status(500).json({ message: "Server error while deleting audio" });
   }
+};
+
+module.exports = {
+  addHistory,
+  getHistory,
+  updateHistoryTitle,
+  deleteHistory
 };

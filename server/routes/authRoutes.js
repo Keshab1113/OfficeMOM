@@ -1,5 +1,5 @@
-import express from "express";
-import {
+const express = require("express");
+const {
   login,
   signup,
   verifyOtp,
@@ -8,9 +8,9 @@ import {
   uploadProfilePicture,
   sendPasswordResetOtp,
   resetPasswordWithOtp,
-} from "../controllers/authController.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
-import multer from "multer";
+} = require("../controllers/authController.js");
+const authMiddleware = require("../middlewares/authMiddleware.js");
+const multer = require("multer");
 
 const upload = multer();
 const router = express.Router();
@@ -29,4 +29,4 @@ router.post(
 router.post("/forgot-password/send-otp", sendPasswordResetOtp);
 router.post("/forgot-password/reset", resetPasswordWithOtp);
 
-export default router;
+module.exports = router;

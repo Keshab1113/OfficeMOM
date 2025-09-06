@@ -1,9 +1,9 @@
-import ftp from "basic-ftp";
-import { Readable } from "stream";
-import { v4 as uuidv4 } from "uuid";
-import path from "path";
+const ftp = require("basic-ftp");
+const { Readable } = require("stream");
+const { v4: uuidv4 } = require("uuid");
+const path = require("path");
 
-export default async function uploadToFTP(buffer, originalName, subDir = "") {
+async function uploadToFTP(buffer, originalName, subDir = "") {
   const client = new ftp.Client();
   client.ftp.verbose = false;
   const uniqueName = `${Date.now()}-${uuidv4()}-${originalName}`;
@@ -26,7 +26,7 @@ export default async function uploadToFTP(buffer, originalName, subDir = "") {
 
     // ✅ Verify upload
     const fileList = await client.list();
-    const uploadedFile = fileList.find(f => f.name === uniqueName);
+    const uploadedFile = fileList.find((f) => f.name === uniqueName);
 
     if (!uploadedFile) {
       throw new Error("Upload failed: file not found on FTP server");
@@ -41,3 +41,5 @@ export default async function uploadToFTP(buffer, originalName, subDir = "") {
     throw err;
   }
 }
+
+module.exports = uploadToFTP;

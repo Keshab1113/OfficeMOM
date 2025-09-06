@@ -1,18 +1,18 @@
-import express from "express";
-import dotenv from "dotenv";
-import cors from "cors";
-import http from "http";
-import { WebSocket } from "ws";
-import { Server as SocketIOServer } from "socket.io";
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const http = require("http");
+const WebSocket = require("ws");
+const { Server: SocketIOServer } = require("socket.io");
 
-import authRoutes from "./routes/authRoutes.js";
-import audioRoutes from "./routes/audioRoutes.js";
-import liveRoutes from "./routes/liveRoutes.js";
-import driveRoutes from "./routes/driveRoutes.js";
-import openaiRoute from "./routes/openaiRoute.js";
-import historyRoutes from "./routes/historyRoutes.js";
-import emailRoutes from "./routes/emailRoutes.js";
-import contactRoutes from "./routes/contactRoutes.js";
+// Routes
+const authRoutes = require("./routes/authRoutes.js");
+const audioRoutes = require("./routes/audioRoutes.js");
+const liveRoutes = require("./routes/liveRoutes.js");
+const driveRoutes = require("./routes/driveRoutes.js");
+const historyRoutes = require("./routes/historyRoutes.js");
+const emailRoutes = require("./routes/emailRoutes.js");
+const contactRoutes = require("./routes/contactRoutes.js");
 
 dotenv.config();
 
@@ -21,11 +21,11 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api", audioRoutes);
 app.use("/api", liveRoutes);
 app.use("/api", driveRoutes);
-app.use("/api/openai", openaiRoute);
 app.use("/api/history", historyRoutes);
 app.use("/api", emailRoutes);
 app.use("/api/contact", contactRoutes);
@@ -126,22 +126,21 @@ io.on("connection", (socket) => {
   });
 
   socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
-  const room = rooms.get(roomId);
-  if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+    const room = rooms.get(roomId);
+    if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
 
-  socket.join(roomId);
-  socket.data.roomId = roomId;
-  room.peers.set(socket.id, { deviceName, deviceLabel });
+    socket.join(roomId);
+    socket.data.roomId = roomId;
+    room.peers.set(socket.id, { deviceName, deviceLabel });
 
-  socket.emit("host:socket-id", { hostId: room.hostSocketId });
-  io.to(room.hostSocketId).emit("host:join-request", {
-    socketId: socket.id,
-    deviceName,
-    deviceLabel,
+    socket.emit("host:socket-id", { hostId: room.hostSocketId });
+    io.to(room.hostSocketId).emit("host:join-request", {
+      socketId: socket.id,
+      deviceName,
+      deviceLabel,
+    });
+    io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
   });
-  io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
-});
-
 
   socket.on("host:approve", ({ guestSocketId }) => {
     const guest = io.sockets.sockets.get(guestSocketId);

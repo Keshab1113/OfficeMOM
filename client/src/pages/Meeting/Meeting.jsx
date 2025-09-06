@@ -14,6 +14,7 @@ import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { Helmet } from "react-helmet";
 import axios from "axios";
 import { io } from "socket.io-client";
+import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 
 const meetingPlatforms = [
   {
@@ -178,7 +179,7 @@ const Meeting = () => {
         });
         const formData = new FormData();
         formData.append("recordedAudio", file);
-        formData.append("source", "Online Meeting Conversion")
+        formData.append("source", "Online Meeting Conversion");
         try {
           const response = await axios.post(
             `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,
@@ -222,20 +223,12 @@ const Meeting = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/openai/convert-transcript`,
-        {
-          transcript: finalTranscript,
-          headers: headers,
-          detectLanguage: detectLanguage,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const apiKey = `${import.meta.env.VITE_DEEPSEEK_API_KEY}`;
+      const tableData = await processTranscriptWithDeepSeek(
+        apiKey,
+        finalTranscript,
+        headers
       );
-      const tableData = await response?.data;
       if (!Array.isArray(tableData)) {
         addToast("error", "Could not process meeting notes");
         return;
@@ -247,6 +240,8 @@ const Meeting = () => {
     } catch (error) {
       console.error("Error converting transcript:", error);
       addToast("error", "Failed to convert transcript");
+      setShowModal2(false);
+      setShowModal(false);
     }
   };
 
@@ -265,7 +260,7 @@ const Meeting = () => {
       source: "Online Meeting Conversion",
       date: dateCreated,
       data: data,
-      language:detectLanguage,
+      language: detectLanguage,
     };
     await addHistory(token, historyData, addToast, updatedMeetingId);
     setShowModal2(false);

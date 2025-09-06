@@ -1,14 +1,11 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import db from "../config/db.js";
-import crypto from "crypto";
-import nodemailer from "nodemailer";
-import {
-  signupSchema,
-  loginSchema,
-  updateProfileSchema,
-} from "../validations/authValidation.js";
-import uploadToFTP from "../config/uploadToFTP.js";
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const db = require("../config/db.js");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const { signupSchema, loginSchema, updateProfileSchema } = require("../validations/authValidation.js");
+const uploadToFTP = require("../config/uploadToFTP.js");
+
 
 const transporter = nodemailer.createTransport({
   host:process.env.MAILTRAP_HOST,
@@ -23,7 +20,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const signup = async (req, res) => {
+const signup = async (req, res) => {
   try {
     const { error } = signupSchema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -106,7 +103,7 @@ export const signup = async (req, res) => {
   }
 };
 
-export const login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const { error } = loginSchema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -148,7 +145,7 @@ export const login = async (req, res) => {
   }
 };
 
-export const verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const [user] = await db.query("SELECT otp FROM users WHERE email = ?", [
@@ -175,7 +172,7 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-export const resendOtp = async (req, res) => {
+const resendOtp = async (req, res) => {
   try {
     const { email } = req.body;
     const [user] = await db.query("SELECT id FROM users WHERE email = ?", [
@@ -205,7 +202,7 @@ export const resendOtp = async (req, res) => {
   }
 };
 
-export const updateUserProfile = async (req, res) => {
+const updateUserProfile = async (req, res) => {
   try {
     const { error } = updateProfileSchema.validate(req.body, {
       abortEarly: false,
@@ -239,7 +236,7 @@ export const updateUserProfile = async (req, res) => {
   }
 };
 
-export const uploadProfilePicture = async (req, res) => {
+const uploadProfilePicture = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -274,7 +271,7 @@ export const uploadProfilePicture = async (req, res) => {
   }
 };
 
-export const sendPasswordResetOtp = async (req, res) => {
+const sendPasswordResetOtp = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
@@ -323,7 +320,7 @@ export const sendPasswordResetOtp = async (req, res) => {
   }
 };
 
-export const resetPasswordWithOtp = async (req, res) => {
+const resetPasswordWithOtp = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) {
@@ -379,4 +376,15 @@ export const resetPasswordWithOtp = async (req, res) => {
     console.error("resetPasswordWithOtp error:", err);
     return res.status(500).json({ message: "Server error" });
   }
+};
+
+module.exports = {
+  signup,
+  login,
+  verifyOtp,
+  resendOtp,
+  updateUserProfile,
+  uploadProfilePicture,
+  sendPasswordResetOtp,
+  resetPasswordWithOtp,
 };

@@ -1,6 +1,7 @@
-import axios from "axios";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import ExcelJS from "exceljs";
+const axios = require("axios");
+const { Document, Packer, Paragraph, TextRun } = require("docx");
+const ExcelJS = require("exceljs");
+
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
@@ -67,7 +68,7 @@ async function makeExcelBuffer(text) {
 }
 
 
-export const processAudio = async (req, res) => {
+const processAudio = async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -88,7 +89,7 @@ export const processAudio = async (req, res) => {
   }
 };
 
-export const processDrive = async (req, res) => {
+const processDrive = async (req, res) => {
   const { driveUrl } = req.body;
   if (!driveUrl) return res.status(400).json({ error: "No Google Drive URL provided" });
 
@@ -121,4 +122,9 @@ export const processDrive = async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message || "Server error" });
   }
+};
+
+module.exports = {
+  processAudio,
+  processDrive
 };
