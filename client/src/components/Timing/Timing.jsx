@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { countryToLanguage, languages } from "../Language";
+import { countryCodeToName, countryToLanguage, languages } from "../Language";
 import { FiChevronDown, FiX } from "react-icons/fi";
 import axios from "axios";
 
@@ -15,12 +15,15 @@ const Timing = () => {
       try {
         const res = await axios.get(`${import.meta.env.VITE_LANGUAGE_URL}`);
         const data = res.data;
-        setUserCountry(data.country);
+        const countryCode = data.country;
+        const fullCountryName = countryCodeToName[countryCode] || countryCode;
+        
+        setUserCountry(fullCountryName);
 
-        if (data.country && countryToLanguage[data.country]) {
-          const recommended = Array.isArray(countryToLanguage[data.country])
-            ? countryToLanguage[data.country]
-            : [countryToLanguage[data.country]];
+        if (fullCountryName && countryToLanguage[fullCountryName]) {
+          const recommended = Array.isArray(countryToLanguage[fullCountryName])
+            ? countryToLanguage[fullCountryName]
+            : [countryToLanguage[fullCountryName]];
 
           // merge recommended with already selected (no duplicates)
           setSelectedLanguages((prev) => [
