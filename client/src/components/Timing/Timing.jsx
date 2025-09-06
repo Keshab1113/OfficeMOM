@@ -81,10 +81,10 @@ const Timing = () => {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {lang}
-                  <FiX
+                  {/* <FiX
                     className="cursor-pointer"
                     onClick={() => removeLanguage(lang)}
-                  />
+                  /> */}
                 </span>
               ))
             ) : (
