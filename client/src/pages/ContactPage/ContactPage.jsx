@@ -12,9 +12,13 @@ import { Helmet } from "react-helmet";
 import Footer from "../../components/Footer/Footer";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
+import { cn } from "../../lib/utils";
+
+const breadcrumbItems = [{ label: "ContactUs" }];
 
 const ContactPage = () => {
-    const { email, fullName } = useSelector((state) => state.auth);
+  const { email, fullName } = useSelector((state) => state.auth);
   const [formData, setFormData] = useState({
     name: fullName || "",
     email: email || "",
@@ -32,7 +36,11 @@ const ContactPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     // simple front-end validation
-    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
+    if (
+      !formData.name.trim() ||
+      !formData.email.trim() ||
+      !formData.message.trim()
+    ) {
       setErrorMsg("Please fill in all fields.");
       setStatus("error");
       return;
@@ -115,7 +123,15 @@ const ContactPage = () => {
         <title>OfficeMom | ContactUs</title>
         <link rel="canonical" href="http://mysite.com/example" />
       </Helmet>
-      <section className="relative flex h-full min-h-screen md:w-full w-screen items-center justify-center dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)] overflow-hidden">
+      <section className="relative h-full min-h-screen md:w-full w-screen dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]">
+        <div
+          className={cn(
+            "absolute inset-0",
+            "[background-size:20px_20px]",
+            "dark:[background-image:radial-gradient(#404040_1px,transparent_1px)]"
+          )}
+        />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
           <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 relative overflow-hidden">
             <motion.div
@@ -124,6 +140,7 @@ const ContactPage = () => {
               initial="hidden"
               animate="visible"
             >
+              <Breadcrumb items={breadcrumbItems} />
               <div className="md:max-w-7xl max-w-[90vw] mx-auto">
                 {/* Header Section */}
                 <motion.div
@@ -167,11 +184,7 @@ const ContactPage = () => {
                             text: "support@officemom.com",
                             color: "from-blue-500 to-cyan-500",
                           },
-                          {
-                            icon: FiPhone,
-                            text: "+0 (000) 000-0000",
-                            color: "from-green-500 to-emerald-500",
-                          },
+
                           {
                             icon: FiMapPin,
                             text: "800 N King Street, Suite 304, Wilmington, DE 19801, USA",
@@ -205,7 +218,7 @@ const ContactPage = () => {
                       </div>
                     </div>
 
-                    <div className="h-[20rem] w-full rounded-xl overflow-hidden shadow-lg">
+                    <div className="h-[21rem] w-full rounded-xl overflow-hidden shadow-lg">
                       <iframe
                         title="OfficeMoM Location"
                         src="https://www.google.com/maps?q=800+N+King+Street,+Suite+304,+Wilmington,+DE+19801,+USA&output=embed"
@@ -326,14 +339,23 @@ const ContactPage = () => {
                     </form>
 
                     {status === "success" && (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-xl text-center">
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 p-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-xl text-center"
+                      >
                         Message sent successfully! We'll get back to you soon.
                       </motion.div>
                     )}
 
                     {status === "error" && (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-xl text-center">
-                        {errorMsg || "Could not send your message. Please try again."}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-xl text-center"
+                      >
+                        {errorMsg ||
+                          "Could not send your message. Please try again."}
                       </motion.div>
                     )}
                   </motion.div>

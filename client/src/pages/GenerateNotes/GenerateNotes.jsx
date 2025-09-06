@@ -15,6 +15,11 @@ import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { Helmet } from "react-helmet";
 import axios from "axios";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
+import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
+
+ const breadcrumbItems = [
+    { label: "Generate Notes" }
+  ];
 
 const GenerateNotes = () => {
   const [activeTab, setActiveTab] = useState("computer");
@@ -184,6 +189,9 @@ const GenerateNotes = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
+            {!showModal && (
+                <Breadcrumb items={breadcrumbItems} />
+            )}
             {!showModal && (
               <Heading
                 heading="Generate Notes from Audio/Video Files"

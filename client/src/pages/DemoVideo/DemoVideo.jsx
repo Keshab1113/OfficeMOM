@@ -3,6 +3,10 @@ import { Helmet } from "react-helmet";
 import CTASection from "../../components/CTASection/CTASection";
 import { CheckCircle, FileAudio, Clock, Shield, Users } from "lucide-react";
 import { motion } from "framer-motion";
+import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
+import { cn } from "../../lib/utils";
+
+const breadcrumbItems = [{ label: "Features" }];
 
 const features = [
   {
@@ -47,48 +51,55 @@ const DemoVideo = () => {
         <title>OfficeMom | Features</title>
         <link rel="canonical" href="http://mysite.com/example" />
       </Helmet>
-      <section className="relative flex h-full min-h-screen md:w-full w-screen items-center justify-center dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] [mask-image:radial-gradient(ellipse_at_center,transparent_30%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]"></div>
-
+      <section className="relative h-full min-h-screen md:w-full w-screen dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]">
+        <div
+          className={cn(
+            "absolute inset-0",
+            "[background-size:20px_20px]",
+            "dark:[background-image:radial-gradient(#404040_1px,transparent_1px)]"
+          )}
+        />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-6xl mx-auto md:py-20 py-10 px-4"
+          >
+            <Breadcrumb items={breadcrumbItems} />
+            {/* Heading */}
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="max-w-6xl mx-auto md:py-20 py-10 px-4"
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 text-center mb-12"
             >
-              {/* Heading */}
-              <motion.h1
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 text-center mb-12"
-              >
-                Powerful Features to Simplify Your Meetings
-              </motion.h1>
+              Powerful Features to Simplify Your Meetings
+            </motion.h1>
 
-              {/* Feature Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {features.map((feature, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 + index * 0.2, duration: 0.6 }}
-                    whileHover={{ scale: 1.05 }}
-                    className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 flex flex-col items-start hover:shadow-xl transition-all duration-300"
-                  >
-                    <div className="mb-4">{feature.icon}</div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      {feature.title}
-                    </h2>
-                    <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+            {/* Feature Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + index * 0.2, duration: 0.6 }}
+                  whileHover={{ scale: 1.05 }}
+                  className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 flex flex-col items-start hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="mb-4">{feature.icon}</div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    {feature.title}
+                  </h2>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                    {feature.description}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
           <CTASection />
           <Footer />
         </div>

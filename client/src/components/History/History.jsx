@@ -8,10 +8,28 @@ import { Link, useNavigate } from "react-router-dom";
 import { removeAudioPreview } from "../../redux/audioSlice";
 import { useToast } from "../ToastContext";
 
+// Skeleton component for loading state
+const SkeletonItem = () => (
+  <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg p-3 shadow-sm border border-transparent">
+    <div className="flex justify-between items-center">
+      <div className="flex gap-2 justify-start items-center flex-1 min-w-0">
+        <div className="w-7 h-7 bg-gray-200 dark:bg-gray-600 rounded-md animate-pulse"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4 animate-pulse"></div>
+      </div>
+      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full animate-pulse"></div>
+    </div>
+    <div className="ml-8 mt-2 flex justify-between items-center">
+      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-32 animate-pulse"></div>
+      <div className="h-5 bg-gray-200 dark:bg-gray-600 rounded-full w-16 animate-pulse"></div>
+    </div>
+  </div>
+);
+
 const AllHistory = ({ title, NeedFor }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [history, setHistory] = useState([]);
   const [notCompleted, setNotCompleted] = useState([]);
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -38,6 +56,7 @@ const AllHistory = ({ title, NeedFor }) => {
 
   useEffect(() => {
     const fetchHistory = async () => {
+      setIsLoading(true); // Set loading to true when starting fetch
       try {
         const res = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/history`,
@@ -57,6 +76,8 @@ const AllHistory = ({ title, NeedFor }) => {
         setHistory(filteredData);
       } catch (err) {
         console.error("Get history error:", err);
+      } finally {
+        setIsLoading(false); // Set loading to false when fetch completes
       }
     };
     fetchHistory();
@@ -178,7 +199,14 @@ const AllHistory = ({ title, NeedFor }) => {
         </h2>
       </div>
 
-      {allData.length === 0 ? (
+      {/* Show skeleton loading state */}
+      {isLoading ? (
+        <div className="flex-1 space-y-3">
+          {Array.from({ length: NeedFor?4:2 }).map((_, index) => (
+            <SkeletonItem key={index} />
+          ))}
+        </div>
+      ) : allData.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
           <History className="w-12 h-12 mb-2 opacity-50" />
           <p className="font-medium">No history found</p>

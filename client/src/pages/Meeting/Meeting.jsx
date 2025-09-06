@@ -15,6 +15,7 @@ import { Helmet } from "react-helmet";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
+import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 
 const meetingPlatforms = [
   {
@@ -42,6 +43,9 @@ const meetingPlatforms = [
     color: "bg-gray-500",
   },
 ];
+const breadcrumbItems = [
+    { label: "Online Meeting" }
+  ];
 
 const Meeting = () => {
   const [activeTab, setActiveTab] = useState(1);
@@ -317,6 +321,9 @@ const Meeting = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
+            {!showModal && (
+                <Breadcrumb items={breadcrumbItems} />
+            )}
             {!isMeetingActive && (
               <Heading
                 heading="Take Notes from Online Meeting"
@@ -432,7 +439,7 @@ const Meeting = () => {
                           <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
                             <div className="flex items-center mb-4">
                               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
-                              <h3 className="text-xl font-semibold text-white">
+                              <h3 className="text-xl font-semibold dark:text-white ">
                                 Live Captions
                               </h3>
                             </div>
@@ -442,14 +449,14 @@ const Meeting = () => {
                                 {transcript.map((line, i) => (
                                   <div
                                     key={i}
-                                    className="text-white/90 leading-relaxed animate-fadeIn"
+                                    className="dark:text-white/90 leading-relaxed animate-fadeIn"
                                     style={{
                                       animationDelay: `${i * 0.1}s`,
                                       animationDuration: "0.5s",
                                       animationFillMode: "both",
                                     }}
                                   >
-                                    <span className="text-blue-400 text-sm mr-2">
+                                    <span className="dark:text-blue-400 text-blue-600 text-sm mr-2">
                                       [{new Date().toLocaleTimeString()}]
                                     </span>
                                     {line}

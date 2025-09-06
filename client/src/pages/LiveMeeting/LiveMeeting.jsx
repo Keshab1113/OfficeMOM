@@ -28,8 +28,12 @@ import {
 } from "../../redux/audioSlice";
 import Trancript from "../../components/LittleComponent/Trancript";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
+import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
+const breadcrumbItems = [
+    { label: "Live Meeting" }
+  ];
 
 const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -682,6 +686,9 @@ const LiveMeeting = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
+            {!showModal && (
+                <Breadcrumb items={breadcrumbItems} />
+            )}
             <Heading
               heading="Start New Meeting"
               subHeading="Using your device microphone."

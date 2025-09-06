@@ -16,6 +16,11 @@ import { cn } from "../../lib/utils";
 import Footer from "../../components/Footer/Footer";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import Breadcrumb from "../../components/LittleComponent/Breadcrumb"
+
+const breadcrumbItems = [
+    { label: "AboutUs" }
+  ];
 
 export default function AboutUs() {
   const [isVisible, setIsVisible] = useState({});
@@ -110,7 +115,7 @@ export default function AboutUs() {
                 <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 dark:bg-indigo-800 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse delay-1000"></div>
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-purple-200 dark:bg-purple-800 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-2000"></div>
               </div>
-
+                <Breadcrumb items={breadcrumbItems} />
               {/* Hero Section */}
               <section
                 id="hero"

@@ -28,20 +28,14 @@ const Footer = () => {
         product: [
             { name: "Features", href: "/features" },
             { name: "Pricing", href: "/pricing" },
-            { name: "Integrations", href: "/integrations" },
-            { name: "API", href: "/api" }
         ],
         company: [
             { name: "About", href: "/about-us" },
-            { name: "Blog", href: "/blog" },
-            { name: "Careers", href: "/career" },
             { name: "Contact", href: "/contact-us" }
         ],
         support: [
-            { name: "Help Center", href: "/contact-us" },
             { name: "Documentation", href: "/documentation" },
             { name: "Privacy Policy", href: "/privacy-policy" },
-            { name: "Terms of Service", href: "/terms" }
         ]
     };
 

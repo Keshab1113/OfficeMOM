@@ -8,7 +8,7 @@ function Layout() {
 
   return (
     <section className="w-full overflow-x-hidden">
-      <div className="mx-auto w-full max-w-[1700px] flex min-h-screen overflow-x-hidden">
+      <div className="mx-auto w-full flex min-h-screen overflow-x-hidden">
         {!hideSidebar && (
           <div className="">
             <SideBar />
