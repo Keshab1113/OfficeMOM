@@ -13,6 +13,7 @@ const driveRoutes = require("./routes/driveRoutes.js");
 const historyRoutes = require("./routes/historyRoutes.js");
 const emailRoutes = require("./routes/emailRoutes.js");
 const contactRoutes = require("./routes/contactRoutes.js");
+const stripeRoutes = require("./routes/stripeRoutes.js");
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/api", driveRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api", emailRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/stripe", stripeRoutes);
 
 const server = http.createServer(app);
 
