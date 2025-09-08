@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import {
   FiMail,
@@ -24,6 +25,7 @@ const ContactPage = () => {
     email: email || "",
     message: "",
   });
+  // eslint-disable-next-line no-unused-vars
   const [focusedField, setFocusedField] = useState("");
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -133,9 +135,9 @@ const ContactPage = () => {
         />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
-          <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 relative overflow-hidden">
+          <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 relative overflow-hidden">
             <motion.div
-              className="relative z-10 px-6 py-16 lg:py-10"
+              className=" z-10 px-6 py-16 lg:py-10"
               variants={containerVariants}
               initial="hidden"
               animate="visible"

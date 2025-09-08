@@ -52,7 +52,7 @@ const CTASection = () => {
             <button
               onMouseEnter={() => setHoveredButton("trial")}
               onMouseLeave={() => setHoveredButton(null)}
-              onClick={() => nav(token?"/meeting":"/login")}
+              onClick={() => nav(token ? "/meeting" : "/login")}
               className="group relative cursor-pointer px-10 py-5 bg-white text-purple-600 rounded-2xl font-bold text-lg overflow-hidden transition-all duration-500 hover:scale-110 shadow-2xl hover:shadow-purple-500/25"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -138,7 +138,7 @@ const CTASection = () => {
                   className={`w-full h-full transition-opacity duration-500 ${
                     videoLoaded ? "opacity-100" : "opacity-0"
                   }`}
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&showinfo=0&modestbranding=1"
+                  src="https://www.youtube.com/embed/iZpkSaWPtSA?si=rNxJBY5rwnczPc9W&autoplay=1&mute=1&loop=1&controls=0&playlist=iZpkSaWPtSA&end=10&modestbranding=1&rel=0"
                   title="OfficeMoM Demo - Revolutionary Transcription"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
