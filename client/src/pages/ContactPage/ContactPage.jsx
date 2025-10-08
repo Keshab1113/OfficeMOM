@@ -146,7 +146,7 @@ const ContactPage = () => {
               <div className="md:max-w-7xl max-w-[90vw] mx-auto">
                 {/* Header Section */}
                 <motion.div
-                  className="text-center mb-10"
+                  className="text-center mb-10 mt-16"
                   variants={itemVariants}
                 >
                   <motion.div

@@ -1,0 +1,84 @@
+const axios = require("axios");
+
+/**
+ * @desc Process transcript using DeepSeek API
+ * @route POST /api/deepseek/process
+ */
+const processTranscript = async (req, res) => {
+  const { transcript, headers } = req.body;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+
+  if (!apiKey) {
+    return res
+      .status(400)
+      .json({ error: "DeepSeek API key is missing in backend." });
+  }
+
+  if (!transcript || !headers) {
+    return res
+      .status(400)
+      .json({ error: "Transcript and headers are required." });
+  }
+
+  try {
+    const prompt = `
+You are an information extraction system. 
+Your ONLY task is to extract structured data from the given text and return it as a STRICT JSON array. 
+Do not add explanations, comments, or any extra text outside the JSON.
+
+Rules:
+1. Output must be a valid JSON array of objects.
+2. Use these keys exactly (case-sensitive): ${headers.join(", ")}.
+3. For each object:
+   - Extract the value from the text if available.
+   - If a field is missing or unclear, set its value to an empty string "".
+   - Do not generate extra fields.
+4. Keep values as plain text only — do not infer, summarize, or transform unnecessarily.
+5. If multiple entities are found in the text, return multiple objects in the array.
+6. Ensure the final JSON passes validation (no trailing commas, no comments, no formatting errors).
+
+Text to extract from:
+${transcript}
+`;
+
+    const response = await axios.post(
+      process.env.DEEPSEEK_API_URL,
+      {
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+      }
+    );
+
+    const raw = response.data.choices[0].message.content.trim();
+    let data;
+
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      const match = raw.match(/\[.*\]/s);
+      data = match ? JSON.parse(match[0]) : [];
+    }
+
+    if (!Array.isArray(data)) {
+      data = [data];
+    }
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("DeepSeek API error:", error.message);
+    res.status(500).json({
+      success: false,
+      error:
+        error.response?.data?.error?.message || "Failed to process transcript",
+    });
+  }
+};
+
+module.exports = { processTranscript };

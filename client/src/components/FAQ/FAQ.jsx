@@ -1,59 +1,45 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const faqs = [
-  {
-    question: "What is OfficeMoM?",
-    answer:
-      "OfficeMoM is an intelligent meeting management platform that transforms how teams collaborate. It provides real-time transcription, smart summaries, and seamless integration with your favorite tools to make every meeting more productive and accessible.",
-    category: "General",
-  },
-  {
-    question: "How does OfficeMoM handle online meetings?",
-    answer:
-      "OfficeMoM integrates seamlessly with all major video conferencing platforms including Google Meet, Zoom, Microsoft Teams, and Webex. Simply invite our AI assistant to your meeting or use our browser extension for automatic transcription and note-taking.",
-    category: "Integration",
-  },
-  {
-    question: "Can I use OfficeMoM for in-person meetings?",
-    answer:
-      "Absolutely! OfficeMoM works perfectly for offline meetings too. Use our mobile app or web platform to record audio, generate live transcripts, and create meeting summaries even when you're meeting face-to-face.",
-    category: "Features",
-  },
-  {
-    question: "What are the pricing options?",
-    answer:
-      "OfficeMoM offers a generous free tier with up to 5 hours of transcription per month. Our Pro plan starts at $12/month with unlimited transcription, advanced AI features, and team collaboration tools. Enterprise solutions are available for larger organizations.",
-    category: "Pricing",
-  },
-  {
-    question: "Is there a mobile app available?",
-    answer:
-      "No, OfficeMoM does not currently have a mobile app. However, we are planning to release one in the near future to make accessing your meeting notes even more convenient.",
-    category: "Platform",
-  },
-  {
-    question: "Which languages are supported?",
-    answer:
-      "OfficeMoM supports over 160+ languages with industry-leading accuracy. Our AI can detect languages automatically, handle multilingual meetings, and provide translations in real-time, making it perfect for global teams.",
-    category: "Features",
-  },
-  {
-    question: "How secure is my meeting data?",
-    answer:
-      "Security is our top priority. All data is encrypted end-to-end, stored in SOC 2 compliant data centers, and we never use your meeting content to train our AI models. You maintain full control over your data with granular privacy settings.",
-    category: "Security",
-  },
-];
 
 const FAQ = () => {
   const [openIndex, setOpenIndex] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const nav = useNavigate();
+  const [faqs, setFaqs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const pageType = "mainPage";
 
   const toggleFAQ = (index) => {
     setOpenIndex(openIndex === index ? null : index);
   };
+
+  const fetchFAQs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/faq/${pageType}`
+      );
+      if (response.data.success) {
+        setFaqs(response.data.data);
+      } else {
+        setError(response.data.message);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (pageType) {
+      fetchFAQs();
+    }
+  }, [pageType]);
 
   const categoryColors = {
     General: "bg-gradient-to-r from-blue-500 to-purple-600",
@@ -64,8 +50,23 @@ const FAQ = () => {
     Security: "bg-gradient-to-r from-indigo-500 to-blue-600",
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-600 dark:text-gray-400">
+        <div className="animate-spin w-8 h-8"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-600 dark:text-gray-400">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-blue-100 dark:bg-gray-800 transition-all duration-700">
+    <div className="min-h-screen bg-blue-50 dark:bg-gray-700 transition-all duration-700">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>

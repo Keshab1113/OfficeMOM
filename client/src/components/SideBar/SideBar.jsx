@@ -1,8 +1,8 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-import { FiMenu } from "react-icons/fi";
+import { RiMenu2Line } from "react-icons/ri";
 import { RxCross2 } from "react-icons/rx";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/authSlice";
@@ -14,41 +14,44 @@ import { BsThreeDotsVertical } from "react-icons/bs";
 import { IoPersonCircleSharp } from "react-icons/io5";
 import { MdDarkMode, MdLightMode } from "react-icons/md";
 
+const navItems = [
+  {
+    heading: "Join Online Meeting",
+    icon: "/Icons/writing.webp",
+    url: "/meeting",
+  },
+  {
+    heading: "Generate Notes from Audio/Video Files",
+    icon: "/Icons/video.webp",
+    url: "/audio-notes",
+  },
+  {
+    heading: "Start New Meeting",
+    icon: "/Icons/voice.webp",
+    url: "/live-meeting",
+  },
+];
+
 const SideBar = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { email, fullName, token } = useSelector(
-    (state) => state.auth
-  );
-  const { profileImage } = useSelector(
-    (state) => state.auth
-  );
+  const { email, fullName, token } = useSelector((state) => state.auth);
+  const { profileImage } = useSelector((state) => state.auth);
   const { addToast } = useToast();
   // eslint-disable-next-line no-unused-vars
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const dropdownRef = useRef(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const navItems = [
-    {
-      heading: "Join Online Meeting",
-      icon: "/Icons/writing.webp",
-      url: "/meeting",
-    },
-    {
-      heading: "Generate Notes from Audio/Video Files",
-      icon: "/Icons/video.webp",
-      url: "/audio-notes",
-    },
-    {
-      heading: "Start New Meeting",
-      icon: "/Icons/voice.webp",
-      url: "/live-meeting",
-    },
-  ];
+  const hiddenRoutes = ["/meeting", "/audio-notes", "/live-meeting"];
+
+  const hideSidebar = hiddenRoutes.some((path) =>
+    location.pathname.startsWith(path)
+  );
 
   useEffect(() => {
     const checkScreen = () => setIsMobile(window.innerWidth < 1024);
@@ -56,36 +59,6 @@ const SideBar = () => {
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
-
-  // Theme management
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    if (!isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
-
-  const handleHomeClick = () => {
-    if (isMobile) setIsSidebarOpen(false);
-    navigate("/");
-  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -110,50 +83,80 @@ const SideBar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
   const SidebarContent = (
     <section
-      className={`relative backdrop-blur-xl bg-gradient-to-br from-white/90 via-blue-50/80 to-indigo-100/70 
+      className={` backdrop-blur-xl bg-gradient-to-br from-white/90 via-blue-50/80 to-indigo-100/70 
       dark:from-gray-900/95 dark:via-slate-800/90 dark:to-indigo-900/80 
       shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-[100dvh] py-8 
-      sticky top-0 left-0 flex flex-col z-50 transition-all duration-500 ease-in-out
-      border-r border-white/30 dark:border-gray-700/50 overflow-hidden
+      sticky top-0 left-0 flex flex-col justify-between items-start z-40 transition-all duration-500 ease-in-out
+      border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
       ${isCollapsed ? "w-[5rem]" : "md:w-[20rem] w-screen 2xl:w-[22vw] px-6"}`}
     >
       <div
-        className={`flex items-center justify-between mb-16 ${
+        className={`flex items-center justify-between w-full mb-16 ${
           isCollapsed ? "gap-10 flex-col-reverse" : ""
         }`}
       >
-        <button onClick={handleHomeClick} className="flex gap-2">
-          <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
-            <img src="/logo.webp" alt="logo" loading="lazy" />
-          </div>
-          {!isCollapsed && (
-            <h1 className="text-3xl font-bold dark:text-white text-[#06304f] cursor-pointer">
-              Office<span className="text-blue-400">MoM</span>
-            </h1>
-          )}
-        </button>
-        
+        {hideSidebar && (
+          <button onClick={() => navigate("/")} className="flex gap-2">
+            <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+              <img src="/logo.webp" alt="logo" loading="lazy" />
+            </div>
+            {!isCollapsed && (
+              <h1 className="text-3xl font-bold dark:text-white text-[#06304f] cursor-pointer">
+                Office<span className="text-blue-400">MoM</span>
+              </h1>
+            )}
+          </button>
+        )}
         {/* Theme Toggle Button */}
         <div className="flex items-center gap-3">
-          <motion.button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+          {hideSidebar && (
+            <motion.button
+              onClick={toggleTheme}
+              className="p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
               shadow-lg border border-white/30 dark:border-gray-700/50
               hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
               text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDarkMode ? (
-              <MdLightMode className="text-xl" />
-            ) : (
-              <MdDarkMode className="text-xl" />
-            )}
-          </motion.button>
-          
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title={
+                isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
+              }
+            >
+              {isDarkMode ? (
+                <MdLightMode className="text-xl" />
+              ) : (
+                <MdDarkMode className="text-xl" />
+              )}
+            </motion.button>
+          )}
           {isMobile && (
             <button
               className="text-2xl text-blue-400"
@@ -165,7 +168,7 @@ const SideBar = () => {
         </div>
       </div>
 
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8  h-[80%]">
         {navItems.map((item, index) => (
           <NavLink
             key={index}
@@ -200,7 +203,7 @@ const SideBar = () => {
       </div>
 
       {email && fullName && token && (
-        <div className="absolute bottom-4 w-[90%]">
+        <div className=" w-[100%]">
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/30 dark:border-gray-700/50">
             <div className="flex justify-between w-full items-center">
               <div className="flex gap-3 justify-start items-center max-w-[90%]">
@@ -288,10 +291,10 @@ const SideBar = () => {
     <>
       {isMobile && !isSidebarOpen && (
         <button
-          className="p-3 text-2xl text-blue-400 fixed top-4 left-4 z-50 bg-white rounded-full"
+          className={`p-3 text-2xl text-blue-400 fixed  left-4 z-40 bg-white rounded-full ${hideSidebar? "top-10":"top-20" }`}
           onClick={() => setIsSidebarOpen(true)}
         >
-          <FiMenu />
+          <RiMenu2Line />
         </button>
       )}
       {isMobile

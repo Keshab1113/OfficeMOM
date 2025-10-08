@@ -227,9 +227,7 @@ const Meeting = () => {
   const handleSaveHeaders = async (headers) => {
     setIsSending(true);
     try {
-      const apiKey = `${import.meta.env.VITE_DEEPSEEK_API_KEY}`;
       const tableData = await processTranscriptWithDeepSeek(
-        apiKey,
         finalTranscript,
         headers
       );

@@ -81,7 +81,7 @@ const Home = () => {
       <Helmet>
         <meta charSet="utf-8" />
         <title>OfficeMom | Home</title>
-        <link rel="canonical" href="http://mysite.com/example" />
+        <link rel="canonical" href="https://officemom.me/" />
       </Helmet>
       <section className="relative flex h-full min-h-screen md:w-full w-screen items-center justify-center overflow-hidden">
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
@@ -199,7 +199,7 @@ const Home = () => {
             </div>
           </div>
           <CTASection />
-          <PricingOptions />
+          {/* <PricingOptions /> */}
           <FAQ />
           <Footer />
         </div>

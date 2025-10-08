@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import PricingOptions from "../../components/PricingOptions/PricingOptions";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import { cn } from "../../lib/utils";
+import FAQSection from "../../components/PricingOptions/FAQSection";
 
 const breadcrumbItems = [{ label: "Pricing" }];
 
@@ -26,6 +27,7 @@ const Pricing = () => {
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
           <Breadcrumb items={breadcrumbItems} />
           <PricingOptions />
+          <FAQSection/>
           <Footer />
         </div>
       </section>

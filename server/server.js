@@ -4,8 +4,6 @@ const cors = require("cors");
 const http = require("http");
 const WebSocket = require("ws");
 const { Server: SocketIOServer } = require("socket.io");
-
-// Routes
 const authRoutes = require("./routes/authRoutes.js");
 const audioRoutes = require("./routes/audioRoutes.js");
 const liveRoutes = require("./routes/liveRoutes.js");
@@ -14,6 +12,9 @@ const historyRoutes = require("./routes/historyRoutes.js");
 const emailRoutes = require("./routes/emailRoutes.js");
 const contactRoutes = require("./routes/contactRoutes.js");
 const stripeRoutes = require("./routes/stripeRoutes.js");
+const deepseekRoutes = require("./routes/deepseekRoutes.js");
+const planRoutes = require("./routes/planRoutes.js");
+const faqRoutes = require("./routes/faqRoutes.js");
 
 dotenv.config();
 
@@ -31,6 +32,9 @@ app.use("/api/history", historyRoutes);
 app.use("/api", emailRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/stripe", stripeRoutes);
+app.use("/api", deepseekRoutes);
+app.use("/api", planRoutes);
+app.use("/api", faqRoutes);
 
 const server = http.createServer(app);
 

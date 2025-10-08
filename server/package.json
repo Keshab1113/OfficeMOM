@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "assemblyai": "^4.15.0",
-    "axios": "^1.11.0",
+    "axios": "^1.12.2",
     "basic-ftp": "^5.0.5",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",

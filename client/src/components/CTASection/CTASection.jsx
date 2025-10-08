@@ -119,9 +119,9 @@ const CTASection = () => {
 
           {/* Video Container with Enhanced Styling */}
           <div className="relative group">
-            <div className="absolute -inset-4 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 rounded-3xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"></div>
+            {/* <div className="absolute -inset-4 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 rounded-3xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"></div> */}
 
-            <div className="relative bg-white dark:bg-gray-900 rounded-3xl p-4 shadow-2xl transform group-hover:scale-105 transition-all duration-700">
+            <div className="relative md:max-w-[70%] max-w-full mx-auto bg-white dark:bg-gray-900 rounded-3xl p-4 shadow-2xl transform group-hover:scale-105 transition-all duration-700">
               <div className="relative aspect-video rounded-2xl overflow-hidden shadow-inner bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
                 {!videoLoaded && (
                   <div className="absolute inset-0 flex items-center justify-center">
