@@ -340,7 +340,7 @@ const PricingOptions = () => {
                         </div>
                       )}
 
-                      {plan.price > 0 && billingCycle === "monthly" && (
+                      {/* {plan.price > 0 && billingCycle === "monthly" && (
                         <p
                           className={`text-sm mt-1 ${
                             plan.isHighlighted
@@ -350,7 +350,7 @@ const PricingOptions = () => {
                         >
                           ${plan.yearlyPrice}/year with yearly plan
                         </p>
-                      )}
+                      )} */}
                     </div>
 
                     {/* Features List */}

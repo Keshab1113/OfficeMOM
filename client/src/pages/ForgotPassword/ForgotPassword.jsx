@@ -1,8 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet";
-import { Eye, EyeOff, Loader2, CheckCircle2, Mail, Lock, ArrowLeft, Shield, Key } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle2,
+  Mail,
+  Lock,
+  ArrowLeft,
+  Shield,
+  Key,
+} from "lucide-react";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
+import { useToast } from "../../components/ToastContext";
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1);
@@ -16,12 +28,17 @@ const ForgotPassword = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { addToast } = useToast();
 
   const navigate = useNavigate();
 
   // Simple client-side checks
   const validEmail = /\S+@\S+\.\S+/.test(email);
-  const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
+  const strongPassword =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+      password
+    );
   const passwordsMatch = password === confirm;
 
   const passwordStrength = {
@@ -44,11 +61,14 @@ const ForgotPassword = () => {
         { email }
       );
       setStep(2);
-      setTimer(30);
+      setTimer(120);
       setCanResend(false);
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.message || "Failed to send verification code");
+      addToast(
+        "error",
+        err?.response?.data?.message || "Failed to send verification code"
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -82,11 +102,14 @@ const ForgotPassword = () => {
         { email }
       );
       setOtp(["", "", "", "", "", ""]);
-      setTimer(30);
+      setTimer(120);
       setCanResend(false);
-      alert("Verification code resent to your email");
+      addToast("success", "Verification code resent to your email");
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to resend code");
+      addToast(
+        "error",
+        err?.response?.data?.message || "Failed to resend code"
+      );
     }
   };
 
@@ -94,7 +117,7 @@ const ForgotPassword = () => {
     e.preventDefault();
     if (!strongPassword) return;
     if (!passwordsMatch) {
-      alert("Passwords do not match");
+      addToast("error", "Passwords do not match");
       return;
     }
     setIsProcessing(true);
@@ -105,17 +128,30 @@ const ForgotPassword = () => {
         { email, otp: otpString, newPassword: password }
       );
       // Success → back to login
-      navigate("/login", { replace: true, state: { message: "Password reset successfully! Please sign in with your new password." } });
+      navigate("/login", {
+        replace: true,
+        state: {
+          message:
+            "Password reset successfully! Please sign in with your new password.",
+        },
+      });
+      addToast(
+        "success",
+        "Password reset successfully! Please sign in with your new password."
+      );
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.message || "Failed to reset password");
+      addToast(
+        "error",
+        err?.response?.data?.message || "Failed to reset password"
+      );
     } finally {
       setIsProcessing(false);
     }
   };
 
   // Timer effect
-  useState(() => {
+  useEffect(() => {
     let interval;
     if (step === 2 && timer > 0) {
       interval = setInterval(() => {
@@ -127,6 +163,32 @@ const ForgotPassword = () => {
     return () => clearInterval(interval);
   }, [timer, step]);
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -135,7 +197,7 @@ const ForgotPassword = () => {
         <link rel="canonical" href="https://officemom.me/forgot-password" />
       </Helmet>
 
-      <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden py-10">
         {/* Background with gradient and patterns */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
           {/* Animated background elements */}
@@ -144,28 +206,43 @@ const ForgotPassword = () => {
             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
             <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
           </div>
-          
+
           {/* Grid pattern */}
           <div className="absolute inset-0 opacity-10 dark:opacity-5">
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
+        <button
+          onClick={toggleTheme}
+          className="absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+              shadow-lg border border-white/30 dark:border-gray-700/50
+              hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
+              text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {isDarkMode ? (
+            <MdLightMode className="text-xl" />
+          ) : (
+            <MdDarkMode className="text-xl" />
+          )}
+        </button>
 
         {/* Main content */}
         <div className="relative z-10 w-full max-w-4xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            
             {/* Left side - Branding and Info */}
             <div className="text-center lg:text-left space-y-8">
               <div className="flex items-center justify-center lg:justify-start space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Key className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+                  <img src="/logo.webp" alt="logo" loading="lazy" />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
                   OfficeMoM
                 </span>
               </div>
-              
+
               <div className="space-y-6">
                 <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
                   Reset Your{" "}
@@ -174,7 +251,8 @@ const ForgotPassword = () => {
                   </span>
                 </h1>
                 <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
-                  Secure your account with a new password. We'll help you get back to productive meetings in no time.
+                  Secure your account with a new password. We'll help you get
+                  back to productive meetings in no time.
                 </p>
               </div>
 
@@ -198,15 +276,31 @@ const ForgotPassword = () => {
               <div className="pt-4">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${step >= 1 ? 'bg-indigo-600' : 'bg-gray-300'}`}></div>
-                    <span className={`text-sm font-medium ${step >= 1 ? 'text-indigo-600' : 'text-gray-500'}`}>
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        step >= 1 ? "bg-indigo-600" : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span
+                      className={`text-sm font-medium ${
+                        step >= 1 ? "text-indigo-600" : "text-gray-500"
+                      }`}
+                    >
                       Verify Email
                     </span>
                   </div>
                   <div className="w-8 h-0.5 bg-gray-300"></div>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${step >= 2 ? 'bg-indigo-600' : 'bg-gray-300'}`}></div>
-                    <span className={`text-sm font-medium ${step >= 2 ? 'text-indigo-600' : 'text-gray-500'}`}>
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        step >= 2 ? "bg-indigo-600" : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span
+                      className={`text-sm font-medium ${
+                        step >= 2 ? "text-indigo-600" : "text-gray-500"
+                      }`}
+                    >
                       New Password
                     </span>
                   </div>
@@ -267,7 +361,7 @@ const ForgotPassword = () => {
                         disabled={!validEmail || isProcessing}
                         onMouseEnter={() => setIsHovered(true)}
                         onMouseLeave={() => setIsHovered(false)}
-                        className="w-full flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                       >
                         {isProcessing ? (
                           <>
@@ -277,7 +371,11 @@ const ForgotPassword = () => {
                         ) : (
                           <>
                             <span>Send Verification Code</span>
-                            <ArrowLeft className={`w-5 h-5 transition-transform duration-200 ${isHovered ? 'translate-x-1' : ''}`} />
+                            <ArrowLeft
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                isHovered ? "translate-x-1" : ""
+                              }`}
+                            />
                           </>
                         )}
                       </button>
@@ -286,7 +384,7 @@ const ForgotPassword = () => {
                         <button
                           type="button"
                           onClick={() => navigate("/login")}
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline flex items-center justify-center space-x-1 mx-auto"
+                          className="text-indigo-600 cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline flex items-center justify-center space-x-1 mx-auto"
                         >
                           <ArrowLeft className="w-4 h-4" />
                           <span>Back to Sign In</span>
@@ -314,11 +412,14 @@ const ForgotPassword = () => {
                                 maxLength="1"
                                 className="w-12 h-12 text-center text-xl font-bold bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all duration-300 text-gray-900 dark:text-white shadow-sm"
                                 value={digit}
-                                onChange={(e) => handleOtpChange(index, e.target.value)}
+                                onChange={(e) =>
+                                  handleOtpChange(index, e.target.value)
+                                }
                                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
                                 onPaste={(e) => {
                                   e.preventDefault();
-                                  const pastedData = e.clipboardData.getData("text");
+                                  const pastedData =
+                                    e.clipboardData.getData("text");
                                   if (/^[0-9]{6}$/.test(pastedData)) {
                                     const newOtp = pastedData.split("");
                                     setOtp(newOtp);
@@ -327,7 +428,7 @@ const ForgotPassword = () => {
                               />
                             ))}
                           </div>
-                          
+
                           {/* Timer and Resend */}
                           <div className="text-center mt-3">
                             {timer > 0 ? (
@@ -379,31 +480,49 @@ const ForgotPassword = () => {
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                           >
-                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            {showPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
                           </button>
                         </div>
-                        
+
                         {/* Password Strength Indicator */}
                         {password && (
                           <div className="space-y-2 mt-3">
                             <div className="flex justify-between text-xs">
-                              <span className="text-gray-600 dark:text-gray-400">Password strength</span>
-                              <span className={`font-medium ${
-                                strengthScore >= 4 ? 'text-green-600' : 
-                                strengthScore >= 3 ? 'text-yellow-600' : 
-                                'text-red-600'
-                              }`}>
-                                {strengthScore >= 4 ? 'Strong' : strengthScore >= 3 ? 'Medium' : 'Weak'}
+                              <span className="text-gray-600 dark:text-gray-400">
+                                Password strength
+                              </span>
+                              <span
+                                className={`font-medium ${
+                                  strengthScore >= 4
+                                    ? "text-green-600"
+                                    : strengthScore >= 3
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {strengthScore >= 4
+                                  ? "Strong"
+                                  : strengthScore >= 3
+                                  ? "Medium"
+                                  : "Weak"}
                               </span>
                             </div>
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                              <div 
+                              <div
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  strengthScore >= 4 ? 'bg-green-500' : 
-                                  strengthScore >= 3 ? 'bg-yellow-500' : 
-                                  'bg-red-500'
+                                  strengthScore >= 4
+                                    ? "bg-green-500"
+                                    : strengthScore >= 3
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
                                 }`}
-                                style={{ width: `${(strengthScore / 5) * 100}%` }}
+                                style={{
+                                  width: `${(strengthScore / 5) * 100}%`,
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -423,8 +542,8 @@ const ForgotPassword = () => {
                             placeholder="Confirm your new password"
                             className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
                               confirm && !passwordsMatch
-                                ? 'border-red-500 focus:ring-red-500'
-                                : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-transparent group-hover:border-gray-400 dark:group-hover:border-gray-500'
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-transparent group-hover:border-gray-400 dark:group-hover:border-gray-500"
                             }`}
                             value={confirm}
                             onChange={(e) => setConfirm(e.target.value)}
@@ -435,18 +554,29 @@ const ForgotPassword = () => {
                             onClick={() => setShowConfirm(!showConfirm)}
                             className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                           >
-                            {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            {showConfirm ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
                           </button>
                         </div>
                         {confirm && !passwordsMatch && (
-                          <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
+                          <p className="text-red-500 text-xs mt-1">
+                            Passwords do not match
+                          </p>
                         )}
                       </div>
 
                       <button
                         type="submit"
-                        disabled={isProcessing || otp.some(digit => !digit) || !strongPassword || !passwordsMatch}
-                        className="w-full flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-blue-600 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        disabled={
+                          isProcessing ||
+                          otp.some((digit) => !digit) ||
+                          !strongPassword ||
+                          !passwordsMatch
+                        }
+                        className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-blue-600 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                       >
                         {isProcessing ? (
                           <div className="flex items-center justify-center space-x-2">
@@ -461,8 +591,14 @@ const ForgotPassword = () => {
                       <div className="text-center">
                         <button
                           type="button"
-                          onClick={() => setStep(1)}
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-200 flex items-center justify-center mx-auto space-x-1"
+                          onClick={() => {
+                            setStep(1);
+                            setOtp(["", "", "", "", "", ""]);
+                            setTimer(0);
+                            setCanResend(false);
+                            setStep(1);
+                          }}
+                          className="text-gray-500 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-200 flex items-center justify-center mx-auto space-x-1"
                         >
                           <ArrowLeft className="w-4 h-4" />
                           <span>Back to email verification</span>
@@ -476,7 +612,9 @@ const ForgotPassword = () => {
                 <div className="mt-6 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
                     <Shield className="w-3 h-3" />
-                    <span>Your security is our priority. All data is encrypted.</span>
+                    <span>
+                      Your security is our priority. All data is encrypted.
+                    </span>
                   </p>
                 </div>
               </div>

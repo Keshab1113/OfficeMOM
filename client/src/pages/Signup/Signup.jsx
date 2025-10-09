@@ -13,6 +13,7 @@ import {
   Shield,
 } from "lucide-react";
 import { Helmet } from "react-helmet";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -27,6 +28,7 @@ const Signup = () => {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const handleSignupForm = async (e) => {
     e.preventDefault();
@@ -140,6 +142,32 @@ const Signup = () => {
 
   const strengthScore = Object.values(passwordStrength).filter(Boolean).length;
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -164,14 +192,29 @@ const Signup = () => {
           </div>
         </div>
 
+        <button
+          onClick={toggleTheme}
+          className=" absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+                      shadow-lg border border-white/30 dark:border-gray-700/50
+                      hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
+                      text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+          title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {isDarkMode ? (
+            <MdLightMode className="text-xl" />
+          ) : (
+            <MdDarkMode className="text-xl" />
+          )}
+        </button>
+
         {/* Main content */}
         <div className="relative z-10 w-full max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Branding and Info */}
             <div className="text-center lg:text-left space-y-8">
               <div className="flex items-center justify-center lg:justify-start space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Shield className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+                  <img src="/logo.webp" alt="logo" loading="lazy" />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
                   OfficeMoM
@@ -372,7 +415,7 @@ const Signup = () => {
                           disabled={isProcessing}
                           onMouseEnter={() => setIsHovered(true)}
                           onMouseLeave={() => setIsHovered(false)}
-                          className="w-full flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                          className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         >
                           {isProcessing ? (
                             <>
@@ -398,7 +441,7 @@ const Signup = () => {
                             <button
                               type="button"
                               onClick={() => navigate("/login")}
-                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors duration-200 hover:underline"
+                              className="text-indigo-600 cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors duration-200 hover:underline"
                             >
                               Sign in
                             </button>
@@ -475,7 +518,7 @@ const Signup = () => {
                       <button
                         type="button"
                         disabled={isLoading || otp.some((digit) => !digit)}
-                        className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-blue-600 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        className="w-full cursor-pointer py-4 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-blue-600 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                         onClick={handleVerifyOtp}
                       >
                         {isLoading ? (
@@ -493,7 +536,7 @@ const Signup = () => {
                         <div className="text-center">
                           <button
                             type="button"
-                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
+                            className="text-indigo-600 cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
                             onClick={handleResendOtp}
                           >
                             Resend verification code
@@ -505,7 +548,7 @@ const Signup = () => {
                       <div className="text-center">
                         <button
                           type="button"
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-200 flex items-center justify-center mx-auto space-x-1"
+                          className="text-gray-500 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-200 flex items-center justify-center mx-auto space-x-1"
                           onClick={() => {
                             setCurrentStep(1);
                             setOtp(["", "", "", "", "", ""]);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -18,6 +18,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Helmet } from "react-helmet";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -28,6 +29,7 @@ const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { addToast } = useToast();
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -72,6 +74,32 @@ const Login = () => {
     navigate("/forgot-password");
   };
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -85,9 +113,9 @@ const Login = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
           {/* Animated background elements */}
           <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
+            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow2"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow2 animation-delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow2 animation-delay-2000"></div>
           </div>
 
           {/* Grid pattern */}
@@ -96,14 +124,29 @@ const Login = () => {
           </div>
         </div>
 
+        <button
+          onClick={toggleTheme}
+          className=" absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+              shadow-lg border border-white/30 dark:border-gray-700/50
+              hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
+              text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+          title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {isDarkMode ? (
+            <MdLightMode className="text-xl" />
+          ) : (
+            <MdDarkMode className="text-xl" />
+          )}
+        </button>
+
         {/* Main content */}
         <div className="relative z-10 w-full max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Branding and Info */}
             <div className="text-center lg:text-left space-y-8">
               <div className="flex items-center justify-center lg:justify-start space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Zap className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+                  <img src="/logo.webp" alt="logo" loading="lazy" />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
                   OfficeMoM
@@ -213,7 +256,7 @@ const Login = () => {
                       <button
                         type="button"
                         onClick={handleForgotPassword}
-                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
+                        className=" cursor-pointer text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
                       >
                         Forgot your password?
                       </button>
@@ -225,7 +268,7 @@ const Login = () => {
                       disabled={isProcessing}
                       onMouseEnter={() => setIsHovered(true)}
                       onMouseLeave={() => setIsHovered(false)}
-                      className="w-full flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                      className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       {isProcessing ? (
                         <>
@@ -251,7 +294,7 @@ const Login = () => {
                         <button
                           type="button"
                           onClick={() => navigate("/signup")}
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors duration-200 hover:underline"
+                          className="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors duration-200 hover:underline"
                         >
                           Create account
                         </button>
@@ -277,31 +320,6 @@ const Login = () => {
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
       </section>
-
-      {/* Add custom animations to your global CSS */}
-      <style jsx>{`
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        .animation-delay-1000 {
-          animation-delay: 1s;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animate-pulse-slow {
-          animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-      `}</style>
     </>
   );
 };
