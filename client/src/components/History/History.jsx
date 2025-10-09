@@ -284,7 +284,7 @@ const AllHistory = ({ title, NeedFor }) => {
                           </div>
                         ) : (
                           <Link
-                            to={!title ? `/meeting-history/${item.id}` : "#"}
+                            to={!title ? `/momGenerate/${item.id}` : "#"}
                             className="text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 font-medium transition-colors truncate flex-1"
                             onDoubleClick={() => title && startEditing(item)}
                           >

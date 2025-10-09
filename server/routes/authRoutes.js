@@ -8,6 +8,7 @@ const {
   uploadProfilePicture,
   sendPasswordResetOtp,
   resetPasswordWithOtp,
+  googleLogin,
 } = require("../controllers/authController.js");
 const authMiddleware = require("../middlewares/authMiddleware.js");
 const multer = require("multer");
@@ -17,6 +18,7 @@ const router = express.Router();
 
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/google-login", googleLogin);
 router.put("/update-user", authMiddleware, updateUserProfile);
 router.post("/verify-otp", verifyOtp);
 router.post("/resend-otp", resendOtp);

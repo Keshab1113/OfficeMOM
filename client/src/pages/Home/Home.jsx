@@ -1,80 +1,15 @@
-import { useState, useEffect } from "react";
 import Footer from "../../components/Footer/Footer";
-import { cn } from "../../lib/utils";
 import { Helmet } from "react-helmet";
 import FAQ from "../../components/FAQ/FAQ";
-import PricingOptions from "../../components/PricingOptions/PricingOptions";
 import CTASection from "../../components/CTASection/CTASection";
-
-const features = [
-  {
-    title: "AI-Powered Transcription",
-    description:
-      "Advanced speech-to-text technology that accurately converts your meetings into written text with 98% accuracy, supporting multiple languages and accents.",
-    icon: "🎤",
-    details: [
-      "Real-time transcription",
-      "Multi-language support",
-      "Speaker identification",
-      "Noise cancellation",
-    ],
-  },
-  {
-    title: "Smart Formatting",
-    description:
-      "Automatically organizes your meeting content with proper structure, headers, and bullet points for professional-looking minutes.",
-    icon: "📝",
-    details: [
-      "Auto-generated headers",
-      "Bullet point organization",
-      "Time stamps",
-      "Professional templates",
-    ],
-  },
-  {
-    title: "Action Item Detection",
-    description:
-      "AI intelligently identifies and extracts actionable tasks, deadlines, and assignments from your meeting discussions.",
-    icon: "✅",
-    details: [
-      "Task identification",
-      "Deadline extraction",
-      "Assignee recognition",
-      "Priority classification",
-    ],
-  },
-  {
-    title: "Instant Summaries",
-    description:
-      "Generate concise meeting summaries highlighting key decisions, outcomes, and next steps within seconds of your meeting ending.",
-    icon: "⚡",
-    details: [
-      "Key points extraction",
-      "Decision highlights",
-      "Next steps",
-      "Shareable formats",
-    ],
-  },
-];
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowRight,
+  Play,
+} from "lucide-react";
 
 const Home = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [hoveredFeature, setHoveredFeature] = useState(null);
-
-  useEffect(() => {
-    setIsVisible(true);
-
-    const handleMouseMove = (e) => {
-      setMousePosition({
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100,
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
 
   return (
     <>
@@ -83,127 +18,104 @@ const Home = () => {
         <title>OfficeMom | Home</title>
         <link rel="canonical" href="https://officemom.me/" />
       </Helmet>
-      <section className="relative flex h-full min-h-screen md:w-full w-screen items-center justify-center overflow-hidden">
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
-          <div className="min-h-screen flex flex-col justify-center items-center px-4 py-20 bg-blue-100 dark:bg-gray-800">
-            <div>
-              <h1 className="relative text-black dark:text-white text-center z-20 text-[40px] font-bold md:text-6xl leading-tight">
-                Welcome to Office
-                <span className="text-blue-500">MoM</span>
-              </h1>
+          <section className="relative min-h-screen flex items-center justify-center overflow-hidden 2xl:py-10 py-20">
+            {/* Background with gradient and patterns */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
+              {/* Animated background elements */}
+              <div className="absolute inset-0 opacity-30">
+                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
+                <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
+              </div>
+
+              {/* Grid pattern */}
+              <div className="absolute inset-0 opacity-10 dark:opacity-5">
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
+              </div>
             </div>
 
-            {/* Subtitle with delay */}
-            <div
-              className={`transition-all duration-1000 delay-300 ${
-                isVisible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-10"
-              }`}
-            >
-              <p className="md:mt-6 mt-3  text-center relative z-20 text-gray-500 dark:text-gray-200 text-base font-bold md:text-2xl">
-                Automate Meeting Minutes Seamlessly
-              </p>
-            </div>
-
-            <div
-              className={`md:mt-12 z-20 mt-8 grid md:grid-cols-2 lg:grid-cols-4 grid-cols-1 justify-center gap-4 transition-all duration-1000 delay-500 relative ${
-                isVisible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-10"
-              }`}
-            >
-              {features.map((feature, index) => (
-                <div
-                  key={feature.title}
-                  className="relative group"
-                  onMouseEnter={() => setHoveredFeature(index)}
-                  onMouseLeave={() => setHoveredFeature(null)}
+            {/* Main content */}
+            <div className="relative z-10 ">
+              <div className="text-center space-y-12">
+                {/* Main heading */}
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="space-y-6"
                 >
-                  {/* Feature pill */}
-                  <div
-                    className="px-4 py-2 rounded-full bg-gradient-to-r from-white to-blue-100 backdrop-blur-sm border border-blue-400/30 text-blue-600 text-sm font-medium hover:scale-110 hover:border-blue-400/60 transition-all duration-300 cursor-pointer relative z-10 flex items-center gap-2"
-                    style={{
-                      animationDelay: `${index * 200}ms`,
-                      animation: "fadeInUp 0.8s ease-out forwards",
-                    }}
+                  <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white leading-tight">
+                    Welcome to{" "}
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      OfficeMoM
+                    </span>
+                  </h1>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
                   >
-                    <span className="text-lg">{feature.icon}</span>
-                    {feature.title}
+                    <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 font-medium max-w-3xl mx-auto leading-relaxed">
+                      Automate Meeting Minutes Seamlessly with AI
+                    </p>
+                  </motion.div>
+                </motion.div>
+
+                
+
+                {/* Main description */}
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.9 }}
+                  className="max-w-4xl mx-auto space-y-8"
+                >
+                  <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 leading-relaxed text-center">
+                    Automate meeting minutes seamlessly with AI-powered
+                    transcription and smart formatting. Capture every detail
+                    without lifting a pen, from key points to action items. Get
+                    organized summaries instantly, ready to share with your
+                    team. Save time, improve accuracy, and keep every meeting
+                    productive.
+                  </p>
+
+                  {/* CTA Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center cursor-pointer gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <Play className="w-5 h-5" />
+                      Start Free Trial
+                      <ArrowRight className="w-5 h-5" />
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center cursor-pointer gap-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-xl font-semibold hover:bg-white/50 dark:hover:bg-gray-700/50 transition-all duration-200"
+                    >
+                      Watch Demo
+                    </motion.button>
                   </div>
-
-                  {/* Hover card */}
-                  <div
-                    className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-4 w-80 bg-white/10 dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-blue-400/20 p-0 shadow-2xl transition-all duration-500 z-50 ${
-                      hoveredFeature === index
-                        ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                        : "opacity-0 translate-y-4 scale-95 pointer-events-none"
-                    }`}
-                  >
-                    {/* Arrow */}
-                    <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white/10 dark:bg-black/20 border-l border-t border-blue-400/20 rotate-45"></div>
-
-                    {/* Card content */}
-                    <div className="relative p-6">
-                      <p className="text-gray-600 dark:text-gray-200 text-sm leading-relaxed mb-4">
-                        {feature.description}
-                      </p>
-
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
-                          Features:
-                        </h4>
-                        <div className="grid grid-cols-1 gap-2">
-                          {feature.details.map((detail, detailIndex) => (
-                            <div
-                              key={detail}
-                              className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-300"
-                              style={{
-                                opacity: hoveredFeature === index ? 1 : 0,
-                                transform:
-                                  hoveredFeature === index
-                                    ? "translateX(0)"
-                                    : "translateX(-10px)",
-                                transition: `all 0.3s ease ${
-                                  detailIndex * 100
-                                }ms`,
-                              }}
-                            >
-                              <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-400"></div>
-                              {detail}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                </motion.div>
+              </div>
             </div>
 
-            {/* Main description with enhanced styling */}
-            <div
-              className={`md:mt-16 z-10 mt-12 relative max-w-[90%] md:max-w-[80%] text-center transition-all duration-1000 delay-700 ${
-                isVisible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-10"
-              }`}
-            >
-              <p className="passero-one-regular text-gray-600 dark:text-gray-300 text-lg font-medium md:text-xl leading-relaxed">
-                Automate meeting minutes seamlessly with AI-powered
-                transcription and smart formatting. Capture every detail without
-                lifting a pen, from key points to action items. Get organized
-                summaries instantly, ready to share with your team. Save time,
-                improve accuracy, and keep every meeting productive.
-              </p>
-            </div>
-          </div>
+            {/* Floating elements */}
+            <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
+            <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
+            <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
+            <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
+          </section>
           <CTASection />
-          {/* <PricingOptions /> */}
           <FAQ />
           <Footer />
         </div>
-      </section>
+      {/* </section> */}
     </>
   );
 };

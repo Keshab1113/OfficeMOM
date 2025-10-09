@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { MdDarkMode, MdLightMode } from "react-icons/md";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -299,6 +300,42 @@ const Login = () => {
                           Create account
                         </button>
                       </p>
+                    </div>
+                    <div className="mt-6 flex justify-center">
+                      <GoogleLogin
+                        onSuccess={async (credentialResponse) => {
+                          try {
+                            const res = await axios.post(
+                              `${
+                                import.meta.env.VITE_BACKEND_URL
+                              }/api/auth/google-login`,
+                              { credential: credentialResponse.credential }
+                            );
+
+                            dispatch(
+                              setUser({
+                                fullName: res.data.user.fullName,
+                                email: res.data.user.email,
+                                token: res.data.token,
+                              })
+                            );
+                            dispatch(
+                              setProfileImage({
+                                profileImage: res.data.user.profilePic,
+                              })
+                            );
+                            dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
+                            addToast("success", "Google login successful");
+                            navigate("/");
+                          } catch (err) {
+                            console.error(err);
+                            addToast("error", "Google login failed");
+                          }
+                        }}
+                        onError={() => {
+                          addToast("error", "Google login failed");
+                        }}
+                      />
                     </div>
                   </div>
                 </form>

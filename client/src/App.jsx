@@ -64,7 +64,7 @@ function App() {
             }
           />
           <Route
-            path="/meeting-history/:id"
+            path="/momGenerate/:id"
             element={
               <ProtectedRoute>
                 <MeetingHistory />

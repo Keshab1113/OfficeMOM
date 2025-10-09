@@ -442,3 +442,16 @@ body {
 .animate-pulse-slow2 {
   animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+
+.animation-delay-1500 {
+  animation-delay: 1.5s;
+}
+
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition-property: color, background-color, border-color, transform, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

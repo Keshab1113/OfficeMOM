@@ -15,13 +15,15 @@ function Layout() {
     "/privacy-policy",
     "/login",
     "/signup",
-    "/forgot-password"
+    "/forgot-password",
+    "/momGenerate/",
+    // "/audio-notes"
   ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
   );
 
-  const hiddenRoutes2 = ["/meeting", "/audio-notes", "/live-meeting", "/login", "/signup", "/forgot-password"];
+  const hiddenRoutes2 = ["/meeting", "/audio-notes", "/live-meeting", "/login", "/signup", "/forgot-password",];
 
   const hideHeader = hiddenRoutes2.some((path) =>
     location.pathname.startsWith(path)
