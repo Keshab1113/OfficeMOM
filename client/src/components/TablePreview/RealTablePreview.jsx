@@ -77,7 +77,8 @@ const RealTablePreview = ({
   return (
     <section className="my-10 md:my-4  rounded-2xl w-full overflow-hidden lg:max-w-[95vw] max-w-[95vw] pt-16">
       <DataTable
-        header={translatedColumns || allColumns}
+        translatedColumns={translatedColumns || allColumns}
+        header={allColumns}
         data={tableData}
         onDeleteRow={handleDeleteRow}
         onEditRow={handleChange}

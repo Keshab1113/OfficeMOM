@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { countryCodeToName, countryToLanguage, languages } from "../Language";
+import { countryToLanguage, languages } from "../Language";
 import { FiChevronDown, FiX } from "react-icons/fi";
 import axios from "axios";
 
@@ -7,36 +7,54 @@ const Timing = () => {
   const [selectedLanguages, setSelectedLanguages] = useState(["English"]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [userCountry, setUserCountry] = useState("");
   const dropdownRef = useRef(null);
+  const [location, setLocation] = useState(null);
 
   useEffect(() => {
-    const fetchLocation = async () => {
+    const fetchLocation = async (lat, lon) => {
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/location`
-        );
-        const data = res.data.data;
+        const url =
+          lat && lon
+            ? `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/location?lat=${lat}&lon=${lon}`
+            : `/api/location`;
 
-        const countryCode = data.country;
-        const fullCountryName = countryCodeToName[countryCode] || countryCode;
+        const res = await axios.get(url);
+        setLocation(res.data.data);
 
-        setUserCountry(fullCountryName);
-
-        if (fullCountryName && countryToLanguage[fullCountryName]) {
-          const recommended = Array.isArray(countryToLanguage[fullCountryName])
-            ? countryToLanguage[fullCountryName]
-            : [countryToLanguage[fullCountryName]];
+        if (res.data.data) {
+          const recommended = Array.isArray(countryToLanguage[res.data.data.country])
+            ? countryToLanguage[res.data.data.country]
+            : [countryToLanguage[res.data.data.country]];
 
           setSelectedLanguages((prev) => [
             ...new Set([...prev, ...recommended]),
           ]);
         }
-      } catch (error) {
-        console.error("Location fetch error:", error);
+      } catch (err) {
+        console.error("Failed to fetch location:", err);
       }
     };
-    fetchLocation();
+
+    // Try browser geolocation first
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchLocation(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn(
+            "Geolocation failed, falling back to IP:",
+            error.message
+          );
+          fetchLocation(); // fallback to IP
+        }
+      );
+    } else {
+      // No geolocation support
+      fetchLocation();
+    }
   }, []);
 
   useEffect(() => {
@@ -59,16 +77,14 @@ const Timing = () => {
     );
   };
 
-  const removeLanguage = (lang) => {
-    setSelectedLanguages((prev) => prev.filter((l) => l !== lang));
-  };
-
   return (
     <div className="w-full" ref={dropdownRef}>
       <div className="relative mt-1 border border-white dark:border-white/20 shadow-lg rounded-lg p-3 bg-white dark:bg-gray-900/30">
         <p className="text-gray-800 dark:text-gray-400 text-sm mb-1">
           Recommended based on your location:{" "}
-          <b>{userCountry ? ` ${userCountry}` : "Detecting..."}</b>
+          <b>
+            {location ? `${location.city},${location.country}` : "Detecting..."}
+          </b>
         </p>
         <div
           className="relative bg-white dark:bg-gray-800 border border-gray-300 dark:border-white/20 rounded-lg p-2 cursor-pointer select-none"
@@ -83,10 +99,6 @@ const Timing = () => {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {lang}
-                  {/* <FiX
-                    className="cursor-pointer"
-                    onClick={() => removeLanguage(lang)}
-                  /> */}
                 </span>
               ))
             ) : (

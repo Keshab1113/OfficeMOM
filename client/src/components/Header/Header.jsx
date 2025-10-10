@@ -94,7 +94,7 @@ const Header = () => {
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`flex-shrink-0 flex items-center ${hideSidebar?"ml-0 md:ml-0":"ml-12 md:ml-0"}`}
+            className={`flex-shrink-0 flex items-center ${hideSidebar?"ml-0 md:ml-0":"ml-12 lg:ml-0"}`}
           >
             <button
               onClick={() => navigate("/")}

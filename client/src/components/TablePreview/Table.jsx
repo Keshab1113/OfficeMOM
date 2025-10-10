@@ -7,12 +7,19 @@ import TextField from "@mui/material/TextField";
 
 const paginationModel = { page: 0, pageSize: 5 };
 
-export default function DataTable({ header, data, onDeleteRow, onEditRow }) {
+export default function DataTable({
+  translatedColumns,
+  header,
+  data,
+  onDeleteRow,
+  onEditRow,
+}) {
   const [tableData, setTableData] = React.useState(data || []);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
 
-  console.log("header: ", header);
-  console.log("data: ", data);
+  // console.log("header: ", header);
+  // console.log("translatedColumns: ", translatedColumns);
+  // console.log("data: ", data);
 
   React.useEffect(() => {
     setTableData(data);
@@ -29,18 +36,18 @@ export default function DataTable({ header, data, onDeleteRow, onEditRow }) {
   const columns = [
     { field: "id", headerName: "ID", width: 70 },
 
-    ...header.map((h) => {
+    ...header.map((h, index) => {
       const field = toCamelCase(h); // internal field
       return {
         field,
-        headerName: h, // visible name
+        headerName: translatedColumns[index] || h, // ✅ use translated name
         width: 250,
         editable: true,
         renderEditCell: (params) => {
           const originalColumn = header.find(
             (h) => toCamelCase(h) === params.field
           );
-          const value = params.value === "Click to Edit" ? "" : params.value; // remove placeholder on edit
+          const value = params.value === "Click to Edit" ? "" : params.value;
 
           return (
             <TextField
@@ -57,12 +64,13 @@ export default function DataTable({ header, data, onDeleteRow, onEditRow }) {
                 onEditRow(params.id, originalColumn, e.target.value);
               }}
               variant="standard"
-              placeholder="Click to Edit" // optional, just for hint
+              placeholder="Click to Edit"
             />
           );
         },
       };
     }),
+
     {
       field: "action",
       headerName: "Action",

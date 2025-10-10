@@ -12,7 +12,13 @@ import { useToast } from "../ToastContext";
 import { IoPerson } from "react-icons/io5";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { IoPersonCircleSharp } from "react-icons/io5";
-import { MdDarkMode, MdLightMode, MdVideoCall, MdAudiotrack, MdMeetingRoom } from "react-icons/md";
+import {
+  MdDarkMode,
+  MdLightMode,
+  MdVideoCall,
+  MdAudiotrack,
+  MdMeetingRoom,
+} from "react-icons/md";
 import { Zap, LogOut } from "lucide-react";
 
 const navItems = [
@@ -20,19 +26,19 @@ const navItems = [
     heading: "Join Online Meeting",
     icon: MdVideoCall,
     url: "/meeting",
-    description: "Gmeet, Zoom, Teams etc"
+    description: "Gmeet, Zoom, Teams etc",
   },
   {
     heading: "Generate Notes from Files",
     icon: MdAudiotrack,
     url: "/audio-notes",
-    description: "Audio & Video files"
+    description: "Audio & Video files",
   },
   {
     heading: "Start New Meeting",
     icon: MdMeetingRoom,
     url: "/live-meeting",
-    description: "Live transcription"
+    description: "Live transcription",
   },
 ];
 
@@ -114,21 +120,23 @@ const SideBar = () => {
 
   const SidebarContent = (
     <motion.section
-      initial={{ x: -300 }}
-      animate={{ x: 0 }}
-      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      initial={isMobile ? { x: -300 } : false}
+      animate={isMobile ? { x: 0 } : false}
+      transition={
+        isMobile ? { type: "spring", damping: 25, stiffness: 200 } : {}
+      }
       className={`backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 
-        shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-[100dvh] py-8 
-        sticky top-0 left-0 flex flex-col justify-between items-start z-40 transition-all duration-500 ease-in-out
-        border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
-        ${isCollapsed ? "w-20" : "md:w-80 w-screen px-6"}`}
+    shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-[100dvh] py-8 
+    sticky top-0 left-0 flex flex-col justify-between items-start z-40 transition-all duration-500 ease-in-out
+    border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
+    ${isCollapsed ? "w-20" : "md:w-80 w-screen px-6"}`}
     >
       {/* Header Section */}
       <div className="w-full space-y-8">
         {/* Logo and Theme Toggle */}
         <div className="flex items-center justify-between w-full">
           {(hideSidebar || isMobile) && (
-            <motion.button 
+            <motion.button
               onClick={() => navigate("/")}
               className="flex items-center gap-3 group"
               whileHover={{ scale: 1.02 }}
@@ -141,30 +149,36 @@ const SideBar = () => {
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent  transition-all duration-300">
                     OfficeMoM
                   </h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">AI Meeting Assistant</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    AI Meeting Assistant
+                  </p>
                 </div>
               )}
             </motion.button>
           )}
-          
+
           {/* Theme Toggle and Close Button */}
           <div className="flex items-center gap-2">
-            <motion.button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl border-0 border-none cursor-pointer bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm
+            {(hideSidebar || isMobile) && (
+              <motion.button
+                onClick={toggleTheme}
+                className="p-2 rounded-xl border-0 border-none cursor-pointer bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm
                 shadow-lg 
                 hover:bg-white dark:hover:bg-gray-600 transition-all duration-300
                 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {isDarkMode ? (
-                <MdLightMode className="text-xl" />
-              ) : (
-                <MdDarkMode className="text-xl" />
-              )}
-            </motion.button>
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title={
+                  isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
+                }
+              >
+                {isDarkMode ? (
+                  <MdLightMode className="text-xl" />
+                ) : (
+                  <MdDarkMode className="text-xl" />
+                )}
+              </motion.button>
+            )}
             {isMobile && (
               <motion.button
                 className="p-2 rounded-xl bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm
@@ -181,7 +195,7 @@ const SideBar = () => {
         </div>
 
         {/* Navigation Items */}
-        <div className="space-y-3">
+        <div className="space-y-3 md:mt-20">
           {navItems.map((item, index) => {
             const IconComponent = item.icon;
             return (
@@ -204,28 +218,41 @@ const SideBar = () => {
                   <>
                     <motion.div
                       className={`flex items-center justify-center rounded-xl min-w-12 min-h-12 shadow-lg
-                        ${isActive 
-                          ? "bg-white/20" 
-                          : "bg-gradient-to-br from-indigo-500 to-purple-500 group-hover:scale-110"
+                        ${
+                          isActive
+                            ? "bg-white/20"
+                            : "bg-gradient-to-br from-indigo-500 to-purple-500 group-hover:scale-110"
                         }`}
                       whileHover={{ scale: 1.1 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 17,
+                      }}
                     >
-                      <IconComponent className={`w-6 h-6 ${isActive ? "text-white" : "text-white"}`} />
+                      <IconComponent
+                        className={`w-6 h-6 ${
+                          isActive ? "text-white" : "text-white"
+                        }`}
+                      />
                     </motion.div>
-                    
+
                     {!isCollapsed && (
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-sm leading-tight">
                           {item.heading}
                         </h3>
-                        <p className={`text-xs mt-1 ${isActive?"text-gray-300 dark:text-gray-400":"text-gray-600 dark:text-gray-400"}`}>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isActive
+                              ? "text-gray-300 dark:text-gray-400"
+                              : "text-gray-600 dark:text-gray-400"
+                          }`}
+                        >
                           {item.description}
                         </p>
                       </div>
                     )}
-                    
-                    
                   </>
                 )}
               </NavLink>
@@ -236,7 +263,7 @@ const SideBar = () => {
 
       {/* User Profile Section */}
       {email && fullName && token && (
-        <motion.div 
+        <motion.div
           className="w-full"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -261,16 +288,16 @@ const SideBar = () => {
                     <IoPerson className="w-6 h-6 text-white" />
                   )}
                 </motion.div>
-                
+
                 {!isCollapsed && (
                   <div className="flex-1 min-w-0">
-                    <motion.h3 
+                    <motion.h3
                       className="text-gray-800 dark:text-white font-semibold text-sm truncate"
                       whileHover={{ scale: 1.02 }}
                     >
                       {fullName}
                     </motion.h3>
-                    <motion.p 
+                    <motion.p
                       className="text-gray-600 dark:text-gray-300 text-xs truncate"
                       whileHover={{ scale: 1.02 }}
                     >
@@ -292,14 +319,18 @@ const SideBar = () => {
                   >
                     <BsThreeDotsVertical className="text-gray-600 dark:text-gray-300 text-sm" />
                   </motion.button>
-                  
+
                   <AnimatePresence>
                     {dropdownOpen && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        transition={{
+                          type: "spring",
+                          damping: 25,
+                          stiffness: 300,
+                        }}
                         className="absolute right-0 bottom-12 mt-2 w-48 bg-white/95 dark:bg-gray-800/95 
                           backdrop-blur-xl shadow-2xl rounded-xl border border-white/30 dark:border-gray-600/50 overflow-hidden"
                       >
@@ -313,7 +344,7 @@ const SideBar = () => {
                             text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 
                             hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border-b border-white/20 dark:border-gray-700/50"
                         >
-                          <IoPersonCircleSharp className="text-lg" /> 
+                          <IoPersonCircleSharp className="text-lg" />
                           Profile Settings
                         </Link>
                         <motion.button
@@ -344,7 +375,7 @@ const SideBar = () => {
         <motion.button
           className={`p-2.5 fixed left-3  bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${
             hideSidebar ? "top-3" : "top-3"
-          } ${isMobile?"z-50":"z-40"}`}
+          } ${isMobile ? "z-50" : "z-40"}`}
           onClick={() => setIsSidebarOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -352,7 +383,7 @@ const SideBar = () => {
           <RiMenu2Line className="text-lg" />
         </motion.button>
       )}
-      
+
       {isMobile ? (
         <AnimatePresence>
           {isSidebarOpen && (
