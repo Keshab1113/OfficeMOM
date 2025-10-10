@@ -1,5 +1,6 @@
-const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config();
+const express = require("express");
 const cors = require("cors");
 const http = require("http");
 const WebSocket = require("ws");
@@ -15,13 +16,36 @@ const stripeRoutes = require("./routes/stripeRoutes.js");
 const deepseekRoutes = require("./routes/deepseekRoutes.js");
 const planRoutes = require("./routes/planRoutes.js");
 const faqRoutes = require("./routes/faqRoutes.js");
-
-dotenv.config();
+const locationRoutes = require("./routes/locationRoutes.js");
+const passport = require("./config/passport");
+const session = require("express-session");
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "mysecret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+app.use(passport.initialize());
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "OfficeMoM App API Server",
+    version: "1.0.0",
+  });
+});
 
 // API Routes
 app.use("/api/auth", authRoutes);
@@ -35,6 +59,7 @@ app.use("/api/stripe", stripeRoutes);
 app.use("/api", deepseekRoutes);
 app.use("/api", planRoutes);
 app.use("/api", faqRoutes);
+app.use("/api/location", locationRoutes);
 
 const server = http.createServer(app);
 

@@ -21,6 +21,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy/PrivacyPolicy";
 import Documentation from "./pages/Documentation/Documentation";
 import Success from "./pages/PaymentResult/Success";
 import Failure from "./pages/PaymentResult/Failure";
+import OAuthSuccess from "./pages/OAuthSuccess";
 
 function App() {
   return (
@@ -95,6 +96,7 @@ function App() {
           <Route path="*" element={<NoPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
         </Route>
       </Routes>
     </>

@@ -380,57 +380,6 @@ const resetPasswordWithOtp = async (req, res) => {
   }
 };
 
-const client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-);
-
-const googleLogin = async (req, res) => {
-  try {
-    const { credential } = req.body; // This will come from frontend Google token
-
-    // Verify token using Google API
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience:process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const { email, name: fullName, picture: profilePic } = payload;
-
-    let [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-
-    // If new user, insert it
-    if (user.length === 0) {
-      await db.query(
-        "INSERT INTO users (fullName, email, profilePic, isGoogleUser) VALUES (?, ?, ?, ?)",
-        [fullName, email, profilePic, true]
-      );
-      [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-    }
-
-    const token = jwt.sign(
-      { id: user[0].id, email: user[0].email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    res.status(200).json({
-      message: "Google login successful",
-      token,
-      user: {
-        id: user[0].id,
-        fullName: user[0].fullName,
-        email: user[0].email,
-        profilePic: user[0].profilePic,
-      },
-    });
-  } catch (error) {
-    console.error("Google Login Error:", error);
-    res.status(500).json({ message: "Google login failed" });
-  }
-};
-
 module.exports = {
   signup,
   login,
@@ -440,5 +389,4 @@ module.exports = {
   uploadProfilePicture,
   sendPasswordResetOtp,
   resetPasswordWithOtp,
-  googleLogin,
 };

@@ -13,11 +13,14 @@ const Timing = () => {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_LANGUAGE_URL}`);
-        const data = res.data;
+        const res = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/location`
+        );
+        const data = res.data.data;
+
         const countryCode = data.country;
         const fullCountryName = countryCodeToName[countryCode] || countryCode;
-        
+
         setUserCountry(fullCountryName);
 
         if (fullCountryName && countryToLanguage[fullCountryName]) {
@@ -25,7 +28,6 @@ const Timing = () => {
             ? countryToLanguage[fullCountryName]
             : [countryToLanguage[fullCountryName]];
 
-          // merge recommended with already selected (no duplicates)
           setSelectedLanguages((prev) => [
             ...new Set([...prev, ...recommended]),
           ]);

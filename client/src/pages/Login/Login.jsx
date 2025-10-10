@@ -302,40 +302,23 @@ const Login = () => {
                       </p>
                     </div>
                     <div className="mt-6 flex justify-center">
-                      <GoogleLogin
-                        onSuccess={async (credentialResponse) => {
-                          try {
-                            const res = await axios.post(
-                              `${
-                                import.meta.env.VITE_BACKEND_URL
-                              }/api/auth/google-login`,
-                              { credential: credentialResponse.credential }
-                            );
-
-                            dispatch(
-                              setUser({
-                                fullName: res.data.user.fullName,
-                                email: res.data.user.email,
-                                token: res.data.token,
-                              })
-                            );
-                            dispatch(
-                              setProfileImage({
-                                profileImage: res.data.user.profilePic,
-                              })
-                            );
-                            dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
-                            addToast("success", "Google login successful");
-                            navigate("/");
-                          } catch (err) {
-                            console.error(err);
-                            addToast("error", "Google login failed");
-                          }
-                        }}
-                        onError={() => {
-                          addToast("error", "Google login failed");
-                        }}
-                      />
+                      <button
+                        onClick={() =>
+                          (window.location.href = `${
+                            import.meta.env.VITE_BACKEND_URL
+                          }/api/auth/google`)
+                        }
+                        className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
+                      >
+                        <img
+                          src="https://developers.google.com/identity/images/g-logo.png"
+                          alt="Google logo"
+                          className="w-5 h-5"
+                        />
+                        <span className="text-gray-700 dark:text-gray-300 font-medium">
+                          Continue with Google
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </form>

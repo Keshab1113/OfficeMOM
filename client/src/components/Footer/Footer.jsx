@@ -235,7 +235,7 @@ const Footer = () => {
               . All rights reserved.
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
-              Built with ❤️ for productive teams worldwide
+              Powered by cross-industry expertise, perfected for productivity
             </p>
           </motion.div>
         </div>
