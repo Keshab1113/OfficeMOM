@@ -3,7 +3,6 @@ import "./App.css";
 import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Signup from "./pages/Signup/Signup";
-import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 import Layout from "./layout";
 import Meeting from "./pages/Meeting/Meeting";
 import LiveMeeting from "./pages/LiveMeeting/LiveMeeting";
@@ -26,7 +25,6 @@ import Failure from "./pages/PaymentResult/Failure";
 function App() {
   return (
     <>
-      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />

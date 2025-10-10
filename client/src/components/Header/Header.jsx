@@ -4,15 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu,
   X,
-  Star,
-  Zap,
-  Users,
-  Shield,
-  ChevronDown,
   Sun,
   Moon,
-  LogIn,
-  UserPlus,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -70,6 +63,23 @@ const Header = () => {
     }
   };
 
+  const hiddenRoutes = [
+    "/join-meeting/",
+    "/pricing",
+    "/contact-us",
+    "/features",
+    "/about-us",
+    "/documentation",
+    "/privacy-policy",
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/momGenerate/",
+    // "/audio-notes"
+  ];
+  const hideSidebar = hiddenRoutes.some((path) =>
+    location.pathname.startsWith(path)
+  );
 
   return (
     <motion.header
@@ -84,7 +94,7 @@ const Header = () => {
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex-shrink-0 flex items-center"
+            className={`flex-shrink-0 flex items-center ${hideSidebar?"ml-0 md:ml-0":"ml-12 md:ml-0"}`}
           >
             <button
               onClick={() => navigate("/")}

@@ -127,7 +127,7 @@ const SideBar = () => {
       <div className="w-full space-y-8">
         {/* Logo and Theme Toggle */}
         <div className="flex items-center justify-between w-full">
-          {hideSidebar && (
+          {(hideSidebar || isMobile) && (
             <motion.button 
               onClick={() => navigate("/")}
               className="flex items-center gap-3 group"
@@ -342,14 +342,14 @@ const SideBar = () => {
     <>
       {isMobile && !isSidebarOpen && (
         <motion.button
-          className={`p-3 fixed left-4 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${
-            hideSidebar ? "top-6" : "top-6"
-          }`}
+          className={`p-2.5 fixed left-3  bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${
+            hideSidebar ? "top-3" : "top-3"
+          } ${isMobile?"z-50":"z-40"}`}
           onClick={() => setIsSidebarOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <RiMenu2Line className="text-xl" />
+          <RiMenu2Line className="text-lg" />
         </motion.button>
       )}
       

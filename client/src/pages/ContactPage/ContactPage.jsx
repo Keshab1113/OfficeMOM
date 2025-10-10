@@ -243,7 +243,7 @@ const ContactPage = () => {
                   {/* Right Section - Contact Form */}
                   <motion.div
                     variants={itemVariants}
-                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-800/20 rounded-3xl shadow-2xl p-8 lg:p-10 border border-white/20 dark:border-gray-700/30"
+                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-800/20 rounded-3xl shadow-2xl md:p-8 p-6 lg:p-10 border border-white/20 dark:border-gray-700/30"
                   >
                     <div className="flex items-center gap-3 mb-8">
                       <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">

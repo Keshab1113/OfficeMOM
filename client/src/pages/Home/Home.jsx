@@ -1,7 +1,6 @@
 import Footer from "../../components/Footer/Footer";
 import { Helmet } from "react-helmet";
 import FAQ from "../../components/FAQ/FAQ";
-import CTASection from "../../components/CTASection/CTASection";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
@@ -96,7 +95,6 @@ const Home = () => {
           <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
           <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
         </section>
-        {/* <CTASection /> */}
         <FAQ />
         <Footer />
       </div>

@@ -1,43 +1,9 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Mail, MessageCircle, ArrowUp } from "lucide-react";
 
 const Footer = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
-
-    const footerElement = document.getElementById("animated-footer");
-    if (footerElement) {
-      observer.observe(footerElement);
-    }
-
-    // Scroll to top button visibility
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      if (footerElement) {
-        observer.unobserve(footerElement);
-      }
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   const footerLinks = {
     product: [
@@ -67,26 +33,6 @@ const Footer = () => {
 
   return (
     <>
-      {/* Scroll to Top Button */}
-      <AnimatePresence>
-        {showScrollTop && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0 }}
-            onClick={scrollToTop}
-            className="fixed cursor-pointer bottom-8 right-8 z-50 w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 
-                            text-white rounded-xl shadow-2xl shadow-indigo-500/30 border border-white/20 
-                            backdrop-blur-sm hover:shadow-indigo-500/50 transition-all duration-300 
-                            flex items-center justify-center group"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
       <footer
         id="animated-footer"
         className="relative bg-gradient-to-br from-slate-50 via-blue-100 to-indigo-100 
