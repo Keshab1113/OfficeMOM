@@ -181,7 +181,7 @@ const PricingOptions = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-20 px-4 transition-colors duration-500">
+    <div className="min-h-screen  py-20 px-4 transition-colors duration-500">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-16 mt-10">
@@ -250,7 +250,7 @@ const PricingOptions = () => {
                     viewport={{ once: true }}
                     className={`relative rounded-2xl p-4 flex flex-col h-full transition-all duration-300 ${
                       plan.isHighlighted
-                        ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/25 transform scale-105 border-2 border-indigo-500"
+                        ? "bg-gradient-to-br dark:from-indigo-600/30 dark:to-purple-600/30 from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/25 transform scale-105 border-2 border-indigo-500"
                         : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700"
                     }`}
                   >

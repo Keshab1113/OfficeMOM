@@ -66,7 +66,7 @@ const MeetingHistory = () => {
       <Helmet>
         <meta charSet="utf-8" />
         <title>OfficeMom | MeetingHistory</title>
-        <link rel="canonical" href="http://mysite.com/example" />
+        <link rel="canonical" href="https://officemom.me/momGenerate/" />
       </Helmet>
       <section className="relative h-full min-h-screen md:w-full w-screen dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]">
         <div

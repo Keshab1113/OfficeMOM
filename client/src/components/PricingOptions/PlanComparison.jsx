@@ -256,7 +256,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
       </motion.div>
 
       {/* Plan Selection */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
+      <div className="bg-white dark:bg-gray-800/20 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Select plans to compare ({selectedPlans.length}/3 selected)
@@ -305,7 +305,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
       </div>
 
       {/* Comparison Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800/20 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Table Header */}
         <div className="grid grid-cols-12 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600">
           <div className="col-span-12 lg:col-span-3 p-6">

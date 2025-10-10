@@ -147,7 +147,7 @@ const FAQSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: categoryIndex * 0.1 }}
               viewport={{ once: true }}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700"
+              className="bg-white dark:bg-gray-800/20 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700"
             >
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -225,7 +225,7 @@ const FAQSection = () => {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         viewport={{ once: true }}
-        className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700"
+        className="bg-white dark:bg-gray-800/20 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700"
       >
         <h3 className="text-2xl font-semibold text-gray-900 dark:text-white text-center mb-8">
           General Questions
@@ -294,7 +294,7 @@ const FAQSection = () => {
         viewport={{ once: true }}
         className="text-center mt-12"
       >
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-8 text-white">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-500/30 dark:to-purple-600/40 rounded-2xl p-8 text-white">
           <h3 className="text-2xl font-bold mb-3">Ready to Get Started?</h3>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
             Join thousands of satisfied users who trust our transcription

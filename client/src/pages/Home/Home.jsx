@@ -5,8 +5,10 @@ import CTASection from "../../components/CTASection/CTASection";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
+  const navigate = useNavigate();
   return (
     <>
       <Helmet>
@@ -15,7 +17,7 @@ const Home = () => {
         <link rel="canonical" href="https://officemom.me/" />
       </Helmet>
       <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden 2xl:py-10 py-20">
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden 2xl:py-10 py-20 px-4">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
             <div className="absolute inset-0 opacity-30">
               <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
@@ -69,6 +71,7 @@ const Home = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={()=>navigate("/meeting")}
                     className="flex items-center cursor-pointer gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <Play className="w-5 h-5" />
@@ -79,6 +82,7 @@ const Home = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={()=>navigate("/contact-us")}
                     className="flex items-center cursor-pointer gap-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-xl font-semibold hover:bg-white/50 dark:hover:bg-gray-700/50 transition-all duration-200"
                   >
                     Watch Demo
@@ -92,7 +96,7 @@ const Home = () => {
           <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
           <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
         </section>
-        <CTASection />
+        {/* <CTASection /> */}
         <FAQ />
         <Footer />
       </div>

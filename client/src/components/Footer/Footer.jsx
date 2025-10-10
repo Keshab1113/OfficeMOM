@@ -1,177 +1,306 @@
 import { useState, useEffect } from "react";
-import {Link} from "react-router-dom"
+import { Link } from "react-router-dom";
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from "framer-motion";
+import { Zap, Mail, MessageCircle, ArrowUp } from "lucide-react";
 
 const Footer = () => {
-    const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                setIsVisible(entry.isIntersecting);
-            },
-            { threshold: 0.1 }
-        );
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
 
-        const footerElement = document.getElementById('animated-footer');
-        if (footerElement) {
-            observer.observe(footerElement);
-        }
+    const footerElement = document.getElementById("animated-footer");
+    if (footerElement) {
+      observer.observe(footerElement);
+    }
 
-        return () => {
-            if (footerElement) {
-                observer.unobserve(footerElement);
-            }
-        };
-    }, []);
-
-    const footerLinks = {
-        product: [
-            { name: "Features", href: "/features" },
-            { name: "Pricing", href: "/pricing" },
-        ],
-        company: [
-            { name: "About", href: "/about-us" },
-            { name: "Contact", href: "/contact-us" }
-        ],
-        support: [
-            { name: "Documentation", href: "/documentation" },
-            { name: "Privacy Policy", href: "/privacy-policy" },
-        ]
+    // Scroll to top button visibility
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
     };
 
-    return (
-        <footer 
-            id="animated-footer"
-            className="relative dark:bg-[linear-gradient(135deg,#06080D_0%,#0D121C_50%,#1A1F2E_100%)] bg-[linear-gradient(135deg,#b8d4e8_0%,#d3e4f0_50%,#b8d4e8_100%)] text-white py-16 md:w-full w-screen border-t border-white/20 overflow-hidden"
-        >
-            {/* Animated background elements */}
-            <div className="absolute inset-0 opacity-30">
-                <div className="absolute top-10 left-10 w-64 h-64 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-10 right-10 w-96 h-96 bg-gradient-to-r from-indigo-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-                <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-gradient-to-r from-teal-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500"></div>
-            </div>
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      if (footerElement) {
+        observer.unobserve(footerElement);
+      }
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
-            {/* Floating particles */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                {[...Array(20)].map((_, i) => (
-                    <div
-                        key={i}
-                        className="absolute w-1 h-1 bg-blue-400/60 rounded-full animate-pulse"
-                        style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            animationDelay: `${Math.random() * 3}s`,
-                            animationDuration: `${2 + Math.random() * 2}s`
-                        }}
-                    ></div>
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const footerLinks = {
+    product: [
+      { name: "Features", href: "/features" },
+      { name: "Pricing", href: "/pricing" },
+    //   { name: "Use Cases", href: "/use-cases" },
+    ],
+    company: [
+      { name: "About Us", href: "/about-us" },
+      { name: "Contact", href: "/contact-us" },
+    //   { name: "Careers", href: "/careers" },
+    ],
+    support: [
+      { name: "Documentation", href: "/documentation" },
+      { name: "Privacy Policy", href: "/privacy-policy" },
+    //   { name: "Terms of Service", href: "/terms" },
+    ],
+    connect: [
+      {
+        name: "support@officemom.com",
+        href: "mailto:support@officemom.com",
+        icon: Mail,
+      },
+      { name: "Live Chat", href: "/support", icon: MessageCircle },
+    ],
+  };
+
+  return (
+    <>
+      {/* Scroll to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0 }}
+            onClick={scrollToTop}
+            className="fixed cursor-pointer bottom-8 right-8 z-50 w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 
+                            text-white rounded-xl shadow-2xl shadow-indigo-500/30 border border-white/20 
+                            backdrop-blur-sm hover:shadow-indigo-500/50 transition-all duration-300 
+                            flex items-center justify-center group"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <footer
+        id="animated-footer"
+        className="relative bg-gradient-to-br from-slate-50 via-blue-100 to-indigo-100 
+                    dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30 
+                    border-t border-white/30 dark:border-gray-700/50 overflow-hidden"
+      >
+        {/* Background with gradient and patterns */}
+        <div className="absolute inset-0">
+          {/* Animated background elements */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
+          </div>
+
+          {/* Grid pattern */}
+          <div className="absolute inset-0 opacity-10 dark:opacity-5">
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-16">
+          {/* Main Footer Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="grid lg:grid-cols-5 gap-8 mb-12"
+          >
+            {/* Brand Section */}
+            <motion.div
+              className="lg:col-span-2"
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <div className="flex items-center space-x-3 mb-6 group">
+                <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+                <img src="/logo.webp" alt="logo" loading="lazy" />
+              </div>
+                <div>
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent group-hover:from-indigo-600 group-hover:to-purple-600 transition-all duration-300">
+                    OfficeMoM
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    AI Meeting Assistant
+                  </p>
+                </div>
+              </div>
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-lg mb-6">
+                Transform your meetings with AI-powered transcription, smart
+                summaries, and seamless collaboration tools for teams of all
+                sizes.
+              </p>
+              <div className="flex items-center space-x-4">
+                {footerLinks.connect.map((link, index) => {
+                  const IconComponent = link.icon;
+                  return (
+                    <motion.a
+                      key={index}
+                      href={link.href}
+                      className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 
+                                                hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300 
+                                                group"
+                      whileHover={{ x: 5 }}
+                    >
+                      <IconComponent className="w-4 h-4" />
+                      <span className="text-sm">{link.name}</span>
+                    </motion.a>
+                  );
+                })}
+              </div>
+            </motion.div>
+
+            {/* Product Links */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">
+                Product
+              </h4>
+              <ul className="space-y-3">
+                {footerLinks.product.map((link, index) => (
+                  <motion.li
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
+                  >
+                    <Link
+                      to={link.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 
+                                                transition-all duration-300 relative group text-sm"
+                    >
+                      {link.name}
+                      <span
+                        className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 
+                                                transition-all duration-300 group-hover:w-full"
+                      ></span>
+                    </Link>
+                  </motion.li>
                 ))}
-            </div>
+              </ul>
+            </motion.div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className={`grid md:grid-cols-4 gap-8 transition-all duration-1000 ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                }`}>
-                    {/* Brand Section */}
-                    <div className="transform transition-all duration-700 hover:scale-105 hover:-translate-y-2">
-                        <div className="flex items-center space-x-3 mb-6 group">
-                            <div className="relative w-10 h-10 bg-gradient-to-br from-white to-blue-400 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-blue-400/25 transition-all duration-300 group-hover:rotate-12">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white to-blue-400 rounded-xl blur-sm opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                                <img src="/logo.webp" alt="logo" loading="lazy" className="relative z-10 w-6 h-6"/>
-                            </div>
-                            <span className="text-3xl font-bold dark:text-white text-[#06304f] group-hover:text-blue-400 transition-colors duration-300">
-                                Office<span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">MoM</span>
-                            </span>
-                        </div>
-                        <p className="dark:text-gray-300 text-[#06304f] leading-relaxed text-lg hover:text-blue-300 transition-colors duration-300">
-                            Automate meeting minutes seamlessly with AI-powered transcription and smart formatting.
-                        </p>
-                    </div>
+            {/* Company Links */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">
+                Company
+              </h4>
+              <ul className="space-y-3">
+                {footerLinks.company.map((link, index) => (
+                  <motion.li
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                  >
+                    <Link
+                      to={link.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 
+                                                transition-all duration-300 relative group text-sm"
+                    >
+                      {link.name}
+                      <span
+                        className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 
+                                                transition-all duration-300 group-hover:w-full"
+                      ></span>
+                    </Link>
+                  </motion.li>
+                ))}
+              </ul>
+            </motion.div>
 
-                    {/* Product Links */}
-                    <div className={`transition-all duration-700 delay-200 ${
-                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    }`}>
-                        <h3 className="font-bold mb-6 dark:text-white text-[#06304f] text-xl relative">
-                            Product
-                            <div className="absolute -bottom-2 left-0 w-8 h-0.5 bg-gradient-to-r from-blue-400 to-transparent"></div>
-                        </h3>
-                        <ul className="space-y-3">
-                            {footerLinks.product.map((link, index) => (
-                                <li key={index} className="transform transition-all duration-300 hover:translate-x-2">
-                                    <Link 
-                                        to={link.href} 
-                                        className="dark:text-gray-300 text-[#06304f] dark:hover:text-blue-400 hover:text-blue-600 transition-all duration-300 relative group text-lg"
-                                    >
-                                        {link.name}
-                                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+            {/* Support Links */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">
+                Support
+              </h4>
+              <ul className="space-y-3">
+                {footerLinks.support.map((link, index) => (
+                  <motion.li
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
+                  >
+                    <Link
+                      to={link.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 
+                                                transition-all duration-300 relative group text-sm"
+                    >
+                      {link.name}
+                      <span
+                        className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 
+                                                transition-all duration-300 group-hover:w-full"
+                      ></span>
+                    </Link>
+                  </motion.li>
+                ))}
+              </ul>
+            </motion.div>
+          </motion.div>
 
-                    {/* Company Links */}
-                    <div className={`transition-all duration-700 delay-300 ${
-                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    }`}>
-                        <h3 className="font-bold mb-6 dark:text-white text-[#06304f] text-xl relative">
-                            Company
-                            <div className="absolute -bottom-2 left-0 w-8 h-0.5 bg-gradient-to-r from-indigo-400 to-transparent"></div>
-                        </h3>
-                        <ul className="space-y-3">
-                            {footerLinks.company.map((link, index) => (
-                                <li key={index} className="transform transition-all duration-300 hover:translate-x-2">
-                                    <Link 
-                                        to={link.href} 
-                                        className="dark:text-gray-300 text-[#06304f] dark:hover:text-indigo-400 hover:text-indigo-600 transition-all duration-300 relative group text-lg"
-                                    >
-                                        {link.name}
-                                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-400 transition-all duration-300 group-hover:w-full"></span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+          {/* Bottom Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="pt-8 border-t border-gray-200 dark:border-gray-700 text-center"
+          >
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
+              &copy; 2025{" "}
+              <span className="font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                OfficeMoM
+              </span>
+              , a subsidiary of{" "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                QuantumHash Corporation
+              </span>
+              . All rights reserved.
+            </p>
+            <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
+              Built with ❤️ for productive teams worldwide
+            </p>
+          </motion.div>
+        </div>
 
-                    {/* Support Links */}
-                    <div className={`transition-all duration-700 delay-500 ${
-                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    }`}>
-                        <h3 className="font-bold mb-6 dark:text-white text-[#06304f] text-xl relative">
-                            Support
-                            <div className="absolute -bottom-2 left-0 w-8 h-0.5 bg-gradient-to-r from-purple-400 to-transparent"></div>
-                        </h3>
-                        <ul className="space-y-3">
-                            {footerLinks.support.map((link, index) => (
-                                <li key={index} className="transform transition-all duration-300 hover:translate-x-2">
-                                    <Link 
-                                        to={link.href} 
-                                        className="dark:text-gray-300 text-[#06304f] dark:hover:text-purple-400 hover:text-purple-600 transition-all duration-300 relative group text-lg"
-                                    >
-                                        {link.name}
-                                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-purple-400 transition-all duration-300 group-hover:w-full"></span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-
-                {/* Bottom Section */}
-                <div className={`relative mt-16 pt-8 text-center transition-all duration-1000 delay-700 ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                }`}>
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent"></div>
-                    <p className="dark:text-gray-300 text-[#06304f] text-lg hover:text-blue-400 transition-colors duration-300">
-                        &copy; 2025 <span className="font-semibold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">OfficeMoM</span>, a subsidiary of <span className="font-semibold">QuantumHash Corporation</span>. All rights reserved.
-                    </p>
-                </div>
-            </div>
-
-            {/* Bottom glow effect */}
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/50 to-transparent"></div>
-        </footer>
-    );
+        {/* Floating elements */}
+        <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
+        <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
+        <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
+      </footer>
+    </>
+  );
 };
 
 export default Footer;

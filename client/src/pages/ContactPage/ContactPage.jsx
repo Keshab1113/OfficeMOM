@@ -123,17 +123,23 @@ const ContactPage = () => {
       <Helmet>
         <meta charSet="utf-8" />
         <title>OfficeMom | ContactUs</title>
-        <link rel="canonical" href="http://mysite.com/example" />
+        <link rel="canonical" href="https://officemom.me/contact-us" />
       </Helmet>
-      <section className="relative h-full min-h-screen md:w-full w-screen dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)] bg-[linear-gradient(180deg,white_0%,#d3e4f0_100%)]">
-        <div
-          className={cn(
-            "absolute inset-0",
-            "[background-size:20px_20px]",
-            "dark:[background-image:radial-gradient(#404040_1px,transparent_1px)]"
-          )}
-        />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
+      <section className="relative min-h-screen w-full overflow-hidden">
+        {/* Background with gradient and patterns */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
+          {/* Animated background elements */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
+          </div>
+
+          {/* Grid pattern */}
+          <div className="absolute inset-0 opacity-10 dark:opacity-5">
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
+          </div>
+        </div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
           <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 relative overflow-hidden">
             <motion.div
@@ -170,7 +176,7 @@ const ContactPage = () => {
                     variants={itemVariants}
                     className="space-y-4 h-fit md:max-w-full max-w-[90vw]"
                   >
-                    <div className="backdrop-blur-lg bg-white/60 dark:bg-gray-800/60 rounded-3xl p-8 shadow-xl border border-white/20 dark:border-gray-700/30">
+                    <div className="backdrop-blur-lg bg-white/60 dark:bg-gray-800/20 rounded-3xl p-8 shadow-xl border border-white/20 dark:border-gray-700/30">
                       <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4">
                         Get in Touch
                       </h2>
@@ -237,7 +243,7 @@ const ContactPage = () => {
                   {/* Right Section - Contact Form */}
                   <motion.div
                     variants={itemVariants}
-                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-800/70 rounded-3xl shadow-2xl p-8 lg:p-10 border border-white/20 dark:border-gray-700/30"
+                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-800/20 rounded-3xl shadow-2xl p-8 lg:p-10 border border-white/20 dark:border-gray-700/30"
                   >
                     <div className="flex items-center gap-3 mb-8">
                       <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
@@ -313,7 +319,7 @@ const ContactPage = () => {
                           onFocus={() => setFocusedField("message")}
                           onBlur={() => setFocusedField("")}
                           placeholder="Tell us about your project or ask any questions..."
-                          className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 dark:border-gray-600 bg-white/80 dark:bg-gray-700/80 text-gray-800 dark:text-gray-100 focus:border-purple-500 dark:focus:border-purple-400 outline-none transition-all duration-300 backdrop-blur-sm resize-none"
+                          className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 dark:border-gray-600 bg-white/80 dark:bg-gray-700/80 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:border-purple-500 dark:focus:border-purple-400 outline-none transition-all duration-300 backdrop-blur-sm resize-none"
                           whileFocus={{ scale: 1.02 }}
                         />
                       </div>
@@ -367,6 +373,10 @@ const ContactPage = () => {
           </div>
           <Footer />
         </div>
+        <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
+        <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
+        <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
+        <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
       </section>
     </>
   );

@@ -63,7 +63,7 @@ const Timing = () => {
 
   return (
     <div className="w-full" ref={dropdownRef}>
-      <div className="relative mt-1 border border-white dark:border-white/20 shadow-lg rounded-lg p-3 bg-white dark:bg-gray-900">
+      <div className="relative mt-1 border border-white dark:border-white/20 shadow-lg rounded-lg p-3 bg-white dark:bg-gray-900/30">
         <p className="text-gray-800 dark:text-gray-400 text-sm mb-1">
           Recommended based on your location:{" "}
           <b>{userCountry ? ` ${userCountry}` : "Detecting..."}</b>
