@@ -9,8 +9,11 @@ import {
   Users,
   ChevronUp,
   ChevronDown,
+  Sparkles,
+  Crown,
+  TrendingUp,
 } from "lucide-react";
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const PlanComparison = ({ plans, billingCycle }) => {
   const [selectedPlans, setSelectedPlans] = useState([0, 1]);
@@ -23,6 +26,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
     return [
       {
         category: "Usage Limits",
+        icon: TrendingUp,
         items: [
           {
             name: "Monthly Minutes",
@@ -68,6 +72,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
       },
       {
         category: "Core Features",
+        icon: Sparkles,
         items: [
           {
             name: "Priority Processing",
@@ -107,6 +112,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
       },
       {
         category: "Support & Security",
+        icon: Shield,
         items: [
           {
             name: "Email Support",
@@ -143,6 +149,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
       },
       {
         category: "Additional Benefits",
+        icon: Crown,
         items: [
           {
             name: "Export Options",
@@ -218,15 +225,27 @@ const PlanComparison = ({ plans, billingCycle }) => {
       Professional: Zap,
       "Professional Plus": Users,
       Business: Shield,
-      "Business Plus": Users,
+      "Business Plus": Crown,
     };
-    return iconMap[planName] || null;
+    return iconMap[planName] || Star;
+  };
+
+  // Get gradient for plan
+  const getPlanGradient = (planName) => {
+    const gradientMap = {
+      Free: "from-gray-400 to-gray-600",
+      Professional: "from-blue-500 to-indigo-600",
+      "Professional Plus": "from-purple-500 to-pink-600",
+      Business: "from-orange-500 to-red-600",
+      "Business Plus": "from-yellow-400 to-orange-600",
+    };
+    return gradientMap[planName] || "from-indigo-500 to-purple-600";
   };
 
   // Show loading state if no plans
   if (!plans || plans.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto py-20 px-4 border-t mt-10 border-slate-200 dark:border-slate-600">
+      <div className="max-w-7xl mx-auto py-20 px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">
@@ -238,112 +257,184 @@ const PlanComparison = ({ plans, billingCycle }) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pt-20 md:px-4 border-t mt-10 border-slate-200 dark:border-slate-600">
+    <div className="max-w-7xl mx-auto pt-20 px-4 sm:px-6 lg:px-8">
+      {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         viewport={{ once: true }}
-        className="text-center mb-12"
+        className="text-center mb-16"
       >
-        <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
-          Compare Plans
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-full border border-indigo-200 dark:border-indigo-800 mb-6">
+          <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+            Feature Comparison
+          </span>
+        </div>
+
+        <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <span className="bg-gradient-to-r from-gray-900 via-indigo-800 to-purple-900 dark:from-white dark:via-indigo-200 dark:to-purple-200 bg-clip-text text-transparent">
+            Find Your Perfect Plan
+          </span>
         </h2>
-        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          Detailed feature comparison to help you choose the perfect plan for
-          your needs
+        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+          Compare features side-by-side and discover which plan unlocks the capabilities you need
         </p>
       </motion.div>
 
-      {/* Plan Selection */}
-      <div className="bg-white dark:bg-gray-800/20 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Select plans to compare ({selectedPlans.length}/3 selected)
-          </h3>
+      {/* Plan Selection Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        viewport={{ once: true }}
+        className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-200 dark:border-gray-700 mb-10 backdrop-blur-xl"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+              Select Plans to Compare
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Choose up to 3 plans ({selectedPlans.length}/3 selected)
+            </p>
+          </div>
           {selectedPlans.length > 2 && (
             <button
               onClick={() => setSelectedPlans([0, 1])}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+              className="text-sm px-4 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-all font-medium hover:scale-105 active:scale-95"
             >
-              Reset selection
+              Reset Selection
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-3">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {plans.map((plan, index) => {
             const IconComponent = getPlanIcon(plan.name);
+            const isSelected = selectedPlans.includes(index);
+            
             return (
               <button
                 key={plan.id || plan.name}
                 onClick={() => togglePlanSelection(index)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-200 flex-1 min-w-[200px] ${
-                  selectedPlans.includes(index)
-                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 shadow-md"
-                    : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 hover:border-gray-400 hover:shadow-sm"
+                className={`relative flex flex-col items-center gap-3 px-4 py-5 rounded-2xl border-2 transition-all duration-300 overflow-hidden hover:scale-105 hover:-translate-y-1 active:scale-95 ${
+                  isSelected
+                    ? "border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/20"
+                    : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md"
                 }`}
               >
                 <div
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                    selectedPlans.includes(index)
-                      ? "border-indigo-500 bg-indigo-500"
-                      : "border-gray-400"
-                  }`}
-                >
-                  {selectedPlans.includes(index) && (
-                    <Check size={12} className="text-white" />
-                  )}
-                </div>
+                  className={`absolute inset-0 opacity-0 transition-opacity duration-300 ${
+                    isSelected ? "opacity-100" : ""
+                  } bg-gradient-to-br ${getPlanGradient(plan.name)} opacity-5`}
+                />
 
-                <span className="font-medium text-sm sm:text-base">
-                  {plan.name}
-                </span>
+                <div className="relative z-10 w-full">
+                  <div className="flex items-center justify-between mb-3">
+                    <div
+                      className={`p-2 rounded-xl transition-all duration-300 ${
+                        isSelected
+                          ? `bg-gradient-to-br ${getPlanGradient(plan.name)}`
+                          : "bg-gray-200 dark:bg-gray-700"
+                      }`}
+                    >
+                      <IconComponent
+                        size={20}
+                        className={isSelected ? "text-white" : "text-gray-600 dark:text-gray-400"}
+                      />
+                    </div>
+
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                        isSelected
+                          ? "border-indigo-500 bg-indigo-500 scale-110"
+                          : "border-gray-400 dark:border-gray-500"
+                      }`}
+                    >
+                      {isSelected && (
+                        <Check size={14} className="text-white" strokeWidth={3} />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-left">
+                    <p className={`font-bold  mb-1 ${isSelected?"text-gray-100 dark:text-white":"text-gray-900 dark:text-white"}`}>{plan.name}</p>
+                    <p className={`text-sm  ${isSelected?"text-gray-100 dark:text-gray-100":"text-gray-600 dark:text-gray-400"}`}>
+                      ${getPlanPrice(plan)}/{billingCycle === "yearly" ? "yr" : "mo"}
+                    </p>
+                  </div>
+                </div>
               </button>
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       {/* Comparison Table */}
-      <div className="bg-white dark:bg-gray-800/20 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Table Header */}
-        <div className="grid grid-cols-12 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600">
-          <div className="col-span-12 lg:col-span-3 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Plan Features
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Compare all features side by side
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        viewport={{ once: true }}
+        className="bg-white dark:bg-gray-800/50 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden backdrop-blur-xl"
+      >
+        {/* Table Header with Plan Info */}
+        <div className="grid grid-cols-12 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b-2 border-gray-200 dark:border-gray-700">
+          <div className="col-span-12 lg:col-span-3 p-6 lg:p-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+                <Star className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Features</h3>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Compare all capabilities
             </p>
           </div>
+
           {selectedPlans.map((planIndex) => {
             const plan = plans[planIndex];
             const IconComponent = getPlanIcon(plan.name);
+            
             return (
               <div
                 key={plan.id || plan.name}
-                className="col-span-6 lg:col-span-3 p-6 border-l border-gray-200 dark:border-gray-600"
+                className="col-span-6 lg:col-span-3 p-6 lg:p-8 border-l-2 border-gray-200 dark:border-gray-700"
               >
                 <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                      {plan.name}
-                    </h4>
+                  <div
+                    className={`inline-flex p-3 rounded-2xl bg-gradient-to-br ${getPlanGradient(
+                      plan.name
+                    )} mb-4 shadow-lg transform hover:scale-110 transition-transform duration-300`}
+                  >
+                    <IconComponent className="w-6 h-6 text-white" />
                   </div>
-                  <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
-                    ${getPlanPrice(plan)}
-                    <span className="text-sm text-gray-500 dark:text-gray-400 font-normal ml-1">
-                      /{billingCycle === "yearly" ? "year" : "month"}
-                    </span>
+
+                  <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                    {plan.name}
+                  </h4>
+
+                  <div className="mb-3">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+                      ${getPlanPrice(plan)}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                      per {billingCycle === "yearly" ? "year" : "month"}
+                    </div>
                   </div>
+
                   {plan.price > 0 && billingCycle === "yearly" && (
-                    <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                      Save ${getYearlySavings(plan)}/year
+                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-semibold">
+                      <TrendingUp className="w-3 h-3" />
+                      Save ${getYearlySavings(plan)}
                     </div>
                   )}
+
                   {plan.price === 0 && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Forever free
+                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs font-semibold">
+                      Forever Free
                     </div>
                   )}
                 </div>
@@ -352,113 +443,132 @@ const PlanComparison = ({ plans, billingCycle }) => {
           })}
         </div>
 
-        {/* Feature Rows */}
-        {visibleFeatures.map((category, categoryIndex) => (
-          <div key={category.category}>
-            {/* Category Header */}
-            <div className="bg-gray-50 dark:bg-gray-700/30 border-b border-gray-200 dark:border-gray-600">
-              <div className="col-span-12 p-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white text-lg flex items-center gap-2">
-                  <div className="w-1 h-6 bg-indigo-500 rounded-full"></div>
-                  {category.category}
-                </h4>
-              </div>
-            </div>
-
-            {/* Feature Items */}
-            {category.items.map((feature, featureIndex) => (
-              <div
-                key={feature.name}
-                className={`grid grid-cols-12 border-b border-gray-100 dark:border-gray-700 transition-colors ${
-                  featureIndex % 2 === 0
-                    ? "bg-gray-50/30 dark:bg-gray-800/30"
-                    : "bg-white dark:bg-gray-800"
-                } hover:bg-gray-100 dark:hover:bg-gray-700/50`}
-              >
-                <div className="col-span-12 lg:col-span-3 p-4 lg:p-6">
-                  <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base">
-                    {feature.name}
+        {/* Feature Categories */}
+        {visibleFeatures.map((category, categoryIndex) => {
+          const CategoryIcon = category.icon;
+          
+          return (
+            <div key={category.category}>
+              {/* Category Header */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                <div className="p-5 flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+                    <CategoryIcon className="w-5 h-5 text-white" />
                   </div>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-lg">
+                    {category.category}
+                  </h4>
                 </div>
-                {selectedPlans.map((planIndex) => {
-                  const plan = plans[planIndex];
-                  const value = feature.values[plan.name];
-                  const isCheckmark = value === "✅" || value === "❌";
-
-                  return (
-                    <div
-                      key={`${plan.name}-${feature.name}`}
-                      className="col-span-6 lg:col-span-3 p-4 lg:p-6 border-l border-gray-200 dark:border-gray-600 flex items-center justify-center"
-                    >
-                      <div
-                        className={`text-center ${
-                          isCheckmark
-                            ? "text-xl"
-                            : "text-sm font-medium text-gray-700 dark:text-gray-300"
-                        } ${
-                          isCheckmark && value === "✅" ? "text-green-500" : ""
-                        } ${
-                          isCheckmark && value === "❌" ? "text-red-400" : ""
-                        }`}
-                      >
-                        {value}
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
-            ))}
-          </div>
-        ))}
 
-        {/* Expand/Collapse Button */}
-        <div className="p-6 text-center bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-600">
+              {/* Feature Items */}
+              {category.items.map((feature, featureIndex) => (
+                <div
+                  key={feature.name}
+                  className={`grid grid-cols-12 border-b border-gray-100 dark:border-gray-700/50 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
+                    featureIndex % 2 === 0
+                      ? "bg-white dark:bg-gray-800/30"
+                      : "bg-gray-50/50 dark:bg-gray-800/50"
+                  }`}
+                >
+                  <div className="col-span-12 lg:col-span-3 p-5 lg:p-6 flex items-center">
+                    <div className="font-semibold text-gray-700 dark:text-gray-200 text-sm lg:text-base">
+                      {feature.name}
+                    </div>
+                  </div>
+
+                  {selectedPlans.map((planIndex) => {
+                    const plan = plans[planIndex];
+                    const value = feature.values[plan.name];
+                    const isCheckmark = value === "✅" || value === "❌";
+
+                    return (
+                      <div
+                        key={`${plan.name}-${feature.name}`}
+                        className="col-span-6 lg:col-span-3 p-5 lg:p-6 border-l border-gray-200 dark:border-gray-700 flex items-center justify-center"
+                      >
+                        {isCheckmark ? (
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                              value === "✅"
+                                ? "bg-green-100 dark:bg-green-900/30"
+                                : "bg-red-100 dark:bg-red-900/30"
+                            }`}
+                          >
+                            {value === "✅" ? (
+                              <Check className="w-5 h-5 text-green-600 dark:text-green-400" strokeWidth={3} />
+                            ) : (
+                              <X className="w-5 h-5 text-red-500 dark:text-red-400" strokeWidth={3} />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <span className="inline-flex px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm font-semibold transition-all hover:scale-105">
+                              {value}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+
+        {/* Expand/Collapse Footer */}
+        <div className="p-8 text-center bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-t-2 border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all duration-200 hover:shadow-lg"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl shadow-indigo-500/30 hover:scale-105 active:scale-95"
           >
             {isExpanded ? (
               <>
+                <ChevronUp size={20} />
                 Show Less Features
-                <ChevronUp size={16} />
               </>
             ) : (
               <>
+                <ChevronDown size={20} />
                 Show All Features
-                <ChevronDown size={16} />
               </>
             )}
           </button>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 font-medium">
             {isExpanded
-              ? `Showing all ${features.reduce(
-                  (total, cat) => total + cat.items.length,
-                  0
-                )} features`
+              ? `Viewing all ${features.reduce((total, cat) => total + cat.items.length, 0)} features`
               : `Showing ${visibleFeatures.reduce(
                   (total, cat) => total + cat.items.length,
                   0
-                )} of ${features.reduce(
-                  (total, cat) => total + cat.items.length,
-                  0
-                )} features`}
+                )} of ${features.reduce((total, cat) => total + cat.items.length, 0)} features`}
           </p>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Help Text */}
-      <div className="text-center mt-8">
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          Need help choosing the right plan?{" "}
-          <Link
-            to="/contact-us"
-            className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-          >
-            Contact our sales team
-          </Link>{" "}
-          for personalized advice.
+      {/* Help Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        viewport={{ once: true }}
+        className="text-center mt-12 p-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-2xl border border-indigo-200 dark:border-indigo-800"
+      >
+        <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400 mx-auto mb-3" />
+        <p className="text-gray-700 dark:text-gray-300 text-lg mb-2 font-semibold">
+          Still not sure which plan is right for you?
         </p>
-      </div>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Our team is here to help you find the perfect fit for your needs
+        </p>
+        <Link
+          to="/contact-us"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+        >
+          Contact Sales Team
+        </Link>
+      </motion.div>
     </div>
   );
 };

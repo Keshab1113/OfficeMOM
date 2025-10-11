@@ -24,10 +24,10 @@ export default function OAuthSuccess() {
       dispatch(setProfileImage({ profileImage: profilePic }));
       dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
 
-      addToast("success", "Google login successful!");
+      addToast("success", "Login successful!");
       navigate("/");
     } else {
-      addToast("error", "Google login failed!");
+      addToast("error", "Login failed!");
       navigate("/login");
     }
   }, [location, dispatch, navigate, addToast]);

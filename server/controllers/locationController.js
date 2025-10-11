@@ -9,7 +9,7 @@ const getUserLocation = async (req, res) => {
 
     if (lat && lon) {
       // Use Nominatim reverse geocoding to get country/city
-      const nominatimUrl = `${process.env.OPENSTREET_URL}?format=json&lat=${lat}&lon=${lon}`;
+      const nominatimUrl = `${process.env.OPENSTREET_URL}?format=json&lat=${lat}&lon=${lon}&accept-language=en`;;
 
       const geoRes = await axios.get(nominatimUrl, {
         headers: { "User-Agent": "Node.js App" },

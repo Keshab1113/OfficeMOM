@@ -23,8 +23,8 @@ const Footer = () => {
     ],
     connect: [
       {
-        name: "support@officemom.com",
-        href: "mailto:support@officemom.com",
+        name: "support@officemom.me",
+        href: "mailto:support@officemom.me",
         icon: Mail,
       },
       { name: "Live Chat", href: "/support", icon: MessageCircle },

@@ -4,10 +4,8 @@ import SideBar from "./components/SideBar/SideBar";
 import Header from "./components/Header/Header";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 
-
 function Layout() {
   const location = useLocation();
-  
 
   const hiddenRoutes = [
     "/join-meeting/",
@@ -40,23 +38,20 @@ function Layout() {
     location.pathname.startsWith(path)
   );
 
-  
-
   return (
-    <section className="w-full overflow-x-hidden">
-      {!hideHeader && <Header />}
-      <div className="mx-auto w-full flex min-h-screen overflow-x-hidden">
+    <section className="w-full overflow-hidden">
+      <div className="mx-auto w-full flex min-h-screen overflow-hidden">
         {!hideSidebar && (
           <div className="">
             <SideBar />
           </div>
         )}
-        <div className="flex-1 dark:bg-black bg-white relative p-0">
+        <div className="flex-1 dark:bg-black bg-white relative p-0 overflow-hidden">
+          {!hideHeader && <Header />}
           <Outlet />
-          <ScrollToTop/>
+          <ScrollToTop />
         </div>
       </div>
-      
     </section>
   );
 }

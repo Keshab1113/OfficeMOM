@@ -135,7 +135,6 @@ const SideBar = () => {
       <div className="w-full space-y-8">
         {/* Logo and Theme Toggle */}
         <div className="flex items-center justify-between w-full">
-          {(hideSidebar || isMobile) && (
             <motion.button
               onClick={() => navigate("/")}
               className="flex items-center gap-3 group"
@@ -155,7 +154,6 @@ const SideBar = () => {
                 </div>
               )}
             </motion.button>
-          )}
 
           {/* Theme Toggle and Close Button */}
           <div className="flex items-center gap-2">

@@ -3,19 +3,20 @@ import { Helmet } from "react-helmet";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
-import { 
-  BookOpen, 
-  Upload, 
-  FileText, 
-  Code, 
-  HelpCircle, 
+import {
+  BookOpen,
+  Upload,
+  FileText,
+  Code,
+  HelpCircle,
   Play,
   Zap,
   Users,
   Shield,
-  Clock
+  Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 const sections = [
   {
@@ -28,8 +29,8 @@ const sections = [
       "Create your account in under 2 minutes",
       "Set up your team workspace",
       "Configure your meeting preferences",
-      "Invite team members to collaborate"
-    ]
+      "Invite team members to collaborate",
+    ],
   },
   {
     id: "upload-audio",
@@ -41,8 +42,8 @@ const sections = [
       "Drag & drop file upload",
       "Batch upload support",
       "Automatic format detection",
-      "Secure cloud storage"
-    ]
+      "Secure cloud storage",
+    ],
   },
   {
     id: "generate-mom",
@@ -54,8 +55,8 @@ const sections = [
       "AI-powered action item detection",
       "Speaker identification",
       "Smart summarization",
-      "Customizable templates"
-    ]
+      "Customizable templates",
+    ],
   },
   {
     id: "api",
@@ -67,8 +68,8 @@ const sections = [
       "RESTful API endpoints",
       "Webhook support",
       "Comprehensive SDKs",
-      "Rate limiting & quotas"
-    ]
+      "Rate limiting & quotas",
+    ],
   },
   {
     id: "faq",
@@ -80,21 +81,24 @@ const sections = [
       "Data security & privacy",
       "Format compatibility",
       "Accuracy & limitations",
-      "Team collaboration features"
-    ]
-  }
+      "Team collaboration features",
+    ],
+  },
 ];
 
 const quickStats = [
   { icon: Zap, label: "Setup Time", value: "2 minutes" },
   { icon: Users, label: "Team Members", value: "Unlimited" },
   { icon: Shield, label: "Security", value: "Enterprise-grade" },
-  { icon: Clock, label: "Support", value: "24/7" }
+  { icon: Clock, label: "Support", value: "24/7" },
 ];
 
 const breadcrumbItems = [{ label: "Documentation" }];
 
 const Documentation = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const navigate = useNavigate();
   return (
     <>
@@ -103,7 +107,7 @@ const Documentation = () => {
         <title>OfficeMom | Documentation</title>
         <link rel="canonical" href="https://officemom.me/documentation" />
       </Helmet>
-      
+
       <section className="relative min-h-screen w-full overflow-hidden">
         {/* Background with gradient and patterns */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
@@ -113,7 +117,7 @@ const Documentation = () => {
             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
             <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
           </div>
-          
+
           {/* Grid pattern */}
           <div className="absolute inset-0 opacity-10 dark:opacity-5">
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
@@ -143,7 +147,7 @@ const Documentation = () => {
               >
                 <BookOpen className="w-10 h-10 text-white" />
               </motion.div>
-              
+
               <motion.h1
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -152,15 +156,16 @@ const Documentation = () => {
               >
                 OfficeMoM Documentation
               </motion.h1>
-              
+
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.6 }}
                 className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed mb-8"
               >
-                Learn how to set up, use, and integrate OfficeMoM to make your meetings 
-                smarter and more productive with AI-powered transcription and collaboration.
+                Learn how to set up, use, and integrate OfficeMoM to make your
+                meetings smarter and more productive with AI-powered
+                transcription and collaboration.
               </motion.p>
 
               {/* Quick Stats */}
@@ -255,11 +260,15 @@ const Documentation = () => {
               <div className="bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-500/30 dark:to-purple-600/40 rounded-2xl p-8 text-white">
                 <h3 className="text-2xl font-bold mb-3">Need More Help?</h3>
                 <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-                  Our support team is here to help you get the most out of OfficeMoM. 
-                  Contact us for technical assistance, feature requests, or custom integrations.
+                  Our support team is here to help you get the most out of
+                  OfficeMoM. Contact us for technical assistance, feature
+                  requests, or custom integrations.
                 </p>
                 <div className="flex flex-wrap gap-4 justify-center">
-                  <button onClick={()=>navigate("/contact-us")} className="bg-white cursor-pointer text-indigo-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                  <button
+                    onClick={() => navigate("/contact-us")}
+                    className="bg-white cursor-pointer text-indigo-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+                  >
                     Contact Support
                   </button>
                   <button className="border cursor-pointer border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">

@@ -5,6 +5,7 @@ import FAQ from "../../components/FAQ/FAQ";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Header from "../../components/Header/Header";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -27,8 +28,11 @@ const Home = () => {
               <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
             </div>
           </div>
+          {/* <Header/> */}
           <div className="relative z-10 ">
+            
             <div className="text-center space-y-12">
+              
               <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}

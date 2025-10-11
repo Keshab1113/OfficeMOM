@@ -14,7 +14,7 @@ const uploadToFTP = require("../config/uploadToFTP.js");
 const transporter = nodemailer.createTransport({
   host: process.env.MAILTRAP_HOST,
   port: process.env.MAILTRAP_PORT,
-  secure: false,
+  secure: true,
   auth: {
     user: process.env.MAIL_USER_NOREPLY,
     pass: process.env.MAIL_PASS,

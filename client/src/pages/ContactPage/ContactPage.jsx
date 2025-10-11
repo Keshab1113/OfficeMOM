@@ -189,7 +189,7 @@ const ContactPage = () => {
                         {[
                           {
                             icon: FiMail,
-                            text: "support@officemom.com",
+                            text: "support@officemom.me",
                             color: "from-blue-500 to-cyan-500",
                           },
 

@@ -200,7 +200,7 @@ const Login = () => {
                     </p>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Email Field */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -301,7 +301,11 @@ const Login = () => {
                         </button>
                       </p>
                     </div>
-                    <div className="mt-6 flex justify-center">
+                    
+                  </div>
+                </form>
+
+                <div className="mt-6 flex justify-center">
                       <button
                         onClick={() =>
                           (window.location.href = `${
@@ -364,8 +368,6 @@ const Login = () => {
                         </span>
                       </button>
                     </div>
-                  </div>
-                </form>
 
                 {/* Security Notice */}
                 <div className="mt-6 text-center">

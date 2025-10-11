@@ -37,8 +37,8 @@ const ForgotPassword = () => {
   // Simple client-side checks
   const validEmail = /\S+@\S+\.\S+/.test(email);
   const strongPassword =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
-      password
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(
+      password.trim()
     );
   const passwordsMatch = password === confirm;
 
@@ -458,7 +458,9 @@ const ForgotPassword = () => {
                               className="text-indigo-600 disabled:cursor-not-allowed cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
                               onClick={handleResendOtp}
                             >
-                              {isProcessingResend?"Sending code..." : "Resend verification code"}
+                              {isProcessingResend
+                                ? "Sending code..."
+                                : "Resend verification code"}
                             </button>
                           </div>
                         )}
