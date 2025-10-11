@@ -30,6 +30,7 @@ const ForgotPassword = () => {
   const [canResend, setCanResend] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { addToast } = useToast();
+  const [isProcessingResend, setIsProcessingResend] = useState(false);
 
   const navigate = useNavigate();
 
@@ -96,6 +97,7 @@ const ForgotPassword = () => {
   };
 
   const handleResendOtp = async () => {
+    setIsProcessingResend(true);
     try {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/forgot-password/send-otp`,
@@ -104,8 +106,10 @@ const ForgotPassword = () => {
       setOtp(["", "", "", "", "", ""]);
       setTimer(120);
       setCanResend(false);
+      setIsProcessingResend(false);
       addToast("success", "Verification code resent to your email");
     } catch (err) {
+      setIsProcessingResend(false);
       addToast(
         "error",
         err?.response?.data?.message || "Failed to resend code"
@@ -450,10 +454,11 @@ const ForgotPassword = () => {
                           <div className="text-center">
                             <button
                               type="button"
-                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
+                              disabled={isProcessingResend}
+                              className="text-indigo-600 disabled:cursor-not-allowed cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
                               onClick={handleResendOtp}
                             >
-                              Resend verification code
+                              {isProcessingResend?"Sending code..." : "Resend verification code"}
                             </button>
                           </div>
                         )}
