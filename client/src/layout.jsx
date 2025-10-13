@@ -19,7 +19,7 @@ function Layout() {
     "/signup",
     "/forgot-password",
     "/momGenerate/",
-    // "/audio-notes"
+    "/terms-of-service"
   ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)

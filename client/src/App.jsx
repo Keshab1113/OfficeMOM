@@ -18,6 +18,7 @@ import ContactPage from "./pages/ContactPage/ContactPage";
 import Pricing from "./pages/Pricing/Pricing";
 import DemoVideo from "./pages/DemoVideo/DemoVideo";
 import PrivacyPolicy from "./pages/PrivacyPolicy/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService/TermsOfService";
 import Documentation from "./pages/Documentation/Documentation";
 import Success from "./pages/PaymentResult/Success";
 import Failure from "./pages/PaymentResult/Failure";
@@ -76,6 +77,7 @@ function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/features" element={<DemoVideo />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService/>} />
           <Route path="/documentation" element={<Documentation />} />
           <Route
             path="/success"

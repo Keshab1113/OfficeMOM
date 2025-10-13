@@ -78,10 +78,12 @@ const Header = () => {
     "/signup",
     "/forgot-password",
     "/momGenerate/",
+    "/terms-of-service"
   ];
   const hiddenRoutes2 = [
     "/documentation",
     "/privacy-policy",
+    "/terms-of-service"
   ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
