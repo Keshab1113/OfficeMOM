@@ -108,7 +108,8 @@ const Documentation = () => {
         <link rel="canonical" href="https://officemom.me/documentation" />
       </Helmet>
 
-      <section className="relative min-h-screen w-full overflow-hidden">
+      <section className="relative w-full min-h-screen overflow-hidden">
+
         {/* Background with gradient and patterns */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
           {/* Animated background elements */}
@@ -125,7 +126,7 @@ const Documentation = () => {
         </div>
 
         {/* Main content */}
-        <div className="relative z-10 min-h-screen">
+        <div className="relative z-10 overflow-y-auto max-h-screen">
           <div className="max-w-7xl mx-auto px-4 py-20">
             {/* Breadcrumb */}
             <div className="mb-8">

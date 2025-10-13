@@ -17,6 +17,7 @@ const deepseekRoutes = require("./routes/deepseekRoutes.js");
 const planRoutes = require("./routes/planRoutes.js");
 const faqRoutes = require("./routes/faqRoutes.js");
 const locationRoutes = require("./routes/locationRoutes.js");
+const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
 const session = require("express-session");
 
@@ -60,6 +61,7 @@ app.use("/api", deepseekRoutes);
 app.use("/api", planRoutes);
 app.use("/api", faqRoutes);
 app.use("/api/location", locationRoutes);
+app.use('/api/chat', chatRoutes);
 
 const server = http.createServer(app);
 

@@ -78,12 +78,12 @@ const Header = () => {
     "/signup",
     "/forgot-password",
     "/momGenerate/",
-    "/terms-of-service"
+    "/terms-of-service",
   ];
   const hiddenRoutes2 = [
     "/documentation",
     "/privacy-policy",
-    "/terms-of-service"
+    "/terms-of-service",
   ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
@@ -98,7 +98,7 @@ const Header = () => {
   return (
     <>
       <header
-        className={` absolute top-0 z-40  ${fullWidthHeader?"md:w-full w-full":"md:w-[99.1%] w-full"} transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700`}
+        className={` absolute top-0 z-40 w-full transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700`}
       >
         <div className="px-4 sm:px-6 lg:px-8">
           <div

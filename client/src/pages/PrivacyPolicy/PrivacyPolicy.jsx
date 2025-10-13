@@ -75,7 +75,7 @@ const PrivacyPolicy = () => {
         </div>
         {/* <Header /> */}
         {/* Main content */}
-        <div className="relative z-10 min-h-screen">
+        <div className="relative z-10 overflow-y-auto max-h-screen">
           <div className="max-w-6xl mx-auto px-4 py-24">
             <motion.div
               initial={{ opacity: 0, y: 40 }}

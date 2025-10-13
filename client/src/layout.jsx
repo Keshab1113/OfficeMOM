@@ -2,7 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import Footer from "./components/Footer/Footer";
 import SideBar from "./components/SideBar/SideBar";
 import Header from "./components/Header/Header";
-import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
+import ChatBot from "./components/ChatBot/ChatBot";
 
 function Layout() {
   const location = useLocation();
@@ -19,7 +19,7 @@ function Layout() {
     "/signup",
     "/forgot-password",
     "/momGenerate/",
-    "/terms-of-service"
+    "/terms-of-service",
   ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
@@ -39,18 +39,19 @@ function Layout() {
   );
 
   return (
-    <section className="w-full overflow-hidden">
-      <div className="mx-auto w-full flex min-h-screen overflow-hidden">
+    <section className="w-full overflow-hidden min-h-screen relative">
+      {!hideHeader && <Header />}
+      <div className={`flex dark:bg-black bg-white p-0 overflow-hidden h-screen ${!hideHeader && "lg:pt-20 pt-16"}`}>
         {!hideSidebar && (
-          <div className="">
+          <div className=" absolute top-0">
             <SideBar />
           </div>
         )}
-        <div className="flex-1 dark:bg-black bg-white relative p-0 overflow-hidden">
-          {!hideHeader && <Header />}
+        <main className={` w-full  ${!hideSidebar && "lg:ml-[20rem]"}`} id="scrollableMain">
           <Outlet />
-          <ScrollToTop />
-        </div>
+          
+          <ChatBot/>
+        </main>
       </div>
     </section>
   );
