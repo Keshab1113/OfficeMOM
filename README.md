@@ -1,6 +1,6 @@
-# SmartMoM (Smart Minutes of Meeting)
+# OfficeMoM (Smart Minutes of Meeting)
 
-SmartMoM is a web application that helps teams automatically **record meetings, generate transcripts, manage history, and share minutes of meeting (MoM)** efficiently.  
+OfficeMoM is a web application that helps teams automatically **record meetings, generate transcripts, manage history, and share minutes of meeting (MoM)** efficiently.  
 It combines **frontend (React + TailwindCSS)** and **backend (Node.js + Express + MySQL)** technologies, providing a seamless experience for both meeting admins and participants.
 
 ---
@@ -49,7 +49,7 @@ It combines **frontend (React + TailwindCSS)** and **backend (Node.js + Express 
 
 ## 📂 Project Structure
 
-smartmom/
+/
 
 │── backend/ # Express + MySQL API
 
@@ -97,7 +97,7 @@ smartmom/
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/Keshab1113/SmartMOM.git
+git clone https://github.com/Keshab1113/.git
 cd client
 npm i
 npm run dev
