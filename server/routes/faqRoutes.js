@@ -3,6 +3,6 @@ const { getFAQsByPage } = require("../controllers/faqController.js");
 const router = express.Router();
 
 // Public routes
-router.get('/faq/:pageType', getFAQsByPage);
+router.get('/:pageType', getFAQsByPage);
 
 module.exports = router;

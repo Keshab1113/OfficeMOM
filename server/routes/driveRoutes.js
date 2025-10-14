@@ -5,6 +5,6 @@ const { processDrive } = require("../controllers/driveController.js");
 const upload = multer();
 const router = express.Router();
 
-router.post("/process-drive", upload.none(), processDrive);
+router.post("/", upload.none(), processDrive);
 
 module.exports = router;

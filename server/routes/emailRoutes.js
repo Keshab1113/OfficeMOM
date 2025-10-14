@@ -6,6 +6,6 @@ const router = express.Router();
 const upload = multer(); // In-memory storage
 
 // Handle multipart/form-data (files + JSON)
-router.post("/send-meeting-email", upload.array("files"), sendMeetingEmail);
+router.post("/", upload.array("files"), sendMeetingEmail);
 
 module.exports = router;

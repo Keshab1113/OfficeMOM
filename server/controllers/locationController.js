@@ -2,59 +2,53 @@ const axios = require("axios");
 const dotenv = require("dotenv");
 
 dotenv.config();
-
 const getUserLocation = async (req, res) => {
   try {
     const { lat, lon } = req.query;
-
     if (lat && lon) {
-      // Use Nominatim reverse geocoding to get country/city
-      const nominatimUrl = `${process.env.OPENSTREET_URL}?format=json&lat=${lat}&lon=${lon}&accept-language=en`;;
+      const googleUrl = `${process.env.OPENSTREET_URL}?latlng=${lat},${lon}&key=${process.env.GOOGLE_API_KEY}`;
 
-      const geoRes = await axios.get(nominatimUrl, {
-        headers: { "User-Agent": "Node.js App" },
-      });
+      const geoRes = await axios.get(googleUrl);
 
-      const address = geoRes.data.address || {};
+      if (
+        !geoRes.data ||
+        !geoRes.data.results ||
+        geoRes.data.results.length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "No location data found for the given coordinates",
+          raw: geoRes.data, // optional, helps debugging
+        });
+      }
+
+      const result = geoRes.data.results[0];
+      const components = result.address_components || [];
+
+      const getComponent = (type) =>
+        components.find((c) => c.types.includes(type))?.long_name || null;
+
       return res.status(200).json({
         success: true,
         data: {
           latitude: lat,
           longitude: lon,
-          city: address.city || address.town || address.village || null,
-          state: address.state || null,
-          country: address.country || null,
+          city: getComponent("locality"),
+          state: getComponent("administrative_area_level_1"),
+          country: getComponent("country"),
         },
         method: "browser",
       });
     }
-
-    // Otherwise, use user's IP
-    let ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-    if (ip?.includes(",")) ip = ip.split(",")[0];
-    if (ip?.startsWith("::ffff:")) ip = ip.split("::ffff:")[1];
-
-    const url = `${process.env.IPINFO_URL}/${ip}/json`;
-    const response = await axios.get(url);
-    const data = response.data;
-
-    res.status(200).json({
-      success: true,
-      data: {
-        ip: data.ip,
-        city: data.city,
-        region: data.region,
-        country: data.country,
-        loc: data.loc,
-      },
-      method: "ip",
-    });
   } catch (error) {
-    console.error("Error fetching location:", error.message);
+    console.error(
+      "Error fetching location:",
+      error.response?.data || error.message
+    );
     res.status(500).json({
       success: false,
       message: "Failed to fetch location",
-      error: error.message,
+      error: error.response?.data || error.message,
     });
   }
 };

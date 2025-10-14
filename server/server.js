@@ -43,23 +43,23 @@ app.use(passport.initialize());
 
 app.get("/", (req, res) => {
   res.json({
-    message: "OfficeMoM App API Server",
+    message: "OfficeMoM App API Server Running Successfully.",
     version: "1.0.0",
   });
 });
 
 // API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api", audioRoutes);
-app.use("/api", liveRoutes);
-app.use("/api", driveRoutes);
+app.use("/api/process-audio", audioRoutes);
+app.use("/api/live-meeting", liveRoutes);
+app.use("/api/process-drive", driveRoutes);
 app.use("/api/history", historyRoutes);
-app.use("/api", emailRoutes);
+app.use("/api/send-meeting-email", emailRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/stripe", stripeRoutes);
-app.use("/api", deepseekRoutes);
-app.use("/api", planRoutes);
-app.use("/api", faqRoutes);
+app.use("/api/process", deepseekRoutes);
+app.use("/api/plans", planRoutes);
+app.use("/api/faq", faqRoutes);
 app.use("/api/location", locationRoutes);
 app.use('/api/chat', chatRoutes);
 

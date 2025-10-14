@@ -3,6 +3,6 @@ const { processTranscript } = require("../controllers/deepseekController.js");
 
 const router = express.Router();
 
-router.post("/process", processTranscript);
+router.post("/", processTranscript);
 
 module.exports = router;

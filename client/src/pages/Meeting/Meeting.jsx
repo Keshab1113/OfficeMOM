@@ -186,7 +186,7 @@ const Meeting = () => {
         formData.append("source", "Online Meeting Conversion");
         try {
           const response = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,
+            `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/upload-audio`,
             formData,
             {
               headers: {
@@ -199,7 +199,7 @@ const Meeting = () => {
           const formData2 = new FormData();
           formData2.append("audioUrl", response?.data?.audioUrl);
           const res = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio-from-url`,
+            `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/upload-audio-from-url`,
             formData2,
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -274,7 +274,7 @@ const Meeting = () => {
       await axios.patch(
         `${
           import.meta.env.VITE_BACKEND_URL
-        }/api/audio-files/${updatedMeetingId}`,
+        }/api/live-meeting/audio-files/${updatedMeetingId}`,
         historyData,
         { headers: { Authorization: `Bearer ${token}` } }
       );

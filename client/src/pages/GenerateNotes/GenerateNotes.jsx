@@ -73,7 +73,7 @@ const GenerateNotes = () => {
 
     if (activeTab === "computer") {
       formData.append("audio", selectedFile);
-      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-audio`;
+      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-audio/upload`;
     } else {
       formData.append("driveUrl", driveUrl);
       apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;

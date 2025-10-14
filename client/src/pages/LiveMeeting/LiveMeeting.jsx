@@ -321,7 +321,7 @@ const LiveMeeting = () => {
         formData.append("source", "Live Transcript Conversion");
 
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/upload-audio`,
           formData,
           {
             headers: {
@@ -405,7 +405,7 @@ const LiveMeeting = () => {
     const someId = lastPreview?.id;
     dispatch(updateNeedToShow({ id: someId, needToShow: false }));
     const { data } = await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/createlive`,
+      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
       {},
       {
         headers: {
@@ -458,7 +458,7 @@ const LiveMeeting = () => {
   const endMeeting = async () => {
     try {
       await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/${meetingId}/end`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
         {},
         {
           headers: {
@@ -495,7 +495,7 @@ const LiveMeeting = () => {
       const formData = new FormData();
       formData.append("mixed", recordingBlobRef.current, "mixed.webm");
       const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/${meetingId}/recording`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/recording`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -532,7 +532,7 @@ const LiveMeeting = () => {
       await axios.patch(
         `${
           import.meta.env.VITE_BACKEND_URL
-        }/api/audio-files/${updatedMeetingId}`,
+        }/api/live-meeting/audio-files/${updatedMeetingId}`,
         historyData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -616,7 +616,7 @@ const LiveMeeting = () => {
   const handleDelete = async (audioId) => {
     try {
       await axios.delete(
-        `${import.meta.env.VITE_BACKEND_URL}/api/audio-files/${audioId}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/audio-files/${audioId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -645,7 +645,7 @@ const LiveMeeting = () => {
       const formData = new FormData();
       formData.append("audioUrl", audioFile);
       const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/upload-audio-from-url`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/upload-audio-from-url`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -772,7 +772,7 @@ const LiveMeeting = () => {
                               : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
                           }`}
                         >
-                          {isRecording ? "Stop recording" : "Start Meeting"}
+                          {isRecording ? "Stop Meeting" : "Start Meeting"}
                         </button>
                       </div>
 

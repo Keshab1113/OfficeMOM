@@ -155,7 +155,7 @@ export default function MultipleAudioPlayer({
   const handleDelete = async (audioId) => {
     try {
       await axios.delete(
-        `${import.meta.env.VITE_BACKEND_URL}/api/audio-files/${audioId}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/audio-files/${audioId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
