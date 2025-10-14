@@ -1,6 +1,6 @@
-# SmartMoM (Smart Minutes of Meeting)
+# OfficeMoM (Smart Minutes of Meeting)
 
-SmartMoM is a web application that helps teams automatically **record meetings, generate transcripts, manage history, and share minutes of meeting (MoM)** efficiently.  
+OfficeMoM is a web application that helps teams automatically **record meetings, generate transcripts, manage history, and share minutes of meeting (MoM)** efficiently.  
 It combines **frontend (React + TailwindCSS)** and **backend (Node.js + Express + MySQL)** technologies, providing a seamless experience for both meeting admins and participants.
 
 ---
