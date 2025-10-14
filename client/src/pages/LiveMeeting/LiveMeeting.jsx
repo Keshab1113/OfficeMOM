@@ -772,7 +772,7 @@ const LiveMeeting = () => {
                               : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
                           }`}
                         >
-                          {isRecording ? "Stop recording" : "Start recording"}
+                          {isRecording ? "Stop recording" : "Start Meeting"}
                         </button>
                       </div>
 

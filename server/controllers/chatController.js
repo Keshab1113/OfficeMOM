@@ -83,7 +83,7 @@ Always maintain a professional yet friendly tone. Focus on helping users get the
       ];
 
       const response = await axios.post(
-        'https://api.deepseek.com/chat/completions',
+        process.env.DEEPSEEK_API_URL,
         {
           model: "deepseek-chat",
           messages: messages,

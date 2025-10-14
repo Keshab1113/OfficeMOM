@@ -206,7 +206,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
               className="group flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-lg dark:hover:shadow-gray-900/50 transform hover:scale-105"
             >
               <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-              <span className="font-medium">Restart Recording</span>
+              <span className="font-medium">Restart Meeting</span>
             </button>
           </div>
 
