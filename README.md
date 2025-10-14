@@ -49,7 +49,7 @@ It combines **frontend (React + TailwindCSS)** and **backend (Node.js + Express 
 
 ## 📂 Project Structure
 
-smartmom/
+/
 
 │── backend/ # Express + MySQL API
 
@@ -97,7 +97,7 @@ smartmom/
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/Keshab1113/SmartMOM.git
+git clone https://github.com/Keshab1113/.git
 cd client
 npm i
 npm run dev
