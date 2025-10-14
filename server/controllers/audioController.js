@@ -4,8 +4,8 @@ const ExcelJS = require("exceljs");
 
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
-const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
-const TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";
+const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
+const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
 
 async function uploadFileToAssemblyAI(buffer) {
   const res = await axios.post(UPLOAD_URL, buffer, {

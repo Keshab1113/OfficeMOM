@@ -43,9 +43,7 @@ const meetingPlatforms = [
     color: "bg-gray-500",
   },
 ];
-const breadcrumbItems = [
-    { label: "Online Meeting" }
-  ];
+const breadcrumbItems = [{ label: "Online Meeting" }];
 
 const Meeting = () => {
   const [activeTab, setActiveTab] = useState(1);
@@ -69,6 +67,7 @@ const Meeting = () => {
   const mediaRecorderRef = useRef(null);
   const { addToast } = useToast();
   const recordedChunksRef = useRef([]);
+  const screenStreamRef = useRef(null);
 
   const startMeeting = async () => {
     if (!meetingLink) {
@@ -118,6 +117,7 @@ const Meeting = () => {
       const systemStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
       });
+      screenStreamRef.current = systemStream;
 
       const audioContext = new AudioContext();
       const destination = audioContext.createMediaStreamDestination();
@@ -199,7 +199,9 @@ const Meeting = () => {
           const formData2 = new FormData();
           formData2.append("audioUrl", response?.data?.audioUrl);
           const res = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/upload-audio-from-url`,
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/live-meeting/upload-audio-from-url`,
             formData2,
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -217,6 +219,12 @@ const Meeting = () => {
 
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
     }
 
     setMeetingLink("");
@@ -317,7 +325,7 @@ const Meeting = () => {
             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
             <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
           </div>
-          
+
           {/* Grid pattern */}
           <div className="absolute inset-0 opacity-10 dark:opacity-5">
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
@@ -325,9 +333,7 @@ const Meeting = () => {
         </div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
           <div className=" min-h-screen">
-            {!showModal && (
-                <Breadcrumb items={breadcrumbItems} />
-            )}
+            {!showModal && <Breadcrumb items={breadcrumbItems} />}
             {!isMeetingActive && (
               <Heading
                 heading="Take Notes from Online Meeting"

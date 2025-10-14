@@ -6,8 +6,8 @@ const uploadToFTP = require("../config/uploadToFTP.js");
 
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
-const UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
-const TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";
+const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
+const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
 
 async function uploadFileToAssemblyAI(buffer, filename) {
   const headers = {
@@ -152,6 +152,10 @@ const uploadAudio = async (req, res) => {
         null,
         null,
       ]
+    );
+    await db.query(
+      "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt) VALUES (?, ?, ?, ?)",
+      [userId, originalName, ftpUrl, formattedDate]
     );
 
     res.status(200).json({
