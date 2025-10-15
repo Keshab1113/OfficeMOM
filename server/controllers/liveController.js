@@ -4,7 +4,6 @@ const { v4: uuidv4 } = require("uuid");
 const db = require("../config/db.js");
 const uploadToFTP = require("../config/uploadToFTP.js");
 
-
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
 const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
@@ -28,7 +27,7 @@ async function uploadFileToAssemblyAI(buffer, filename) {
 async function createTranscription(audioUrl) {
   const res = await axios.post(
     TRANSCRIPT_URL,
-    { audio_url: audioUrl, language_detection: true, },
+    { audio_url: audioUrl, language_detection: true },
     {
       headers: {
         Authorization: ASSEMBLY_KEY,
@@ -67,7 +66,11 @@ const transcribeAudio = async (req, res) => {
     const result = await pollTranscription(created.id);
     // fs.unlink(file.path, () => {});
 
-    res.json({ text: result.text, full: result, language: result.language_code, });
+    res.json({
+      text: result.text,
+      full: result,
+      language: result.language_code,
+    });
   } catch (err) {
     console.error(err);
     fs.unlink(file.path, () => {});
@@ -105,75 +108,6 @@ const endMeeting = async (req, res) => {
     [meetingId]
   );
   res.json({ ok: true });
-};
-
-const uploadAudio = async (req, res) => {
-  const { source } = req.body;
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No audio file uploaded" });
-    }
-
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: no user ID" });
-    }
-
-    const buffer = req.file.buffer;
-    const originalName = req.file.originalname;
-
-    const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
-
-    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [
-      userId,
-    ]);
-    if (user.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const curDate = new Date();
-    const year = curDate.getFullYear();
-    const month = String(curDate.getMonth() + 1).padStart(2, "0");
-    const day = String(curDate.getDate()).padStart(2, "0");
-    const hours = String(curDate.getHours()).padStart(2, "0");
-    const minutes = String(curDate.getMinutes()).padStart(2, "0");
-    const seconds = String(curDate.getSeconds()).padStart(2, "0");
-    const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-
-    const [result] = await db.query(
-      "INSERT INTO history (user_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [
-        userId,
-        originalName,
-        ftpUrl,
-        formattedDate,
-        false,
-        source,
-        null,
-        null,
-      ]
-    );
-    await db.query(
-      "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt) VALUES (?, ?, ?, ?)",
-      [userId, originalName, ftpUrl, formattedDate]
-    );
-
-    res.status(200).json({
-      message: "Audio uploaded successfully",
-      id: result.insertId,
-      userId,
-      title: originalName,
-      audioUrl: ftpUrl,
-      isMoMGenerated: false,
-      uploadedAt: formattedDate,
-    });
-  } catch (err) {
-    console.error("Upload audio error:", err);
-    res.status(500).json({
-      message: "Server error while uploading audio",
-      error: err.message,
-    });
-  }
 };
 
 const getAllAudios = async (req, res) => {
@@ -233,7 +167,7 @@ const updateAudioHistory = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
-    const { data } = req.body;
+    const { data, audio_id, language } = req.body;
 
     if (!id) {
       return res.status(400).json({ message: "Missing history record ID" });
@@ -263,9 +197,17 @@ const updateAudioHistory = async (req, res) => {
 
     // Update in one query since all fields always updated
     await db.query(
-      "UPDATE history SET isMoMGenerated = ?, date = ?, data = ? WHERE id = ? AND user_id = ?",
-      [1, formattedDate, data ? JSON.stringify(data) : null, id, userId]
+      "UPDATE history SET isMoMGenerated = ?, date = ?, data = ?, language = ? WHERE id = ? AND user_id = ?",
+      [1, formattedDate, data ? JSON.stringify(data) : null,language, id, userId]
     );
+
+    if (audio_id) {
+      await db.query(
+        `INSERT INTO transcript_audio_file (audio_id, userId, transcript, language)
+       VALUES (?, ?, ?, ?)`,
+        [audio_id, userId, JSON.stringify(data), language]
+      );
+    }
 
     res.status(200).json({ message: "History record updated successfully" });
   } catch (err) {
@@ -281,9 +223,8 @@ module.exports = {
   updateAudioHistory,
   deleteAudio,
   getAllAudios,
-  uploadAudio,
   endMeeting,
   createMeeting,
   transcribeAudioFromURL,
-  transcribeAudio
+  transcribeAudio,
 };

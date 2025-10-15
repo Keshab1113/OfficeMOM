@@ -13,7 +13,7 @@ const Home = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Home</title>
+        <title>Minutes of the Meeting (OfficeMoM) | Home</title>
         <link rel="canonical" href="https://officemom.me/" />
       </Helmet>
       <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">

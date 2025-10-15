@@ -16,6 +16,7 @@ const stripeRoutes = require("./routes/stripeRoutes.js");
 const deepseekRoutes = require("./routes/deepseekRoutes.js");
 const planRoutes = require("./routes/planRoutes.js");
 const faqRoutes = require("./routes/faqRoutes.js");
+const uploadRoutes = require("./routes/uploadRoutes.js");
 const locationRoutes = require("./routes/locationRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
@@ -52,6 +53,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/process-audio", audioRoutes);
 app.use("/api/live-meeting", liveRoutes);
+app.use("/api/upload", uploadRoutes);
 app.use("/api/process-drive", driveRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/send-meeting-email", emailRoutes);

@@ -4,7 +4,6 @@ const authMiddleware = require("../middlewares/authMiddleware.js");
 const {
   createMeeting,
   endMeeting,
-  uploadAudio,
   getAllAudios,
   deleteAudio,
   transcribeAudioFromURL,
@@ -25,12 +24,6 @@ router.post(
   transcribeAudio
 );
 
-router.post(
-  "/upload-audio",
-  authMiddleware,
-  upload.single("recordedAudio"),
-  uploadAudio
-);
 router.post(
   "/upload-audio-from-url",
   authMiddleware,

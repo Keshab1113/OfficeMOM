@@ -2,17 +2,43 @@ const db = require("../config/db.js");
 
 const addHistory = async (req, res) => {
   try {
-    const { source, date, data, title, language } = req.body;
+    const { source, date, data, title, language, audio_id } = req.body;
+
     if (!source || !date || !data) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
     const userId = req.user.id;
     const isMoMGenerated = source !== "Live Transcript Conversion" ? 1 : 0;
-    await db.query(
-      "INSERT INTO history (user_id, source, date, data, title, isMoMGenerated, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [userId, source, date, data ? JSON.stringify(data) : null, title, isMoMGenerated, language]
+
+    // 1️⃣ Insert into history table
+    const [historyResult] = await db.query(
+      `INSERT INTO history 
+      (user_id, source, date, data, title, isMoMGenerated, language) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        source,
+        date,
+        JSON.stringify(data),
+        title,
+        isMoMGenerated,
+        language,
+      ]
     );
-    res.status(201).json({ message: "History added successfully" });
+
+    // 2️⃣ Insert into transcript_audio_file table (if audioId is provided)
+    if (audio_id) {
+      await db.query(
+        `INSERT INTO transcript_audio_file (audio_id, userId, transcript, language)
+   VALUES (?, ?, ?, ?)`,
+        [audio_id, userId, JSON.stringify(data), language]
+      );
+    }
+
+    res
+      .status(201)
+      .json({ message: "History and transcript saved successfully" });
   } catch (err) {
     console.error("Add history error:", err);
     res.status(500).json({ message: "Server error" });
@@ -92,5 +118,5 @@ module.exports = {
   addHistory,
   getHistory,
   updateHistoryTitle,
-  deleteHistory
+  deleteHistory,
 };

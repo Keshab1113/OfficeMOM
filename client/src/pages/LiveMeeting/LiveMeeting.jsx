@@ -55,6 +55,7 @@ const LiveMeeting = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [participants, setParticipants] = useState(0);
   const [detectLanguage, setDetectLanguage] = useState("");
+  const [audioID, setAudioID] = useState(null);
   const [requests, setRequests] = useState([]);
   const timerRef = useRef(null);
   const localMicRef = useRef(null);
@@ -321,7 +322,7 @@ const LiveMeeting = () => {
         formData.append("source", "Live Transcript Conversion");
 
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/upload-audio`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
           formData,
           {
             headers: {
@@ -332,12 +333,14 @@ const LiveMeeting = () => {
         );
 
         if (response.data && response.data.audioUrl) {
-          const { audioUrl, id, uploadedAt, title } = response.data;
+          const { audioUrl, id, uploadedAt, title, audioId } = response.data;
+          setAudioID(audioId);
           setUpdatedMeetingId(id);
           dispatch(
             addAudioPreview({
               audioUrl,
               id,
+              audioId,
               uploadedAt,
               title,
               needToShow: true,
@@ -521,6 +524,7 @@ const LiveMeeting = () => {
       data: data,
       title: historyTitle,
       language: detectLanguage,
+      audio_id: audioID,
     };
     await addHistory(token, historyData, addToast, updatedMeetingId);
     setShowModal2(false);

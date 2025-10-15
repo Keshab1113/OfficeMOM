@@ -31,6 +31,8 @@ const GenerateNotes = () => {
   const [finalTranscript, setFinalTranscript] = useState(null);
   const [showFullData, setShowFullData] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [audioID, setAudioID] = useState(null);
+  const [audioURL, setAudioURL] = useState(null);
 
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
@@ -91,6 +93,8 @@ const GenerateNotes = () => {
       }
 
       const data = await resp?.data;
+      setAudioURL(data.audioUrl);
+      setAudioID(data.audio_id);
       setDetectLanguage(data.language);
       setFinalTranscript(data.text);
       setShowModal(true);
@@ -149,6 +153,7 @@ const GenerateNotes = () => {
       date: dateCreated,
       data: data,
       language: detectLanguage,
+      audio_id: audioID,
     };
     await addHistory(token, historyData, addToast);
     setShowModal2(false);
@@ -161,6 +166,7 @@ const GenerateNotes = () => {
         historyData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
     } catch (err) {
       console.error("Add history error:", err);
       addToast("error", "Failed to add history");
