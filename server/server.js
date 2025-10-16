@@ -18,9 +18,11 @@ const planRoutes = require("./routes/planRoutes.js");
 const faqRoutes = require("./routes/faqRoutes.js");
 const uploadRoutes = require("./routes/uploadRoutes.js");
 const locationRoutes = require("./routes/locationRoutes.js");
+const userSubscriptionRoutes = require("./routes/userSubscriptionRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
 const session = require("express-session");
+
 
 const app = express();
 app.use(
@@ -64,6 +66,7 @@ app.use("/api/plans", planRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/location", locationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/subscription', userSubscriptionRoutes);
 
 const server = http.createServer(app);
 

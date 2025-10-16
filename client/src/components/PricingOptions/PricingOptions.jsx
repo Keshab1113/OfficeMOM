@@ -65,6 +65,7 @@ const PricingOptions = () => {
   const { addToast } = useToast();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchPlans = async () => {
@@ -118,8 +119,10 @@ const PricingOptions = () => {
   };
 
   const handleCheckout = async () => {
+    setLoadingCheckout(true);
     if (!paymentMethod) {
       addToast("error", "Please select a payment method");
+      setLoadingCheckout(false);
       return;
     }
 
@@ -147,9 +150,11 @@ const PricingOptions = () => {
       );
 
       if (res.data.url) {
+        setLoadingCheckout(false);
         window.location.href = res.data.url;
       }
     } catch (err) {
+      setLoadingCheckout(false);
       console.error("Checkout error:", err);
       addToast("error", "Failed to process checkout. Please try again.");
     }
@@ -486,10 +491,10 @@ const PricingOptions = () => {
             {/* Checkout Button */}
             <button
               onClick={handleCheckout}
-              disabled={!paymentMethod}
-              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+              disabled={!paymentMethod || loadingCheckout}
+              className="w-full cursor-pointer bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              Proceed to Checkout
+              {loadingCheckout?"Loading..." : "Proceed to Checkout"}
             </button>
 
             {/* Security Notice */}

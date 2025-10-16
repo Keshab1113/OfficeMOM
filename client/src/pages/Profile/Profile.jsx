@@ -1,4 +1,3 @@
-import { cn } from "../../lib/utils";
 import ProfilImageUploader from "../../components/ProfileImageUploader/ProfileImageUploader";
 import Footer from "../../components/Footer/Footer";
 import History from "../../components/History/History";
