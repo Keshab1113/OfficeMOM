@@ -12,7 +12,7 @@ const Pricing = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Pricing</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Pricing</title>
         <link rel="canonical" href="https://officemom.me/pricing" />
       </Helmet>
       <section className="relative min-h-screen w-full overflow-hidden">

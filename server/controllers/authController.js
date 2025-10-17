@@ -113,7 +113,6 @@ const signup = async (req, res) => {
   }
 };
 
-
 const login = async (req, res) => {
   try {
     const { error } = loginSchema.validate(req.body, { abortEarly: false });
@@ -127,6 +126,7 @@ const login = async (req, res) => {
     const [user] = await db.query("SELECT * FROM users WHERE email = ?", [
       email,
     ]);
+
     if (user.length === 0) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
@@ -140,6 +140,18 @@ const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    const [subscription] = await db.query(
+      "SELECT * FROM user_subscription_details WHERE user_id = ?",
+      [user[0].id]
+    );
+
+    const [momCount] = await db.query(
+      "SELECT COUNT(*) AS totalCreatedMoMs FROM history WHERE user_id = ?",
+      [user[0].id]
+    );
+
+    const totalCreatedMoMs = momCount[0]?.totalCreatedMoMs || 0;
+
     res.status(200).json({
       message: "Login successful",
       token,
@@ -148,6 +160,9 @@ const login = async (req, res) => {
         fullName: user[0].fullName,
         email: user[0].email,
         profilePic: user[0].profilePic,
+        totalTimes: subscription[0].total_minutes,
+        totalRemainingTime: subscription[0].total_remaining_time,
+        totalCreatedMoMs: totalCreatedMoMs,
       },
     });
   } catch (err) {

@@ -104,7 +104,7 @@ const Documentation = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Documentation</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Documentation</title>
         <link rel="canonical" href="https://officemom.me/documentation" />
       </Helmet>
 

@@ -67,7 +67,7 @@ const TermsOfService = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Terms of Service</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Terms of Service</title>
         <link rel="canonical" href="https://officemom.me/terms-of-service" />
       </Helmet>
 

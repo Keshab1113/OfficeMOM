@@ -83,7 +83,7 @@ const Timing = () => {
         <p className="text-gray-800 dark:text-gray-400 text-sm mb-1">
           Recommended based on your location:{" "}
           <b>
-            {location ? `${location.city},${location.country}` : "Detecting..."}
+            {location ? `${location.country}` : "Detecting..."}
           </b>
         </p>
         <div

@@ -197,7 +197,7 @@ const ForgotPassword = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Reset Password</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Reset Password</title>
         <link rel="canonical" href="https://officemom.me/forgot-password" />
       </Helmet>
 

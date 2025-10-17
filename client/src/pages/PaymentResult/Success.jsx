@@ -95,7 +95,7 @@ const Success = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Payment-Success</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Payment-Success</title>
         <link rel="canonical" href="https://officemom.me/success" />
       </Helmet>
       <section className="relative min-h-screen w-full overflow-hidden">

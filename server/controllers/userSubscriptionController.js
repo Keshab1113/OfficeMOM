@@ -10,20 +10,30 @@ const userSubscriptionDetails = async (req, res) => {
 
     const [rows] = await db.execute(
       `SELECT 
-        id, 
-        user_id, 
-        stripe_payment_id, 
-        total_minutes, 
-        total_remaining_time, 
-        total_used_time, 
-        created_at, 
-        updated_at, 
-        monthly_limit, 
-        monthly_used, 
-        monthly_remaining,
-        totalCreatedMoM 
-      FROM user_subscription_details 
-      WHERE user_id = ?`,
+    usd.id, 
+    usd.user_id, 
+    usd.stripe_payment_id, 
+    usd.total_minutes, 
+    usd.total_remaining_time, 
+    usd.total_used_time, 
+    usd.created_at, 
+    usd.updated_at, 
+    usd.monthly_limit, 
+    usd.monthly_used, 
+    usd.monthly_remaining,
+    usd.totalCreatedMoM,
+    sp.plan_name,
+    CASE 
+      WHEN sp.plan_name = 'Professional' THEN 1
+      WHEN sp.plan_name = 'Professional Plus' THEN 2
+      WHEN sp.plan_name = 'Business' THEN 3
+      WHEN sp.plan_name = 'Business Plus' THEN 4
+      ELSE 0
+    END AS plan_id
+  FROM user_subscription_details AS usd
+  LEFT JOIN stripe_payments AS sp 
+    ON usd.stripe_payment_id = sp.id
+  WHERE usd.user_id = ?`,
       [userId]
     );
 

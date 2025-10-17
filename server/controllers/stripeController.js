@@ -6,6 +6,7 @@ exports.createCheckoutSession = async (req, res) => {
   try {
     const {
       plan,
+      priceID,
       paymentMethods,
       billingCycle,
       price,
@@ -31,15 +32,144 @@ exports.createCheckoutSession = async (req, res) => {
     const finalCustomerEmail = customerEmail || userEmail;
     const finalCustomerName = customerName || userName;
 
-    // 🔹 STEP 1: Create or reuse a Stripe customer
+    let stripePriceId = priceID;
+    let productData = {};
+
+    // 🔹 STEP 1: If no priceID provided, find or create the appropriate recurring price
+    if (!stripePriceId) {
+      
+      // Search for existing recurring prices for this plan
+      const searchParams = new URLSearchParams({
+        query: `active:'true' AND metadata['plan_name']:'${plan}' AND recurring interval:'${billingCycle === 'yearly' ? 'year' : 'month'}'`,
+        limit: '1'
+      });
+
+      const searchResponse = await axios.get(
+        `${process.env.STRIPE_URL}/prices/search?${searchParams}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          },
+        }
+      );
+
+      if (searchResponse.data.data.length > 0) {
+        // Use existing recurring price
+        stripePriceId = searchResponse.data.data[0].id;
+      } else {
+        // Create a new recurring price
+        
+        // First, find or create the product
+        const productSearchParams = new URLSearchParams({
+          query: `active:'true' AND metadata['plan_name']:'${plan}'`,
+          limit: '1'
+        });
+
+        const productSearchResponse = await axios.get(
+          `${process.env.STRIPE_URL}/products/search?${productSearchParams}`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+            },
+          }
+        );
+
+        let productId;
+        if (productSearchResponse.data.data.length > 0) {
+          productId = productSearchResponse.data.data[0].id;
+        } else {
+          // Create new product
+          const productParams = new URLSearchParams();
+          productParams.append("name", plan);
+          productParams.append("description", `${plan} Plan`);
+          productParams.append("metadata[plan_name]", plan);
+          
+          const productResponse = await axios.post(
+            `${process.env.STRIPE_URL}/products`,
+            productParams,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+            }
+          );
+          productId = productResponse.data.id;
+        }
+
+        // Create recurring price
+        const priceParams = new URLSearchParams();
+        priceParams.append("product", productId);
+        priceParams.append("unit_amount", Math.round(price * 100)); // Convert to cents
+        priceParams.append("currency", "usd");
+        priceParams.append("recurring[interval]", billingCycle === 'yearly' ? 'year' : 'month');
+        priceParams.append("metadata[plan_name]", plan);
+        priceParams.append("metadata[billing_cycle]", billingCycle);
+
+        const priceResponse = await axios.post(
+          `${process.env.STRIPE_URL}/prices`,
+          priceParams,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          }
+        );
+
+        stripePriceId = priceResponse.data.id;
+      }
+    }
+
+    // 🔹 STEP 2: Verify the price is a recurring price
+    try {
+      const priceRes = await axios.get(
+        `${process.env.STRIPE_URL}/prices/${stripePriceId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          },
+        }
+      );
+
+      const priceData = priceRes.data;
+      
+      // Check if this is a recurring price
+      if (priceData.type !== 'recurring') {
+        return res.status(400).json({
+          error: "Invalid price type for subscription",
+          details: "The provided price is not a recurring price. Please use a subscription price."
+        });
+      }
+
+      
+
+      const productId = priceData.product;
+      const productRes = await axios.get(
+        `${process.env.STRIPE_URL}/products/${productId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          },
+        }
+      );
+
+      productData = productRes.data;
+
+    } catch (stripeError) {
+      
+      return res.status(500).json({
+        error: "Failed to fetch Stripe product details",
+        details: stripeError.response?.data || stripeError.message,
+      });
+    }
+
+    // 🔹 STEP 3: Create or reuse a Stripe customer
     let customerId;
     try {
       const params = new URLSearchParams();
-
       if (finalCustomerEmail) params.append("email", finalCustomerEmail);
       if (finalCustomerName) params.append("name", finalCustomerName);
-
-      // ✅ Correct way: send metadata as separate key-value fields
       params.append("metadata[user_id]", userId.toString());
       params.append("metadata[plan_name]", plan);
 
@@ -55,19 +185,15 @@ exports.createCheckoutSession = async (req, res) => {
       );
 
       customerId = customerResponse.data.id;
-      console.log("✅ Stripe customer created:", customerId);
     } catch (customerError) {
-      console.error(
-        "Stripe customer creation error:",
-        customerError.response?.data || customerError.message
-      );
+      
       return res.status(500).json({
         error: "Failed to create Stripe customer",
         details: customerError.response?.data || customerError.message,
       });
     }
 
-    // 🔹 STEP 2: Prepare checkout session parameters
+    // 🔹 STEP 4: Create checkout session with the recurring price
     const params = new URLSearchParams();
     params.append("mode", "subscription");
     params.append(
@@ -76,36 +202,22 @@ exports.createCheckoutSession = async (req, res) => {
     );
     params.append("cancel_url", `${process.env.FRONTEND_URL}/failure`);
     params.append("customer", customerId);
+    params.append("line_items[0][price]", stripePriceId);
+    params.append("line_items[0][quantity]", "1");
 
-    // Add metadata to identify the user and plan
     params.append("metadata[user_id]", userId);
     params.append("metadata[plan_name]", plan);
+    params.append("subscription_data[metadata][user_id]", userId);
+    params.append("subscription_data[metadata][plan_name]", plan);
+    params.append("customer_update[address]", "auto");
 
-    // Payment method types
     (paymentMethods.length > 0 ? paymentMethods : ["card"]).forEach(
       (pm, idx) => {
         params.append(`payment_method_types[${idx}]`, pm);
       }
     );
 
-    const interval = billingCycle === "yearly" ? "year" : "month";
-    const unitAmount = Math.round(Number(price) * 100);
 
-    // Line item (product + recurring info)
-    params.append("line_items[0][price_data][currency]", "usd");
-    params.append("line_items[0][price_data][product_data][name]", plan);
-    params.append("line_items[0][price_data][unit_amount]", unitAmount);
-    params.append("line_items[0][price_data][recurring][interval]", interval);
-    params.append("line_items[0][quantity]", 1);
-
-    // Subscription metadata
-    params.append("subscription_data[metadata][user_id]", userId);
-    params.append("subscription_data[metadata][plan_name]", plan);
-
-    // ✅ Now allowed, since we have a customer
-    params.append("customer_update[address]", "auto");
-
-    // 🔹 STEP 3: Create the Stripe Checkout Session
     const response = await axios.post(
       `${process.env.STRIPE_URL}/checkout/sessions`,
       params,
@@ -118,25 +230,31 @@ exports.createCheckoutSession = async (req, res) => {
     );
 
     const session = response.data;
-    const safeValue = (val) => (val === undefined ? null : val);
 
-    // 🔹 STEP 4: Store payment record in database
+    // 🔹 STEP 5: Save payment + plan metadata to DB
     connection = await db.getConnection();
+    const safeValue = (v) => (v === undefined ? null : v);
 
     await connection.execute(
       `INSERT INTO stripe_payments (
-    stripe_session_id, 
-    plan_name, 
-    billing_cycle, 
-    amount, 
-    currency, 
-    payment_status,
-    customer_email,
-    customer_name,
-    payment_method_types,
-    user_id,
-    stripe_customer_id
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        stripe_session_id,
+        plan_name,
+        billing_cycle,
+        amount,
+        currency,
+        payment_status,
+        customer_email,
+        customer_name,
+        payment_method_types,
+        user_id,
+        stripe_customer_id,
+        stripe_price_id,
+        stripe_product_id,
+        product_name,
+        product_description,
+        product_features,
+        product_image
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         safeValue(session.id),
         safeValue(plan),
@@ -149,6 +267,12 @@ exports.createCheckoutSession = async (req, res) => {
         JSON.stringify(paymentMethods || []),
         safeValue(userId),
         safeValue(customerId),
+        safeValue(stripePriceId),
+        safeValue(productData.id),
+        safeValue(productData.name),
+        safeValue(productData.description),
+        JSON.stringify(productData.marketing_features || []),
+        productData.images?.[0] || null,
       ]
     );
 
@@ -157,6 +281,12 @@ exports.createCheckoutSession = async (req, res) => {
     res.json({
       url: session.url,
       sessionId: session.id,
+      product: {
+        name: productData.name,
+        description: productData.description,
+        features: productData.marketing_features,
+        image: productData.images?.[0] || null,
+      },
     });
   } catch (error) {
     if (connection) connection.release();
@@ -167,6 +297,7 @@ exports.createCheckoutSession = async (req, res) => {
     });
   }
 };
+
 
 exports.handlePaymentSuccess = async (req, res) => {
   let connection;

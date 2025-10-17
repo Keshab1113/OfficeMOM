@@ -122,7 +122,7 @@ const ContactPage = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | ContactUs</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | ContactUs</title>
         <link rel="canonical" href="https://officemom.me/contact-us" />
       </Helmet>
       <section className="relative min-h-screen w-full overflow-hidden">

@@ -34,14 +34,7 @@ router.post("/forgot-password/send-otp", sendPasswordResetOtp);
 router.post("/forgot-password/reset", resetPasswordWithOtp);
 
 
-const insertDefaultSubscription = async (userId) => {
-  await db.execute(
-    `INSERT INTO user_subscription_details 
-      (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [userId, null, 300, 300, 0, 0, 0, 0]
-  );
-};
+
 
 // Google routes (existing)
 router.get(
@@ -58,16 +51,41 @@ router.get(
 
       const user = req.user;
 
-      // Check if this is a new user
-      if (user.isNewUser) {
-        await insertDefaultSubscription(user.id);
+      // Check subscription
+      const [subscription] = await db.query(
+        "SELECT * FROM user_subscription_details WHERE user_id = ?",
+        [user.id]
+      );
+
+      let userSub = subscription[0];
+
+      // Create default if missing
+      if (!userSub) {
+        await db.execute(
+          `INSERT INTO user_subscription_details 
+            (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [user.id, null, 300, 300, 0, 0, 0, 0]
+        );
+        userSub = { total_remaining_time: 300, total_used_time: 0 };
+        console.log(`✅ Created default subscription for Google OAuth user ${user.id}`);
       }
+
+      // Query total created MoMs count (assuming table transcript_audio_file stores them)
+      const [momCount] = await db.query(
+        "SELECT COUNT(*) AS totalCreatedMoMs FROM history WHERE user_id = ?",
+        [user.id]
+      );
+
+      const totalCreatedMoMs = momCount[0]?.totalCreatedMoMs || 0;
 
       const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "15d" });
 
       const redirectURL = `${process.env.FRONTEND_URL}/oauth-success?token=${token}&id=${user.id}&name=${encodeURIComponent(
         user.fullName
-      )}&email=${encodeURIComponent(user.email)}&profilePic=${encodeURIComponent(user.profilePic || "")}`;
+      )}&email=${encodeURIComponent(user.email)}&profilePic=${encodeURIComponent(
+        user.profilePic || ""
+      )}&totalRemainingTime=${userSub.total_remaining_time || 0}&totalTimes=${userSub.total_minutes || 0}&totalCreatedMoMs=${totalCreatedMoMs}`;
 
       return res.redirect(redirectURL);
     } catch (error) {
@@ -76,6 +94,7 @@ router.get(
     }
   }
 );
+
 
 // Facebook routes (updated)
 router.get(
@@ -100,30 +119,39 @@ router.get(
       }
 
       const user = req.user;
-      if (user.isNewUser) {
-        await insertDefaultSubscription(user.id);
+
+      // Check if user already has a subscription
+      const [subscription] = await db.query(
+        "SELECT id FROM user_subscription_details WHERE user_id = ?",
+        [user.id]
+      );
+
+      // If no subscription exists, create one
+      if (subscription.length === 0) {
+        await db.execute(
+          `INSERT INTO user_subscription_details 
+            (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [user.id, null, 300, 300, 0, 0, 0, 0]
+        );
+        console.log(`✅ Created default subscription for Facebook OAuth user ${user.id}`);
       }
+
       const token = jwt.sign(
         { id: user.id, email: user.email },
         process.env.JWT_SECRET,
         { expiresIn: "15d" }
       );
 
-      const redirectURL = `${
-        process.env.FRONTEND_URL
-      }/oauth-success?token=${token}&id=${user.id}&name=${encodeURIComponent(
+      const redirectURL = `${process.env.FRONTEND_URL}/oauth-success?token=${token}&id=${user.id}&name=${encodeURIComponent(
         user.fullName
-      )}&email=${encodeURIComponent(
-        user.email
-      )}&profilePic=${encodeURIComponent(user.profilePic || "")}`;
+      )}&email=${encodeURIComponent(user.email)}&profilePic=${encodeURIComponent(user.profilePic || "")}`;
 
       console.log("➡️ Redirecting to:", redirectURL);
       return res.redirect(redirectURL);
     } catch (error) {
       console.error("❌ Facebook Auth Error:", error.message);
-      res.redirect(
-        `${process.env.FRONTEND_URL}/login?error=facebook_auth_failed`
-      );
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=facebook_auth_failed`);
     }
   }
 );

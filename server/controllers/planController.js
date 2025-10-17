@@ -7,6 +7,8 @@ const getPlans = async (req, res) => {
         id,
         name,
         price,
+        priceID,
+        yearly_priceID,
         yearly_price as yearlyPrice,
         monthly_minutes as monthlyMinutes,
         description,
