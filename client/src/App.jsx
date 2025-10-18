@@ -24,6 +24,7 @@ import Success from "./pages/PaymentResult/Success";
 import Failure from "./pages/PaymentResult/Failure";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import Subscription from './pages/PaymentResult/Subscription';
+import BotMaster from "./pages/BotMaster/BotMaster";
 
 function App() {
   return (
@@ -47,6 +48,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/bot-master"
+            element={
+              <ProtectedRoute>
+                <BotMaster />
+              </ProtectedRoute>
+            }
+          />
+          
           <Route path="/join-meeting/:id" element={<JoinMeeting />} />
           <Route
             path="/audio-notes"
