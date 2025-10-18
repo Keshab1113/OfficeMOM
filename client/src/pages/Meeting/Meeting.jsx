@@ -143,6 +143,18 @@ const Meeting = () => {
       const stream = destination.stream;
       mediaStreamRef.current = stream;
 
+      // Add MediaRecorder to capture full session audio
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      recordedChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(1000); // collect chunks every second
+      console.log("MediaRecorder started");
+
       // --- Replace MediaRecorder with raw PCM streaming ---
       const audioContext2 = new AudioContext({ sampleRate: 16000 });
       const source = audioContext2.createMediaStreamSource(stream);
@@ -186,6 +198,7 @@ const Meeting = () => {
   };
 
   const endMeeting = async () => {
+    console.log("Clicked end meeting button", mediaRecorderRef.current);
     setShowEndingModal(true);
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
@@ -407,7 +420,8 @@ const Meeting = () => {
                                   animationDuration: `${
                                     Math.random() * 0.5 + 0.5
                                   }s`,
-                                }}></div>
+                                }}
+                              ></div>
                             ))}
                             <span className="ml-4 text-green-400 font-semibold text-lg animate-pulse">
                               Listening...
@@ -422,7 +436,8 @@ const Meeting = () => {
                                   animationDuration: `${
                                     Math.random() * 0.5 + 0.5
                                   }s`,
-                                }}></div>
+                                }}
+                              ></div>
                             ))}
                           </div>
                         </div>
@@ -435,7 +450,8 @@ const Meeting = () => {
                               showCaptions
                                 ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/25"
                                 : "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-blue-500 hover:to-purple-600"
-                            }`}>
+                            }`}
+                          >
                             {showCaptions
                               ? "🔊 Hide Live Captions"
                               : "📝 Show Live Captions"}
@@ -444,7 +460,8 @@ const Meeting = () => {
                           <button
                             onClick={endMeeting}
                             disabled={showEndingModal}
-                            className="px-8 cursor-pointer py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-red-400 disabled:to-pink-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg shadow-red-500/25 disabled:transform-none">
+                            className="px-8 cursor-pointer py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-red-400 disabled:to-pink-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg shadow-red-500/25 disabled:transform-none"
+                          >
                             {showEndingModal
                               ? "⏹️ Ending..."
                               : "🔴 End Meeting"}
@@ -457,7 +474,8 @@ const Meeting = () => {
                             showCaptions
                               ? "opacity-100 translate-y-0 max-h-96"
                               : "opacity-0 -translate-y-4 max-h-0 overflow-hidden"
-                          }`}>
+                          }`}
+                        >
                           <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
                             <div className="flex items-center mb-4">
                               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
@@ -468,15 +486,17 @@ const Meeting = () => {
 
                             <div
                               ref={captionsRef}
-                              className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                              className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10"
+                            >
                               <div className="dark:text-white/90 leading-relaxed flex flex-wrap gap-1">
-  {/* Show all finalized transcript as plain text */}
-  {transcript.join(" ") + " "}
+                                {/* Show all finalized transcript as plain text */}
+                                {transcript.join(" ") + " "}
 
-  {/* Append live transcript in real-time */}
-  <span className="text-gray-300 italic">{liveTranscript}</span>
-</div>
-
+                                {/* Append live transcript in real-time */}
+                                <span className="text-gray-300 italic">
+                                  {liveTranscript}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -514,7 +534,8 @@ const Meeting = () => {
                               activeTab === 1
                                 ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
                                 : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
-                            }`}>
+                            }`}
+                          >
                             <Video className="w-5 h-5 inline mr-2" />
                             Meeting Link
                           </button>
@@ -524,7 +545,8 @@ const Meeting = () => {
                               activeTab === 2
                                 ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
                                 : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
-                            }`}>
+                            }`}
+                          >
                             <Users className="w-5 h-5 inline mr-2" />
                             ID & Password
                           </button>
@@ -548,7 +570,8 @@ const Meeting = () => {
                         }`}
                                     style={{
                                       animationDelay: `${500 + index * 100}ms`,
-                                    }}>
+                                    }}
+                                  >
                                     <img
                                       src={platform.icon}
                                       alt={platform.name}
@@ -603,7 +626,8 @@ const Meeting = () => {
                             meetingLink.trim()
                               ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
                               : "bg-gray-500/30 cursor-not-allowed"
-                          }`}>
+                          }`}
+                        >
                           <FileText className="w-6 h-6" />
                           Create MoM (Minutes of Meeting)
                         </button>
