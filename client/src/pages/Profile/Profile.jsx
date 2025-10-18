@@ -1,4 +1,3 @@
-import { cn } from "../../lib/utils";
 import ProfilImageUploader from "../../components/ProfileImageUploader/ProfileImageUploader";
 import Footer from "../../components/Footer/Footer";
 import History from "../../components/History/History";
@@ -12,7 +11,7 @@ const Profile = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | UserProfile</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | UserProfile</title>
         <link rel="canonical" href="https://officemom.me/profile" />
       </Helmet>
       <section className="relative min-h-screen w-full overflow-hidden">

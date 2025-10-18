@@ -49,6 +49,9 @@ const Login = () => {
           fullName: res.data.user.fullName,
           email: res.data.user.email,
           token: res.data.token,
+          totalCreatedMoMs: res.data.user.totalCreatedMoMs,
+          totalRemainingTime: res.data.user.totalRemainingTime,
+          totalTimes: res.data.user.totalTimes,
         })
       );
       dispatch(
@@ -105,7 +108,7 @@ const Login = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Login</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Login</title>
         <link rel="canonical" href="https://officemom.me/login" />
       </Helmet>
 
@@ -301,73 +304,65 @@ const Login = () => {
                         </button>
                       </p>
                     </div>
-                    
                   </div>
                 </form>
 
                 <div className="mt-6 flex justify-center">
-                      <button
-                        onClick={() =>
-                          (window.location.href = `${
+                  <button
+                    onClick={() =>
+                      (window.location.href = `${
+                        import.meta.env.VITE_BACKEND_URL
+                      }/api/auth/google`)
+                    }
+                    className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
+                  >
+                    <img
+                      src="https://developers.google.com/identity/images/g-logo.png"
+                      alt="Google logo"
+                      className="w-5 h-5"
+                    />
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">
+                      Continue with Google
+                    </span>
+                  </button>
+                </div>
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Check backend availability, not Facebook directly
+                        const response = await fetch(
+                          `${
                             import.meta.env.VITE_BACKEND_URL
-                          }/api/auth/google`)
-                        }
-                        className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
-                      >
-                        <img
-                          src="https://developers.google.com/identity/images/g-logo.png"
-                          alt="Google logo"
-                          className="w-5 h-5"
-                        />
-                        <span className="text-gray-700 dark:text-gray-300 font-medium">
-                          Continue with Google
-                        </span>
-                      </button>
-                    </div>
-                    <div className="mt-4 flex justify-center">
-                      <button
-                        onClick={async () => {
-                          try {
-                            // Check backend availability, not Facebook directly
-                            const response = await fetch(
-                              `${
-                                import.meta.env.VITE_BACKEND_URL
-                              }/api/auth/facebook/health`,
-                              { method: "HEAD" }
-                            );
+                          }/api/auth/facebook/health`,
+                          { method: "HEAD" }
+                        );
 
-                            if (response.ok) {
-                              window.location.href = `${
-                                import.meta.env.VITE_BACKEND_URL
-                              }/api/auth/facebook`;
-                            } else {
-                              addToast(
-                                "error",
-                                "Facebook login is currently unavailable"
-                              );
-                            }
-                          } catch (error) {
-                            console.log("Facebook login check failed: ", error);
-                            addToast(
-                              "error",
-                              "Failed to initiate Facebook login"
-                            );
-                          }
-                        }}
-                        className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="#1877F2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                        </svg>
-                        <span className="text-gray-700 dark:text-gray-300 font-medium">
-                          Continue with Facebook
-                        </span>
-                      </button>
-                    </div>
+                        if (response.ok) {
+                          window.location.href = `${
+                            import.meta.env.VITE_BACKEND_URL
+                          }/api/auth/facebook`;
+                        } else {
+                          addToast(
+                            "error",
+                            "Facebook login is currently unavailable"
+                          );
+                        }
+                      } catch (error) {
+                        console.log("Facebook login check failed: ", error);
+                        addToast("error", "Failed to initiate Facebook login");
+                      }
+                    }}
+                    className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                    </svg>
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">
+                      Continue with Facebook
+                    </span>
+                  </button>
+                </div>
 
                 {/* Security Notice */}
                 <div className="mt-6 text-center">

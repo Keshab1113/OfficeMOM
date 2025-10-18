@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require("axios");
 
 class ChatController {
   // Send message to DeepSeek API
@@ -7,20 +7,20 @@ class ChatController {
       const { message, conversationHistory = [] } = req.body;
 
       // Validate input
-      if (!message || message.trim() === '') {
+      if (!message || message.trim() === "") {
         return res.status(400).json({
-          error: 'Message is required',
-          success: false
+          error: "Message is required",
+          success: false,
         });
       }
 
       const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
-      
+
       if (!deepseekApiKey) {
-        console.error('DeepSeek API key is not configured');
+        console.error("DeepSeek API key is not configured");
         return res.status(500).json({
-          error: 'Chat service is temporarily unavailable',
-          success: false
+          error: "Chat service is temporarily unavailable",
+          success: false,
         });
       }
 
@@ -28,58 +28,84 @@ class ChatController {
       const messages = [
         {
           role: "system",
-          content: `You are a helpful support assistant for OfficeMoM, an AI-powered meeting management platform that automatically records, transcribes, and generates minutes of meeting (MoM).
+          content: `You are a friendly and knowledgeable customer support assistant for **OfficeMoM**, an AI-powered meeting management and transcription platform.
 
-OfficeMoM is a comprehensive web application that helps teams:
-• Automatically record meetings with AI-powered transcription
-• Generate accurate meeting transcripts in real-time
-• Create organized minutes of meeting (MoM) with smart formatting
-• Manage complete meeting history and archives
-• Share meeting minutes instantly with participants
-• Track action items and decisions automatically
+💡 **ABOUT OFFICEMOM**
+OfficeMoM helps individuals and teams automatically record, transcribe, and generate smart minutes of meeting (MoM) using AI. It saves time, improves accuracy, and helps users stay organized with shareable summaries and action items.
 
-TECHNOLOGY STACK:
-Frontend: React.js with TailwindCSS
-Backend: Node.js with Express.js
-Database: MySQL
-AI Features: Speech-to-text transcription, smart summarization
+🧠 **CORE FEATURES**
+• Automated meeting recording & transcription  
+• AI-generated minutes of meeting with smart formatting  
+• Secure meeting history & sharing  
+• Action item tracking  
+• Team management & permissions  
+• Multi-language transcription (English, Hindi, Spanish, French, etc.)  
+• Integrations: Google Meet, Zoom, Microsoft Teams, Slack  
+• Fully mobile-optimized & browser-compatible  
 
-KEY FEATURES:
-🎯 Automated Meeting Recording - Capture every meeting automatically
-📝 AI-Powered Transcription - Convert speech to text with high accuracy
-📋 Smart MoM Generation - Automatically format meeting minutes
-📁 Meeting History Management - Organize and search past meetings
-👥 Participant Management - Easy invite and sharing system
-🚀 Action Item Tracking - Identify and assign tasks from discussions
-📤 Instant Sharing - Share minutes via email or link
-🔍 Search & Analytics - Find insights across all meetings
+💳 **PRICING OVERVIEW**
+Be warm and helpful when explaining pricing — summarize clearly with both **monthly** and **yearly** options.  
+Here’s the structure you can follow:
 
-Provide friendly, helpful, and accurate information about:
-1. Setting up and recording meetings
-2. Generating and editing transcripts
-3. Creating and formatting minutes of meeting
-4. Managing meeting history and archives
-5. Sharing meeting minutes with teams
-6. Troubleshooting recording or transcription issues
-7. User account and permission management
-8. Integration with calendar and other tools
+---
+**Free Plan — $0/month or $0/year**  
+Perfect for individuals getting started.  
+• 300 total minutes (lifetime)  
+• Max 30 minutes per meeting/file  
+• Basic transcription + email support  
 
-TROUBLESHOOTING COMMON ISSUES:
-• Recording quality and microphone access
-• Transcription accuracy improvements
-• Meeting minute formatting options
-• Sharing and permission settings
-• Storage and meeting history management
+**Professional — $9/month or $97/year (Save $11 per year)**  
+Great for professionals & power users.  
+• 900 mins/month  
+• Priority transcription + AI insights  
+• Email support  
 
-Keep responses concise but informative (2-3 paragraphs maximum). If you don't know something or encounter a complex technical issue, suggest contacting the support team directly at support@officemom.me.
+**Professional Plus — $19/month or $205/year (Save $23 per year)**  
+Best for small teams or frequent users.  
+• 2000 mins/month  
+• Advanced export options + priority support  
 
-Always maintain a professional yet friendly tone. Focus on helping users get the most out of OfficeMoM's automated meeting management features.`
+**Business — $37/month or $400/year (Save $44 per year)**  
+Ideal for growing teams.  
+• 4500 mins/month  
+• Team management, security controls, custom integrations  
+
+**Business Plus — $55/month or $594/year (Save $66 per year)**  
+For enterprise users.  
+• 7000 mins/month  
+• Dedicated account manager, advanced security  
+
+---
+
+💵 **REFUNDS & BILLING**
+• 10-day money-back guarantee on all paid plans  
+• Cancel, upgrade, or downgrade anytime from Billing settings  
+• Accepted payments: Credit/Debit Cards, PayPal, Razorpay  
+
+🔒 **SECURITY**
+Enterprise-grade encryption (SSL, SOC 2) + GDPR-compliant servers.  
+Your transcripts are private and can be deleted anytime.
+
+📞 **SUPPORT**
+Email: support@officemom.me  
+Live Chat: Available 24/7 in the app  
+
+🎯 **YOUR ROLE**
+As the support assistant:
+• Respond in a friendly, conversational tone (avoid sounding robotic).  
+• Use simple, direct sentences — like talking to a real user.  
+• When explaining pricing, show the **plan name**, **monthly & yearly rates**, and **key benefits**.  
+• Keep answers short (2–3 short paragraphs or a clean bullet list).  
+• End with a warm offer to help, e.g., “Would you like me to recommend a plan based on your usage?”  
+• If unsure, direct users to contact support@officemom.me.  
+
+Always make users feel welcome, informed, and confident using OfficeMoM.`,
         },
-        ...conversationHistory.slice(-10), // Keep last 10 messages for context
+        ...conversationHistory.slice(-10),
         {
           role: "user",
-          content: message.trim()
-        }
+          content: message.trim(),
+        },
       ];
 
       const response = await axios.post(
@@ -89,75 +115,79 @@ Always maintain a professional yet friendly tone. Focus on helping users get the
           messages: messages,
           stream: false,
           max_tokens: 1000,
-          temperature: 0.7
+          temperature: 0.7,
         },
         {
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${deepseekApiKey}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${deepseekApiKey}`,
           },
-          timeout: 30000 // 30 seconds timeout
+          timeout: 30000, // 30 seconds timeout
         }
       );
 
       if (!response.data.choices || !response.data.choices[0]) {
-        throw new Error('Invalid response format from AI service');
+        throw new Error("Invalid response format from AI service");
       }
 
       const botResponse = {
         message: response.data.choices[0].message.content,
         usage: response.data.usage,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       // Log successful request (without sensitive data)
-      console.log('Chat request processed successfully:', {
+      console.log("Chat request processed successfully:", {
         messageLength: message.length,
         responseLength: botResponse.message.length,
-        timestamp: botResponse.timestamp
+        timestamp: botResponse.timestamp,
       });
 
       res.json({
         success: true,
-        data: botResponse
+        data: botResponse,
       });
-
     } catch (error) {
-      console.error('Error in sendMessage:', error.response?.data || error.message);
+      console.error(
+        "Error in sendMessage:",
+        error.response?.data || error.message
+      );
 
       // Handle different types of errors
-      if (error.code === 'ECONNREFUSED') {
+      if (error.code === "ECONNREFUSED") {
         return res.status(503).json({
-          error: 'Chat service is temporarily unavailable. Please try again later.',
-          success: false
+          error:
+            "Chat service is temporarily unavailable. Please try again later.",
+          success: false,
         });
       }
 
       if (error.response?.status === 401) {
         return res.status(500).json({
-          error: 'Authentication error with chat service',
-          success: false
+          error: "Authentication error with chat service",
+          success: false,
         });
       }
 
       if (error.response?.status === 429) {
         return res.status(429).json({
-          error: 'Too many requests. Please wait a moment and try again.',
-          success: false
+          error: "Too many requests. Please wait a moment and try again.",
+          success: false,
         });
       }
 
       if (error.response?.status >= 500) {
         return res.status(502).json({
-          error: 'Chat service is experiencing issues. Please try again later.',
-          success: false
+          error: "Chat service is experiencing issues. Please try again later.",
+          success: false,
         });
       }
 
       res.status(500).json({
-        error: 'Failed to process your message. Please try again.',
+        error: "Failed to process your message. Please try again.",
         success: false,
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -171,14 +201,14 @@ Always maintain a professional yet friendly tone. Focus on helping users get the
         success: true,
         data: {
           messages: [],
-          sessionId: req.params.sessionId
-        }
+          sessionId: req.params.sessionId,
+        },
       });
     } catch (error) {
-      console.error('Error getting chat history:', error);
+      console.error("Error getting chat history:", error);
       res.status(500).json({
-        error: 'Failed to retrieve chat history',
-        success: false
+        error: "Failed to retrieve chat history",
+        success: false,
       });
     }
   }
@@ -187,27 +217,27 @@ Always maintain a professional yet friendly tone. Focus on helping users get the
   async healthCheck(req, res) {
     try {
       const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
-      
+
       if (!deepseekApiKey) {
         return res.status(503).json({
-          status: 'unhealthy',
-          service: 'deepseek',
-          message: 'API key not configured'
+          status: "unhealthy",
+          service: "deepseek",
+          message: "API key not configured",
         });
       }
 
       // You could add a test API call here to verify the service is working
       res.json({
-        status: 'healthy',
-        service: 'deepseek',
-        timestamp: new Date().toISOString()
+        status: "healthy",
+        service: "deepseek",
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       res.status(503).json({
-        status: 'unhealthy',
-        service: 'deepseek',
+        status: "unhealthy",
+        service: "deepseek",
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }

@@ -27,7 +27,7 @@ async function uploadFileToAssemblyAI(buffer, filename) {
 async function createTranscription(audioUrl) {
   const res = await axios.post(
     TRANSCRIPT_URL,
-    { audio_url: audioUrl, language_detection: true ,speaker_labels: true, },
+    { audio_url: audioUrl, language_detection: true,speaker_labels: true },
     {
       headers: {
         Authorization: ASSEMBLY_KEY,

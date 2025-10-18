@@ -2,128 +2,124 @@ import React, { useState, useRef, useEffect } from "react";
 
 const ChatBot = () => {
   const faqList = [
-  {
-    question: "what is officemom",
-    answer:
-      "Automate meeting minutes seamlessly with AI-powered transcription and smart formatting. Capture every detail without lifting a pen, from key points to action items. Get organized summaries instantly, ready to share with your team. Save time, improve accuracy, and keep every meeting productive.",
-  },
-  {
-    question: "how to create an account",
-    answer:
-      "To create an account: 1) Visit our website 2) Click 'Create account' 3) Enter your full name, email, and password 4) Verify your email 5) Complete your profile setup.",
-  },
-  {
-    question: "what are the pricing plans",
-    answer:
-      "We offer 5 plans: Free ($0), Professional ($9/month), Professional Plus ($19/month), Business ($37/month), and Business Plus ($55/month). All plans include core features with varying levels of minutes, speed, integrations, and support.",
-  },
-  {
-    question: "is there a free trial",
-    answer:
-      "Yes! We offer a 300-minute (lifetime) free plan with a maximum of 30 minutes per meeting or file upload. No credit card required to start.",
-  },
-  {
-    question: "how to reset password",
-    answer:
-      "Click 'Forgot Password' on the login page, enter your registered email, check your inbox for reset instructions, and follow the link to create a new password.",
-  },
-  {
-    question: "how to contact support",
-    answer:
-      "You can contact support via email at support@officemom.me or through our in-app Live Chat available 24/7.",
-  },
-  {
-    question: "what is your refund policy",
-    answer:
-      "We offer a 30-day money-back guarantee. If you're not satisfied, contact our support team within 30 days of purchase for a full refund.",
-  },
-  {
-    question: "how to cancel subscription",
-    answer:
-      "You can cancel your subscription anytime by contacting support at support@officemom.me or from the Billing section in your account settings.",
-  },
-  {
-    question: "can i upgrade or downgrade my plan",
-    answer:
-      "Yes! You can upgrade or downgrade your plan anytime from your Billing dashboard. Changes take effect immediately, and any unused minutes are carried forward for 7 days.",
-  },
-  {
-    question: "do unused minutes roll over to the next month",
-    answer:
-      "Unused minutes do not roll over automatically, except in Business and Business Plus plans, which offer a 15-day carry-over period.",
-  },
-  {
-    question: "what payment methods do you accept",
-    answer:
-      "We accept all major credit/debit cards, PayPal, and Razorpay. Enterprise clients can also opt for invoice-based payments.",
-  },
-  {
-    question: "can i use officemom on mobile devices",
-    answer:
-      "Yes! Our web interface is fully mobile-optimized. You can access all features from your phone’s browser without downloading an app.",
-  },
-  {
-    question: "what browsers are supported",
-    answer:
-      "We support Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. For the best experience, always use the latest version of your browser.",
-  },
-  {
-    question: "how secure is my data",
-    answer:
-      "We use enterprise-grade security, including SSL encryption, SOC 2 compliance, encrypted data storage, and 24/7 monitored servers. Your files and transcripts are private and never shared.",
-  },
-  {
-    question: "where is my data stored",
-    answer:
-      "All data is securely stored on encrypted servers located in GDPR-compliant regions. You can request data deletion at any time from your profile settings.",
-  },
-  {
-    question: "can i integrate officemom with other tools",
-    answer:
-      "Yes, OfficeMoM integrates with Google Meet, Zoom, Microsoft Teams, and Slack. Business and Business Plus users can connect via custom API integrations.",
-  },
-  {
-    question: "does officemom offer transcription in multiple languages",
-    answer:
-      "Yes, OfficeMoM supports English (US/UK), Spanish, French, Hindi, etc.",
-  },
-  {
-    question: "how accurate are the transcriptions",
-    answer:
-      "Our AI transcription engine achieves up to 99% accuracy in clear audio conditions. Background noise, accents, and overlapping speech may slightly affect accuracy.",
-  },
-  {
-    question: "can multiple team members use the same account",
-    answer:
-      "Team management is available for Business and Business Plus plans. You can add members, assign roles, and manage permissions under the Team tab.",
-  },
-  {
-    question: "can i download or export transcripts",
-    answer:
-      "Yes! You can export transcripts as Word and excel file. Professional Plus and above plans also include advanced export options with formatting and summaries.",
-  },
-  {
-    question: "is API access available",
-    answer:
-      "Yes, API access is available for Business and Business Plus users. You can integrate OfficeMoM transcription into your existing workflow using secure API endpoints.",
-  },
-  {
-    question: "how to delete my account",
-    answer:
-      "Contact us at support@officemom.me.",
-  },
-  {
-    question: "do you offer discounts for education or non-profits",
-    answer:
-      "No. Contact us at support@officemom.me for further details.",
-  },
-  {
-    question: "how often do you update officemom",
-    answer:
-      "We continuously release updates every 2–3 weeks, improving transcription accuracy, adding features, and enhancing performance.",
-  },
-];
-
+    {
+      question: "what is officemom",
+      answer:
+        "Automate meeting minutes seamlessly with AI-powered transcription and smart formatting. Capture every detail without lifting a pen, from key points to action items. Get organized summaries instantly, ready to share with your team. Save time, improve accuracy, and keep every meeting productive.",
+    },
+    {
+      question: "how to create an account",
+      answer:
+        "To create an account: 1) Visit our website 2) Click 'Create account' 3) Enter your full name, email, and password 4) Verify your email 5) Complete your profile setup.",
+    },
+    {
+      question: "what are the pricing plans",
+      answer:
+        "We offer 5 plans: Free ($0), Professional ($9/month), Professional Plus ($19/month), Business ($37/month), and Business Plus ($55/month). All plans include core features with varying levels of minutes, speed, integrations, and support.",
+    },
+    {
+      question: "is there a free trial",
+      answer:
+        "Yes! We offer a 300-minute (lifetime) free plan with a maximum of 30 minutes per meeting or file upload. No credit card required to start.",
+    },
+    {
+      question: "how to reset password",
+      answer:
+        "Click 'Forgot Password' on the login page, enter your registered email, check your inbox for reset instructions, and follow the link to create a new password.",
+    },
+    {
+      question: "how to contact support",
+      answer:
+        "You can contact support via email at support@officemom.me or through our in-app Live Chat available 24/7.",
+    },
+    {
+      question: "what is your refund policy",
+      answer:
+        "We offer a 10-day money-back guarantee. If you're not satisfied, contact our support team within 10 days of purchase for remaining refund.",
+    },
+    {
+      question: "how to cancel subscription",
+      answer:
+        "You can cancel your subscription anytime by Subscription Details Page or contacting support at support@officemom.me or from the Billing section in your account settings.",
+    },
+    {
+      question: "can i upgrade or downgrade my plan",
+      answer:
+        "Yes! You can upgrade or downgrade your plan anytime from your Billing dashboard. Changes take effect immediately, and any unused minutes are carried forward for 7 days.",
+    },
+    {
+      question: "do unused minutes roll over to the next month",
+      answer: "There Don't have any monthly limits.",
+    },
+    {
+      question: "what payment methods do you accept",
+      answer:
+        "We accept all major credit/debit cards, PayPal, and Razorpay. Enterprise clients can also opt for invoice-based payments.",
+    },
+    {
+      question: "can i use officemom on mobile devices",
+      answer:
+        "Yes! Our web interface is fully mobile-optimized. You can access all features from your phone’s browser without downloading an app.",
+    },
+    {
+      question: "what browsers are supported",
+      answer:
+        "We support Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. For the best experience, always use the latest version of your browser.",
+    },
+    {
+      question: "how secure is my data",
+      answer:
+        "We use enterprise-grade security, including SSL encryption, SOC 2 compliance, encrypted data storage, and 24/7 monitored servers. Your files and transcripts are private and never shared.",
+    },
+    {
+      question: "where is my data stored",
+      answer:
+        "All data is securely stored on encrypted servers located in GDPR-compliant regions. You can request data deletion at any time from your profile settings.",
+    },
+    {
+      question: "can i integrate officemom with other tools",
+      answer:
+        "Yes, OfficeMoM integrates with Google Meet, Zoom, Microsoft Teams, and Slack. Business and Business Plus users can connect via custom API integrations.",
+    },
+    {
+      question: "does officemom offer transcription in multiple languages",
+      answer:
+        "Yes, OfficeMoM supports English (US/UK), Spanish, French, Hindi, etc.",
+    },
+    {
+      question: "how accurate are the transcriptions",
+      answer:
+        "Our AI transcription engine achieves up to 99% accuracy in clear audio conditions. Background noise, accents, and overlapping speech may slightly affect accuracy.",
+    },
+    {
+      question: "can multiple team members use the same account",
+      answer:
+        "Team management is available for Business and Business Plus plans. You can add members, assign roles, and manage permissions under the Team tab.",
+    },
+    {
+      question: "can i download or export transcripts",
+      answer:
+        "Yes! You can export transcripts as Word and excel file. Professional Plus and above plans also include advanced export options with formatting and summaries.",
+    },
+    {
+      question: "is API access available",
+      answer:
+        "No, We don't offer API access. Contact us at support@officemom.me for more information.",
+    },
+    {
+      question: "how to delete my account",
+      answer: "Contact us at support@officemom.me.",
+    },
+    {
+      question: "do you offer discounts for education or non-profits",
+      answer: "No. Contact us at support@officemom.me for further details.",
+    },
+    {
+      question: "how often do you update officemom",
+      answer:
+        "We continuously release updates every 2–3 weeks, improving transcription accuracy, adding features, and enhancing performance.",
+    },
+  ];
 
   const [messages, setMessages] = useState([
     {
@@ -309,7 +305,7 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed cursor-pointer bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all duration-300 hover:scale-110 hover:shadow-indigo-500/50 z-50 group"
+          className="fixed cursor-pointer bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all duration-300 hover:scale-110 hover:shadow-indigo-500/50 z-40 group"
           aria-label="Open chat support"
         >
           <svg

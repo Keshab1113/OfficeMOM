@@ -20,7 +20,17 @@ export default function OAuthSuccess() {
     const profilePic = params.get("profilePic");
 
     if (token) {
-      dispatch(setUser({ id, fullName: name, email, token }));
+      dispatch(
+        setUser({
+          id,
+          fullName: name,
+          email,
+          token,
+          totalCreatedMoMs: Number(params.get("totalCreatedMoMs")) || 0,
+          totalRemainingTime: Number(params.get("totalRemainingTime")) || 0,
+          totalTimes: Number(params.get("totalTimes")) || 0,
+        })
+      );
       dispatch(setProfileImage({ profileImage: profilePic }));
       dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
 

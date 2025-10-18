@@ -23,6 +23,7 @@ import Documentation from "./pages/Documentation/Documentation";
 import Success from "./pages/PaymentResult/Success";
 import Failure from "./pages/PaymentResult/Failure";
 import OAuthSuccess from "./pages/OAuthSuccess";
+import Subscription from './pages/PaymentResult/Subscription';
 
 function App() {
   return (
@@ -68,6 +69,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MeetingHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscription"
+            element={
+              <ProtectedRoute>
+                <Subscription/>
               </ProtectedRoute>
             }
           />

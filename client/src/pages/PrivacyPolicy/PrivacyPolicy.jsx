@@ -54,7 +54,7 @@ const PrivacyPolicy = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Privacy Policy</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Privacy Policy</title>
         <link rel="canonical" href="https://officemom.me/privacy-policy" />
       </Helmet>
 

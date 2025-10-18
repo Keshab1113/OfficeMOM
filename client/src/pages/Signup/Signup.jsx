@@ -172,7 +172,7 @@ const Signup = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | Create Account</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | Create Account</title>
         <link rel="canonical" href="https://officemom.me/signup" />
       </Helmet>
 

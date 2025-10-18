@@ -674,7 +674,7 @@ const LiveMeeting = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | LiveMeeting</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | LiveMeeting</title>
         <link rel="canonical" href="https://officemom.me/live-meeting" />
       </Helmet>
       <section className="relative min-h-screen w-full overflow-hidden">

@@ -57,7 +57,7 @@ const MeetingHistory = () => {
     <>
       <Helmet>
         <meta charSet="utf-8" />
-        <title>OfficeMom | MeetingHistory</title>
+        <title>Smart Minutes of the Meeting (OfficeMoM) | MeetingHistory</title>
         <link rel="canonical" href="https://officemom.me/momGenerate/" />
       </Helmet>
       <section className="relative min-h-screen w-full overflow-hidden">

@@ -19,7 +19,7 @@ import {
   MdAudiotrack,
   MdMeetingRoom,
 } from "react-icons/md";
-import { Zap, LogOut } from "lucide-react";
+import { Zap, LogOut, CreditCard, Bot } from "lucide-react";
 
 const navItems = [
   {
@@ -40,11 +40,24 @@ const navItems = [
     url: "/live-meeting",
     description: "Live transcription",
   },
+  {
+    heading: "Bot Master",
+    icon: Bot,
+    url: "/bot-master",
+    description: "Join the bot master",
+  },
 ];
 
 const SideBar = () => {
   const dispatch = useDispatch();
-  const { email, fullName, token } = useSelector((state) => state.auth);
+  const {
+    email,
+    fullName,
+    token,
+    totalCreatedMoMs,
+    totalRemainingTime,
+    totalTimes,
+  } = useSelector((state) => state.auth);
   const { profileImage } = useSelector((state) => state.auth);
   const { addToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -135,25 +148,24 @@ const SideBar = () => {
       <div className="w-full space-y-8">
         {/* Logo and Theme Toggle */}
         <div className="flex items-center justify-between w-full">
-            <motion.button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-3 group"
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
-                <img src="/logo.webp" alt="logo" loading="lazy" />
+          <motion.button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-3 group cursor-pointer"
+          >
+            <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+              <img src="/logo.webp" alt="logo" loading="lazy" />
+            </div>
+            {!isCollapsed && (
+              <div className="text-left">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent  transition-all duration-300">
+                  OfficeMoM
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  AI Meeting Assistant
+                </p>
               </div>
-              {!isCollapsed && (
-                <div className="text-left">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent  transition-all duration-300">
-                    OfficeMoM
-                  </h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    AI Meeting Assistant
-                  </p>
-                </div>
-              )}
-            </motion.button>
+            )}
+          </motion.button>
 
           {/* Theme Toggle and Close Button */}
           <div className="flex items-center gap-2">
@@ -237,7 +249,7 @@ const SideBar = () => {
 
                     {!isCollapsed && (
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm leading-tight">
+                        <h3 className="font-semibold text-base leading-tight">
                           {item.heading}
                         </h3>
                         <p
@@ -305,7 +317,7 @@ const SideBar = () => {
                 )}
               </div>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown Menu Button */}
               {!isCollapsed && (
                 <div className="relative" ref={dropdownRef}>
                   <motion.button
@@ -317,47 +329,6 @@ const SideBar = () => {
                   >
                     <BsThreeDotsVertical className="text-gray-600 dark:text-gray-300 text-sm" />
                   </motion.button>
-
-                  <AnimatePresence>
-                    {dropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                        transition={{
-                          type: "spring",
-                          damping: 25,
-                          stiffness: 300,
-                        }}
-                        className="absolute right-0 bottom-12 mt-2 w-48 bg-white/95 dark:bg-gray-800/95 
-                          backdrop-blur-xl shadow-2xl rounded-xl border border-white/30 dark:border-gray-600/50 overflow-hidden"
-                      >
-                        <Link
-                          to="/profile"
-                          onClick={() => {
-                            setDropdownOpen(false);
-                            if (isMobile) setIsSidebarOpen(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium 
-                            text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 
-                            hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border-b border-white/20 dark:border-gray-700/50"
-                        >
-                          <IoPersonCircleSharp className="text-lg" />
-                          Profile Settings
-                        </Link>
-                        <motion.button
-                          onClick={handleLogout}
-                          className="flex items-center cursor-pointer gap-3 w-full px-4 py-3 text-sm font-medium 
-                            text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 
-                            hover:text-red-600 dark:hover:text-red-400 transition-all"
-                          whileHover={{ x: 5 }}
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Sign Out
-                        </motion.button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               )}
             </div>
@@ -365,6 +336,130 @@ const SideBar = () => {
         </motion.div>
       )}
     </motion.section>
+  );
+
+  // Dropdown Content - Moved outside the sidebar
+  const DropdownContent = (
+    <AnimatePresence>
+      {dropdownOpen && !isCollapsed && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="fixed z-[60] lg:bottom-25 bottom-30 lg:left-[300px] md:left-[300px] left-auto right-5 md:right-auto"
+        >
+          <div
+            className="w-56 bg-gradient-to-br from-white via-purple-50/50 to-blue-50 
+              dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20 backdrop-blur-xl shadow-2xl 
+              rounded-2xl border-2 border-purple-200/60 dark:border-purple-500/40 overflow-hidden"
+          >
+            <div
+              className="relative border-b border-purple-200/50 dark:border-purple-500/30 px-4 py-5 text-sm 
+                bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 
+                dark:from-emerald-600/30 dark:via-teal-600/30 dark:to-cyan-600/30 space-y-3"
+            >
+              <div
+                className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 
+                    rounded-full blur-3xl -translate-y-8 translate-x-8"
+              ></div>
+
+              <div className="flex justify-between items-center relative z-10">
+                <span className="font-semibold text-gray-700 dark:text-gray-200">
+                  Total Time:
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base">
+                  {totalTimes || 300}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center relative z-10">
+                <span className="font-semibold text-gray-700 dark:text-gray-200">
+                  Total Remaining:
+                </span>
+                <span className="text-teal-600 dark:text-teal-400 font-bold text-base">
+                  {totalRemainingTime || 300}
+                </span>
+              </div>
+
+              <div
+                className="flex justify-between items-center relative z-10 pt-2 border-t border-purple-200/40 
+                    dark:border-purple-400/30"
+              >
+                <span className="font-semibold text-gray-700 dark:text-gray-200">
+                  Total Created MoM:
+                </span>
+                <span className="text-purple-600 dark:text-purple-400 font-bold text-base">
+                  {totalCreatedMoMs || 0}
+                </span>
+              </div>
+            </div>
+            {/* Menu Items with Colorful Hover Effects */}
+            <Link
+              to="/subscription"
+              onClick={() => {
+                setDropdownOpen(false);
+                if (isMobile) setIsSidebarOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3.5 text-sm font-semibold 
+                text-gray-700 dark:text-gray-300 
+                hover:bg-gradient-to-r hover:from-yellow-100 hover:to-orange-100 
+                dark:hover:from-yellow-900/40 dark:hover:to-orange-900/40
+                hover:text-orange-700 dark:hover:text-orange-300 
+                transition-all duration-300 border-b border-purple-100/50 dark:border-purple-800/40
+                group relative overflow-hidden"
+            >
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 to-orange-400/0 
+                group-hover:from-yellow-400/10 group-hover:to-orange-400/10 transition-all duration-300"
+              ></div>
+              <CreditCard className="text-xl relative z-10 group-hover:scale-110 transition-transform" />
+              <span className="relative z-10">Plan Details</span>
+            </Link>
+
+            <Link
+              to="/profile"
+              onClick={() => {
+                setDropdownOpen(false);
+                if (isMobile) setIsSidebarOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3.5 text-sm font-semibold 
+                text-gray-700 dark:text-gray-300 
+                hover:bg-gradient-to-r hover:from-indigo-100 hover:to-purple-100 
+                dark:hover:from-indigo-900/40 dark:hover:to-purple-900/40
+                hover:text-indigo-700 dark:hover:text-indigo-300 
+                transition-all duration-300 border-b border-purple-100/50 dark:border-purple-800/40
+                group relative overflow-hidden"
+            >
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-indigo-400/0 to-purple-400/0 
+                group-hover:from-indigo-400/10 group-hover:to-purple-400/10 transition-all duration-300"
+              ></div>
+              <IoPersonCircleSharp className="text-xl relative z-10 group-hover:scale-110 transition-transform" />
+              <span className="relative z-10">Profile Settings</span>
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center cursor-pointer gap-3 w-full px-4 py-3.5 text-sm font-semibold 
+                text-gray-700 dark:text-gray-300 
+                hover:bg-gradient-to-r hover:from-red-100 hover:to-pink-100 
+                dark:hover:from-red-900/40 dark:hover:to-pink-900/40
+                hover:text-red-700 dark:hover:text-red-300 
+                transition-all duration-300
+                group relative overflow-hidden rounded-b-2xl"
+            >
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-red-400/0 to-pink-400/0 
+                group-hover:from-red-400/10 group-hover:to-pink-400/10 transition-all duration-300"
+              ></div>
+              <LogOut className="w-5 h-5 relative z-10 group-hover:scale-110 transition-transform" />
+              <span className="relative z-10">Sign Out</span>
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 
   return (
@@ -381,6 +476,9 @@ const SideBar = () => {
           <RiMenu2Line className="text-lg" />
         </motion.button>
       )}
+
+      {/* Render Dropdown Content */}
+      {DropdownContent}
 
       {isMobile ? (
         <AnimatePresence>
