@@ -70,6 +70,9 @@ const Meeting = () => {
   const recordedChunksRef = useRef([]);
   const screenStreamRef = useRef(null);
 
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const captionsRef = useRef(null);
+
   const startMeeting = async () => {
     if (!meetingLink) {
       addToast("error", "Please paste a meeting link");
@@ -101,13 +104,24 @@ const Meeting = () => {
     });
 
     // Listen for Deepgram captions instead of transcript
+    // 👇 Maintain live and final captions separately
     socket.on("caption", ({ text, isFinal }) => {
-      if (text) {
-        setTranscript((prev) => [
-          ...prev,
-          isFinal ? text : `${text} (interim)`,
-        ]);
-      }
+      if (!text) return;
+
+      setTranscript((prev) => {
+        if (isFinal) {
+          // ✅ Add only finalized captions permanently
+          return [...prev, text];
+        } else {
+          // ⏳ Interim — just update the last element visually
+          return prev;
+        }
+      });
+
+      setLiveTranscript(text);
+
+      // ✅ Correct console log
+      // console.log("Received caption:", text, "| isFinal:", isFinal);
     });
 
     // Start audio capture
@@ -129,31 +143,31 @@ const Meeting = () => {
       const stream = destination.stream;
       mediaStreamRef.current = stream;
 
-      const options = {};
-      const supportedTypes = [
-        "audio/webm;codecs=opus",
-        "audio/ogg;codecs=opus",
-        "audio/mp3",
-        "audio/wav",
-        "audio/mpeg",
-      ].find((type) => MediaRecorder.isTypeSupported(type));
+      // --- Replace MediaRecorder with raw PCM streaming ---
+      const audioContext2 = new AudioContext({ sampleRate: 16000 });
+      const source = audioContext2.createMediaStreamSource(stream);
+      const processor = audioContext2.createScriptProcessor(4096, 1, 1);
 
-      if (supportedTypes) {
-        options.mimeType = supportedTypes;
-      }
+      source.connect(processor);
+      processor.connect(audioContext2.destination);
 
-      mediaRecorderRef.current = new MediaRecorder(stream, options);
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0 && socket.connected) {
-          event.data.arrayBuffer().then((buffer) => {
-            recordedChunksRef.current.push(event.data);
-            socket.emit("audio-chunk", buffer); // send as "audio-chunk"
-          });
+      processor.onaudioprocess = (e) => {
+        const input = e.inputBuffer.getChannelData(0);
+        const buffer = convertFloat32ToPCM16(input);
+        if (socket.connected) {
+          socket.emit("audio-chunk", buffer);
         }
       };
 
-      mediaRecorderRef.current.start(250);
+      function convertFloat32ToPCM16(buffer) {
+        const l = buffer.length;
+        const output = new Int16Array(l);
+        for (let i = 0; i < l; i++) {
+          const s = Math.max(-1, Math.min(1, buffer[i]));
+          output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        return output.buffer;
+      }
 
       const tableSection = document.getElementById("listening");
       if (tableSection) {
@@ -393,8 +407,7 @@ const Meeting = () => {
                                   animationDuration: `${
                                     Math.random() * 0.5 + 0.5
                                   }s`,
-                                }}
-                              ></div>
+                                }}></div>
                             ))}
                             <span className="ml-4 text-green-400 font-semibold text-lg animate-pulse">
                               Listening...
@@ -409,22 +422,20 @@ const Meeting = () => {
                                   animationDuration: `${
                                     Math.random() * 0.5 + 0.5
                                   }s`,
-                                }}
-                              ></div>
+                                }}></div>
                             ))}
                           </div>
                         </div>
 
                         {/* Control Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
                           <button
                             onClick={() => setShowCaptions(!showCaptions)}
                             className={`px-8 cursor-pointer py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 shadow-lg ${
                               showCaptions
                                 ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/25"
                                 : "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-blue-500 hover:to-purple-600"
-                            }`}
-                          >
+                            }`}>
                             {showCaptions
                               ? "🔊 Hide Live Captions"
                               : "📝 Show Live Captions"}
@@ -433,8 +444,7 @@ const Meeting = () => {
                           <button
                             onClick={endMeeting}
                             disabled={showEndingModal}
-                            className="px-8 cursor-pointer py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-red-400 disabled:to-pink-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg shadow-red-500/25 disabled:transform-none"
-                          >
+                            className="px-8 cursor-pointer py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-red-400 disabled:to-pink-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 shadow-lg shadow-red-500/25 disabled:transform-none">
                             {showEndingModal
                               ? "⏹️ Ending..."
                               : "🔴 End Meeting"}
@@ -447,35 +457,26 @@ const Meeting = () => {
                             showCaptions
                               ? "opacity-100 translate-y-0 max-h-96"
                               : "opacity-0 -translate-y-4 max-h-0 overflow-hidden"
-                          }`}
-                        >
+                          }`}>
                           <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
                             <div className="flex items-center mb-4">
                               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
-                              <h3 className="text-xl font-semibold dark:text-white ">
+                              <h3 className="text-xl font-semibold dark:text-white">
                                 Live Captions
                               </h3>
                             </div>
 
-                            <div className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                              <div className="space-y-2">
-                                {transcript.map((line, i) => (
-                                  <div
-                                    key={i}
-                                    className="dark:text-white/90 leading-relaxed animate-fadeIn"
-                                    style={{
-                                      animationDelay: `${i * 0.1}s`,
-                                      animationDuration: "0.5s",
-                                      animationFillMode: "both",
-                                    }}
-                                  >
-                                    <span className="dark:text-blue-400 text-blue-600 text-sm mr-2">
-                                      [{new Date().toLocaleTimeString()}]
-                                    </span>
-                                    {line}
-                                  </div>
-                                ))}
-                              </div>
+                            <div
+                              ref={captionsRef}
+                              className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                              <div className="dark:text-white/90 leading-relaxed flex flex-wrap gap-1">
+  {/* Show all finalized transcript as plain text */}
+  {transcript.join(" ") + " "}
+
+  {/* Append live transcript in real-time */}
+  <span className="text-gray-300 italic">{liveTranscript}</span>
+</div>
+
                             </div>
                           </div>
                         </div>
@@ -513,8 +514,7 @@ const Meeting = () => {
                               activeTab === 1
                                 ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
                                 : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
-                            }`}
-                          >
+                            }`}>
                             <Video className="w-5 h-5 inline mr-2" />
                             Meeting Link
                           </button>
@@ -524,8 +524,7 @@ const Meeting = () => {
                               activeTab === 2
                                 ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
                                 : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
-                            }`}
-                          >
+                            }`}>
                             <Users className="w-5 h-5 inline mr-2" />
                             ID & Password
                           </button>
@@ -549,8 +548,7 @@ const Meeting = () => {
                         }`}
                                     style={{
                                       animationDelay: `${500 + index * 100}ms`,
-                                    }}
-                                  >
+                                    }}>
                                     <img
                                       src={platform.icon}
                                       alt={platform.name}
@@ -605,8 +603,7 @@ const Meeting = () => {
                             meetingLink.trim()
                               ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
                               : "bg-gray-500/30 cursor-not-allowed"
-                          }`}
-                        >
+                          }`}>
                           <FileText className="w-6 h-6" />
                           Create MoM (Minutes of Meeting)
                         </button>
