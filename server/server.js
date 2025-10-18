@@ -20,6 +20,8 @@ const planRoutes = require("./routes/planRoutes.js");
 const faqRoutes = require("./routes/faqRoutes.js");
 const uploadRoutes = require("./routes/uploadRoutes.js");
 const locationRoutes = require("./routes/locationRoutes.js");
+const botMeetingRoutes = require('./routes/botMeetingRoutes.js');
+const botRoutes = require('./routes/botRoutes.js');
 const userSubscriptionRoutes = require("./routes/userSubscriptionRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
@@ -69,6 +71,8 @@ app.use("/api/plans", planRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/api/chat", chatRoutes);
+app.use('/api/bot-meetings', botMeetingRoutes);
+app.use('/api/bot', botRoutes);
  
 app.use('/api/subscription', userSubscriptionRoutes);
 
