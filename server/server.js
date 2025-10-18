@@ -1,5 +1,7 @@
+ 
 const dotenv = require("dotenv");
 dotenv.config();
+ 
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -21,6 +23,8 @@ const locationRoutes = require("./routes/locationRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
 const session = require("express-session");
+
+ 
 
 const app = express();
 app.use(
@@ -63,7 +67,7 @@ app.use("/api/process", deepseekRoutes);
 app.use("/api/plans", planRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/location", locationRoutes);
-app.use('/api/chat', chatRoutes);
+app.use("/api/chat", chatRoutes);
 
 const server = http.createServer(app);
 
@@ -74,60 +78,77 @@ const io = new SocketIOServer(server, {
 const rooms = new Map();
 const liveStreams = new Map();
 
-function openDeepgramWS(roomId) {
-  const DG_URL =
-    process.env.DEEPGRAM_URL ||
-    "wss://api.deepgram.com/v1/listen?model=nova-3&encoding=linear16&sample_rate=16000&interim_results=true&punctuate=true&smart_format=true";
+async function openAssemblyAIWS(roomId) {
+  // STEP 1: Get temporary token from AssemblyAI
+  // Multi-language detection enabled
+const AAI_URL = `wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&format_text=true`;
 
-  const ws = new WebSocket(DG_URL, {
-    headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+
+  const ws = new WebSocket(AAI_URL, {
+    headers: { Authorization: process.env.ASSEMBLYAI_API_KEY },
   });
 
   const state = { ws, queue: [], open: false };
   liveStreams.set(roomId, state);
 
   ws.on("open", () => {
+    console.log(`✅ [${roomId}] AssemblyAI connection opened`);
     state.open = true;
     for (const chunk of state.queue) ws.send(chunk);
     state.queue.length = 0;
   });
 
   ws.on("message", (message) => {
-    try {
-      const msg = JSON.parse(message.toString());
-      const alt = msg?.channel?.alternatives?.[0];
-      if (!alt) return;
-      const text = alt.transcript || "";
-      if (!text) return;
+  try {
+    const msg = JSON.parse(message.toString());
 
-      const isFinal =
-        msg.is_final === true ||
-        msg.speech_final === true ||
-        msg.type === "UtteranceEnd";
+    // Extract transcript text
+    let transcriptText = "";
 
-      io.to(roomId).emit("caption", { text, isFinal });
-    } catch (e) {
-      console.error("Deepgram parse error:", e);
-    }
+    // Handle all transcript types including multi-language
+if (msg.type === "PartialTranscript") {
+  transcriptText = msg.words?.map(w => w.text).join(" ") || msg.transcript || "";
+} else if (msg.type === "FinalTranscript" || msg.type === "Turn") {
+  // Turn events contain finalized transcripts; includes language info
+  transcriptText = msg.transcript || msg.utterance || "";
+  if (msg.language) {
+    transcriptText = `[${msg.language}] ${transcriptText}`; // optional: show detected language
+  }
+}
+
+
+    if (transcriptText) {
+  console.log("🗣️ Transcript:", transcriptText); // clean log
+  io.to(roomId).emit("caption", {
+    text: transcriptText,
+    isFinal: msg.type === "FinalTranscript" || msg.end_of_turn === true
   });
+}
+
+
+  } catch (err) {
+    console.error("❌ AssemblyAI parse error:", err);
+  }
+});
+
 
   ws.on("error", (err) => {
-    console.error(`Deepgram WS error (room ${roomId}):`, err);
+    console.error(`🚨 [${roomId}] AssemblyAI WS error:`, err);
   });
 
   ws.on("close", () => {
+    console.log(`⚠️ [${roomId}] AssemblyAI connection closed`);
     liveStreams.delete(roomId);
   });
 
   return state;
 }
 
-function closeDeepgramWS(roomId) {
+function closeAssemblyAIWS(roomId) {
   const s = liveStreams.get(roomId);
   if (!s) return;
   try {
-    if (s.open) s.ws.send(Buffer.from([]));
-    s.ws.close();
+    if (s.open) s.ws.close();
   } catch (e) {
     console.error("Error closing Deepgram WS:", e);
   } finally {
@@ -194,21 +215,32 @@ io.on("connection", (socket) => {
     io.to(to).emit("signal", { from: socket.id, data });
   });
 
-  socket.on("audio-chunk", (chunkData) => {
+  socket.on("audio-chunk", async (chunkData) => {
     const roomId = socket.data.roomId;
     if (!roomId) return;
 
     let state = liveStreams.get(roomId);
-    if (!state) state = openDeepgramWS(roomId);
+    if (!state) {
+      state = await openAssemblyAIWS(roomId);
+    }
 
-    const chunk = Buffer.isBuffer(chunkData)
+    const buffer = Buffer.isBuffer(chunkData)
       ? chunkData
       : Buffer.from(chunkData);
 
+    const base64 = buffer.toString("base64");
+    const payload = Buffer.from(chunkData);
+
     if (state.open) {
-      state.ws.send(chunk);
+      // console.log(
+      //   `🎤 [${roomId}] Sending audio chunk to AssemblyAI (${buffer.length} bytes)`
+      // );
+      state.ws.send(payload);
     } else {
-      state.queue.push(chunk);
+      console.log(
+        `⏳ [${roomId}] Queueing audio chunk (connection not open yet)`
+      );
+      state.queue.push(payload);
     }
   });
 
@@ -226,7 +258,7 @@ io.on("connection", (socket) => {
       if (room.hostSocketId === socket.id) {
         io.to(roomId).emit("room:ended");
         rooms.delete(roomId);
-        closeDeepgramWS(roomId);
+        closeAssemblyAIWS(roomId);
       }
     }
   });
