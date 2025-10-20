@@ -16,8 +16,15 @@ import { setTableData } from "../../redux/meetingSlice";
 
 const TablePreview = ({ onSaveHeaders, isSending }) => {
   const [columns, setColumns] = useState([
-    { id: 1, heading: "Description" },
-    { id: 2, heading: "Participants" },
+    { id: 1, heading: "Date" },
+    { id: 2, heading: "Meeting Title" },
+    { id: 3, heading: "Agenda / Objective" },
+    { id: 4, heading: "Key Discussion Points" },
+    { id: 5, heading: "Decisions Made" },
+    { id: 6, heading: "Action Items" },
+    { id: 7, heading: "Assigned To" },
+    { id: 8, heading: "Deadline" },
+    { id: 9, heading: "Status" },
   ]);
 
   // eslint-disable-next-line no-unused-vars
@@ -171,8 +178,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
             onClick={addNewColumn}
             disabled={isSending}
             className="group disabled:cursor-not-allowed disabled:opacity-50 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 cursor-pointer rounded-full p-2 shadow-lg hover:shadow-xl transform hover:scale-125 transition-all duration-300 animate-pulse-slow relative overflow-hidden"
-            title="Add Column"
-          >
+            title="Add Column">
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <Plus className="w-6 h-6 text-white group-hover:rotate-180 transition-all duration-500 relative z-10" />
           </button>
@@ -182,8 +188,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
             <div
               className={`${
                 columns.length > 3 ? "min-w-[800px]" : "w-full"
-              } transition-all duration-300`}
-            >
+              } transition-all duration-300`}>
               <div className="flex dark:bg-gray-900   animate-slide-down">
                 <div className="w-16 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 sm:w-20 p-3 sm:p-4 flex items-center justify-center flex-shrink-0  transition-colors duration-200">
                   <h3 className="dark:text-white text-gray-700 text-sm sm:text-lg font-bold animate-fade-in">
@@ -214,8 +219,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                     style={{
                       animationDelay: `${index * 100}ms`,
                       animationFillMode: "both",
-                    }}
-                  >
+                    }}>
                     <div className="mt-2 flex items-center justify-between">
                       {editingHeading === column.id ? (
                         <input
@@ -239,8 +243,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingHeading(column.id);
-                          }}
-                        >
+                          }}>
                           <GripVertical className="w-3 h-3 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0 mr-2 group-hover:text-blue-500 transition-colors duration-200 animate-pulse-slow" />
                           <h3 className="dark:text-white text-gray-700 text-sm sm:text-lg font-bold flex-1 truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
                             {column.heading}
@@ -252,28 +255,24 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                           setMenuOpen(menuOpen === column.id ? null : column.id)
                         }
                         disabled={isSending}
-                        className="p-1 disabled:cursor-not-allowed disabled:opacity-50 rounded-full hover:bg-gray-400 dark:hover:bg-gray-600 cursor-pointer transform hover:rotate-90 hover:scale-110 transition-all duration-300 group-hover:animate-spin-slow"
-                      >
+                        className="p-1 disabled:cursor-not-allowed disabled:opacity-50 rounded-full hover:bg-gray-400 dark:hover:bg-gray-600 cursor-pointer transform hover:rotate-90 hover:scale-110 transition-all duration-300 group-hover:animate-spin-slow">
                         <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-300 transition-colors duration-200" />
                       </button>
                     </div>
                     {menuOpen === column.id && (
                       <div
                         ref={dropdownRef}
-                        className="absolute dark:text-white top-10 right-2 bg-white dark:bg-gray-800 shadow-2xl rounded-lg z-50  p-2 w-40 animate-dropdown backdrop-blur-sm"
-                      >
+                        className="absolute dark:text-white top-10 right-2 bg-white dark:bg-gray-800 shadow-2xl rounded-lg z-50  p-2 w-40 animate-dropdown backdrop-blur-sm">
                         <button
                           onClick={() => deleteColumn(column.id)}
-                          className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-sm text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105 hover:shadow-md"
-                        >
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-sm text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105 hover:shadow-md">
                           <X className="w-4 h-4 hover:animate-spin" /> Delete
                           Column
                         </button>
                         {index > 0 && (
                           <button
                             onClick={() => shiftLeft(index)}
-                            className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-sm hover:text-blue-600 transition-all duration-200 hover:scale-105 hover:shadow-md"
-                          >
+                            className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-sm hover:text-blue-600 transition-all duration-200 hover:scale-105 hover:shadow-md">
                             <ArrowLeft className="w-4 h-4 hover:animate-bounce-x" />{" "}
                             Shift Left
                           </button>
@@ -281,16 +280,14 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                         {index < columns.length - 1 && (
                           <button
                             onClick={() => shiftRight(index)}
-                            className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-sm hover:text-blue-600 transition-all duration-200 hover:scale-105 hover:shadow-md"
-                          >
+                            className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-sm hover:text-blue-600 transition-all duration-200 hover:scale-105 hover:shadow-md">
                             <ArrowRight className="w-4 h-4 hover:animate-bounce-x" />{" "}
                             Shift Right
                           </button>
                         )}
                         <button
                           onClick={() => copyColumn(column, index)}
-                          className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-green-50 dark:hover:bg-green-900/20 rounded text-sm hover:text-green-600 transition-all duration-200 hover:scale-105 hover:shadow-md"
-                        >
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2 w-full hover:bg-green-50 dark:hover:bg-green-900/20 rounded text-sm hover:text-green-600 transition-all duration-200 hover:scale-105 hover:shadow-md">
                           <Copy className="w-4 h-4 hover:animate-pulse" /> Copy
                           Column
                         </button>
@@ -329,8 +326,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                 return (
                   <div
                     key={rowIndex}
-                    className={`flex transition-all duration-300 ease-out animate-slide-up w-full ${opacity}`}
-                  >
+                    className={`flex transition-all duration-300 ease-out animate-slide-up w-full ${opacity}`}>
                     <div
                       className={`w-16 sm:w-20 flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${
                         rowIndex === 0
@@ -338,8 +334,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                           : rowIndex === 1
                           ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
                           : "dark:bg-[#262f3b] bg-[#dae0e8]"
-                      }`}
-                    >
+                      }`}>
                       <div className="dark:text-gray-300 text-gray-600 font-semibold transition-colors duration-200">
                         {rowIndex + 1}
                       </div>
@@ -356,8 +351,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                             : rowIndex === 1
                             ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
                             : "dark:bg-[#262f3b] bg-[#dae0e8]"
-                        } ${padding} px-4`}
-                      >
+                        } ${padding} px-4`}>
                         <div className="h-fit flex items-center">
                           <p className="dark:text-gray-300 text-gray-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 cursor-default">
                             Content
@@ -373,13 +367,11 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
         </div>
         <div
           className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up"
-          style={{ animationDelay: "600ms", animationFillMode: "both" }}
-        >
+          style={{ animationDelay: "600ms", animationFillMode: "both" }}>
           <button
             onClick={handleSaveTable}
             disabled={isSending}
-            className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 transition-all duration-300 flex items-center gap-2 text-sm relative overflow-hidden group"
-          >
+            className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 transition-all duration-300 flex items-center gap-2 text-sm relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-shimmer"></div>
             {isSending ? (
               <>
@@ -396,8 +388,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
         </div>
         <div
           className="mt-4 text-center animate-fade-in"
-          style={{ animationDelay: "800ms", animationFillMode: "both" }}
-        >
+          style={{ animationDelay: "800ms", animationFillMode: "both" }}>
           <p className="text-gray-500 text-xs sm:text-sm hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
             Drag columns to reorder • Click headings to edit • Add/remove
             columns • Minimum 2 columns required

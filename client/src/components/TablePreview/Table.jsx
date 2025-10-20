@@ -33,6 +33,27 @@ export default function DataTable({
       )
       .replace(/\s+/g, "");
 
+  const formatBulletPoints = (content) => {
+    if (!content || content === "Click to Edit") return content;
+    
+    // Check if content contains bullet points
+    if (content.includes("•") && content.includes("\n")) {
+      const points = content.split("\n").filter(point => point.trim() !== "");
+      return (
+        <ul className="list-disc pl-5 space-y-1">
+          {points.map((point, index) => (
+            <li key={index} className="text-sm">
+              {point.replace(/^•\s*/, "").trim()}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    
+    // Return plain text for non-bullet content
+    return content;
+  };
+
   const columns = [
     { field: "id", headerName: "ID", width: 70 },
 
@@ -43,6 +64,14 @@ export default function DataTable({
         headerName: translatedColumns[index] || h, // ✅ use translated name
         width: 250,
         editable: true,
+        renderCell: (params) => {
+          const value = params.value || "";
+          return (
+            <div className="w-full">
+              {formatBulletPoints(value)}
+            </div>
+          );
+        },
         renderEditCell: (params) => {
           const originalColumn = header.find(
             (h) => toCamelCase(h) === params.field
