@@ -41,10 +41,10 @@ const navItems = [
     description: "Live transcription",
   },
   {
-    heading: "Bot Master",
+    heading: "Meeting Master",
     icon: Bot,
     url: "/bot-master",
-    description: "Join the bot master",
+    description: "Join as a meeting bot",
   },
 ];
 
@@ -144,9 +144,7 @@ const SideBar = () => {
     border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
     ${isCollapsed ? "w-20" : "md:w-80 w-screen px-6"}`}
     >
-      {/* Header Section */}
       <div className="w-full space-y-8">
-        {/* Logo and Theme Toggle */}
         <div className="flex items-center justify-between w-full">
           <motion.button
             onClick={() => navigate("/")}
@@ -203,9 +201,7 @@ const SideBar = () => {
             )}
           </div>
         </div>
-
-        {/* Navigation Items */}
-        <div className="space-y-3 md:mt-20">
+        <div className="space-y-3 2xl:mt-20 mt-10">
           {navItems.map((item, index) => {
             const IconComponent = item.icon;
             return (
