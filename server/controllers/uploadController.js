@@ -1,5 +1,44 @@
+// uploadController.js
+
 const db = require("../config/db");
 const uploadToFTP = require("../config/uploadToFTP");
+const axios = require("axios");
+
+const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
+const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
+const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
+
+async function createTranscription(audioUrl) {
+  const res = await axios.post(
+    TRANSCRIPT_URL,
+    {
+      audio_url: audioUrl,
+      language_detection: true,
+      speaker_labels: true,
+    },
+    {
+      headers: {
+        Authorization: ASSEMBLY_KEY,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  return res.data;
+}
+
+async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
+  const start = Date.now();
+  while (true) {
+    const res = await axios.get(`${TRANSCRIPT_URL}/${id}`, {
+      headers: { Authorization: ASSEMBLY_KEY },
+    });
+    const data = res.data;
+    if (data.status === "completed") return data;
+    if (data.status === "error") throw new Error(data.error || "Transcription error");
+    if (Date.now() - start > timeout) throw new Error("Transcription timeout");
+    await new Promise((r) => setTimeout(r, interval));
+  }
+}
 
 
 const uploadAudio = async (req, res) => {
@@ -53,16 +92,68 @@ const uploadAudio = async (req, res) => {
       [userId, originalName, ftpUrl, formattedDate, source]
     );
 
-    res.status(200).json({
-      message: "Audio uploaded successfully",
-      id: result.insertId,
-      userId,
-      audioId: uploadAudio.insertId,
-      title: originalName,
-      audioUrl: ftpUrl,
-      isMoMGenerated: false,
-      uploadedAt: formattedDate,
-    });
+    // 🔥 Start AssemblyAI transcription here
+const created = await createTranscription(ftpUrl);
+const resultTranscript = await pollTranscription(created.id);
+
+// 🎙️ Build speaker-attributed transcript
+// 🎙️ Build speaker-attributed transcript with better formatting
+let speakerText = "";
+
+if (resultTranscript.utterances && Array.isArray(resultTranscript.utterances)) {
+  // Filter out very short utterances (often mistakes)
+  const filteredUtterances = resultTranscript.utterances.filter(
+    u => (u.end - u.start) > 500 // at least 0.5 seconds
+  );
+  
+  speakerText = filteredUtterances
+    .map(u => {
+      const speaker = u.speaker || "Unknown";
+      const timestamp = `[${formatTime(u.start)}]`;
+      return `${speaker} ${timestamp}: ${u.text}`;
+    })
+    .join("\n\n"); // double newline for readability
+} else {
+  speakerText = resultTranscript.text;
+}
+
+// Helper function for timestamps
+function formatTime(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+
+// Optional: store transcript in DB
+// 📝 Insert transcript and store insertId
+    const [transcriptResult] = await db.query(
+      "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
+      [
+        uploadAudio.insertId,
+        userId,
+        JSON.stringify(resultTranscript),
+        resultTranscript.language_code || null,
+      ]
+    );
+
+res.status(200).json({
+  message: "Audio uploaded and transcribed successfully",
+  id: result.insertId,
+  userId,
+  audioId: uploadAudio.insertId,
+   transcriptAudioId: transcriptResult.insertId, 
+  title: originalName,
+  audioUrl: ftpUrl,
+  isMoMGenerated: false,
+  uploadedAt: formattedDate,
+  transcription: speakerText,
+
+  full: resultTranscript,
+  language: resultTranscript.language_code,
+});
+
   } catch (err) {
     console.error("Upload audio error:", err);
     res.status(500).json({
