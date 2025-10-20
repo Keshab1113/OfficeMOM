@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { X, Check, Star, Zap, Shield, Users, Brain } from "lucide-react";
+import { X, Check, Star, Zap, Shield, Users, Brain, Globe } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../ToastContext";
@@ -15,6 +15,7 @@ const PricingOptions = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [billingCycle, setBillingCycle] = useState("monthly");
+  const [currency, setCurrency] = useState("USD"); // 'USD' or 'local'
   const { token } = useSelector((state) => state.auth);
   const nav = useNavigate();
   const { addToast } = useToast();
@@ -23,6 +24,9 @@ const PricingOptions = () => {
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [error, setError] = useState(null);
   const [subscription, setSubscription] = useState(null);
+  const [location, setLocation] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [localCurrency, setLocalCurrency] = useState("USD");
 
   const fetchPlans = async () => {
     try {
@@ -73,7 +77,52 @@ const PricingOptions = () => {
     }
   }, [token]);
 
-  console.log("subscription: ", subscription);
+  useEffect(() => {
+  const fetchLocation = async (lat, lon) => {
+    try {
+      const url =
+        lat && lon
+          ? `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/location?lat=${lat}&lon=${lon}&includeRates=true`
+          : `/api/location?includeRates=true`;
+
+      const res = await axios.get(url);
+      const locationData = res.data.data;
+      setLocation(locationData);
+      
+      // Set local currency based on location
+      if (locationData?.currency) {
+        setLocalCurrency(locationData.currency);
+      }
+      
+      // Use exchange rates from API response
+      if (res.data.exchangeRates) {
+        setExchangeRate(res.data.exchangeRates[locationData.currency] || 1);
+      }
+    } catch (err) {
+      console.error("Failed to fetch location:", err);
+    }
+  };
+
+  // Try browser geolocation first
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        fetchLocation(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        console.warn(
+          "Geolocation failed, falling back to IP:",
+          error.message
+        );
+        fetchLocation();
+      }
+    );
+  } else {
+    fetchLocation();
+  }
+}, []);
 
   const getPlanIcon = (planName) => {
     const iconMap = {
@@ -114,13 +163,11 @@ const PricingOptions = () => {
           : selectedPlan.price;
 
       // Get the correct priceID based on billing cycle
-      // Check for different possible property names
       const priceID =
         billingCycle === "yearly"
           ? selectedPlan.yearly_priceID
           : selectedPlan.priceID;
 
-      // If no priceID found, we'll let the backend handle it
       const requestData = {
         plan: selectedPlan.name,
         paymentMethods: [paymentMethod],
@@ -128,7 +175,6 @@ const PricingOptions = () => {
         price: finalPrice,
       };
 
-      // Only include priceID if we have it
       if (priceID) {
         requestData.priceID = priceID;
       }
@@ -160,11 +206,49 @@ const PricingOptions = () => {
     return (monthlyPrice * 12 - monthlyPrice * 12 * 0.9).toFixed(0);
   };
 
+  // Format currency based on selection
+  const formatPrice = (price) => {
+    if (currency === "USD" || !exchangeRate) {
+      return {
+        amount: price,
+        formatted: `$${price}`,
+        currency: "USD"
+      };
+    }
+
+    const localPrice = price * exchangeRate;
+    return {
+      amount: localPrice,
+      formatted: new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: localCurrency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(localPrice),
+      currency: localCurrency
+    };
+  };
+
+  // Format savings in local currency
+  const formatSavings = (savings) => {
+    if (currency === "USD" || !exchangeRate) {
+      return `$${savings}`;
+    }
+
+    const localSavings = savings * exchangeRate;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: localCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(localSavings);
+  };
+
   if (loading) {
     return (
-      <div>
+      <div className=" text-center dark:text-gray-100">
         <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin w-16 h-16 text-gray-500"></div>
+          <div className="animate-spin w-16 h-16 text-gray-500 dark:text-gray-100"></div>
         </div>
         Loading...
       </div>
@@ -172,7 +256,7 @@ const PricingOptions = () => {
   }
   if (error) {
     return (
-      <div>
+      <div className=" text-center dark:text-gray-100">
         <div className="flex justify-center items-center h-screen">
           <div className="animate-spin w-16 h-16 text-red-500"></div>
         </div>
@@ -200,30 +284,62 @@ const PricingOptions = () => {
             </p>
 
             {/* Billing Toggle - Top */}
-            <div className="flex justify-center">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
-                  {[
-                    { value: "monthly", label: "Monthly" },
-                    { value: "yearly", label: "Yearly" },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setBillingCycle(option.value)}
-                      className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                        billingCycle === option.value
-                          ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
-                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                      }`}
-                    >
-                      {option.label}
-                      {option.value === "yearly" && (
-                        <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                          Save 10%
-                        </span>
-                      )}
-                    </button>
-                  ))}
+            <div className="flex flex-col items-center gap-4 mb-8">
+              <div className="flex justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+                    {[
+                      { value: "monthly", label: "Monthly" },
+                      { value: "yearly", label: "Yearly" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setBillingCycle(option.value)}
+                        className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          billingCycle === option.value
+                            ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                      >
+                        {option.label}
+                        {option.value === "yearly" && (
+                          <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                            Save 10%
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Currency Toggle */}
+              <div className="flex justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+                    {[
+                      { value: "USD", label: "USD", icon: "$" },
+                      { value: "local", label: localCurrency, icon: <Globe size={16} /> },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setCurrency(option.value)}
+                        className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          currency === option.value
+                            ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                      >
+                        {option.icon}
+                        {option.label}
+                        {option.value === "local" && location?.country && (
+                          <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                            {location.country}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,6 +359,10 @@ const PricingOptions = () => {
                 const displayPrice =
                   billingCycle === "yearly" ? plan.yearlyPrice : plan.price;
                 const originalYearlyPrice = plan.price * 12;
+                
+                const formattedPrice = formatPrice(displayPrice);
+                const formattedYearlyPrice = formatPrice(originalYearlyPrice);
+                const formattedSavings = formatSavings(calculateYearlySavings(plan.price));
 
                 return (
                   <motion.div
@@ -257,7 +377,6 @@ const PricingOptions = () => {
                     {plan.isPopular === 1 && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <div className=" text-xs bg-gradient-to-r from-amber-400 to-amber-500 text-white px-4 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-lg">
-                          {/* <Star size={14} /> */}
                           Most Popular
                         </div>
                       </div>
@@ -309,13 +428,13 @@ const PricingOptions = () => {
                     <div className="mb-6">
                       <div className="flex items-baseline gap-2">
                         <span
-                          className={`text-4xl font-bold ${
+                          className={`text-3xl font-bold ${
                             plan.isHighlighted
                               ? "text-white"
                               : "text-gray-900 dark:text-white"
                           }`}
                         >
-                          ${displayPrice}
+                          {formattedPrice.formatted}
                         </span>
                         <span
                           className={`text-lg ${
@@ -331,10 +450,10 @@ const PricingOptions = () => {
                       {plan.price > 0 && billingCycle === "yearly" && (
                         <div className="mt-2 space-y-1">
                           <div className="text-sm text-gray-500 dark:text-gray-400 line-through">
-                            ${originalYearlyPrice}/year
+                            {formattedYearlyPrice.formatted}/year
                           </div>
                           <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                            Save ${calculateYearlySavings(plan.price)} per year
+                            Save {formattedSavings} per year
                           </div>
                         </div>
                       )}
@@ -369,7 +488,6 @@ const PricingOptions = () => {
                     {/* CTA Button */}
                     <button
                       onClick={() => handleOpenModal(plan)}
-                      disabled={index <= subscription?.plan_id}
                       className={`w-full disabled:cursor-not-allowed cursor-pointer py-3.5 px-6 rounded-xl font-semibold transition-all duration-200 ${
                         plan.isHighlighted
                           ? "bg-white text-indigo-600 hover:bg-gray-50 hover:shadow-lg transform hover:-translate-y-0.5"
@@ -420,10 +538,19 @@ const PricingOptions = () => {
           loadingCheckout={loadingCheckout}
           handleCheckout={handleCheckout}
           billingCycle={billingCycle}
+          currency={currency}
+          exchangeRate={exchangeRate}
+          localCurrency={localCurrency}
         />
       )}
 
-      <PlanComparison plans={plans} billingCycle={billingCycle} />
+      <PlanComparison 
+        plans={plans} 
+        billingCycle={billingCycle} 
+        currency={currency}
+        exchangeRate={exchangeRate}
+        localCurrency={localCurrency}
+      />
     </div>
   );
 };

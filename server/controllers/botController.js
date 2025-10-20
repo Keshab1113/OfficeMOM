@@ -6,7 +6,7 @@ const botController = {
   async getAllRecordings(req, res) {
     try {
       const recordings = await recordingService.getAllRecordings();
-      
+
       res.json({
         success: true,
         data: recordings
@@ -26,7 +26,7 @@ const botController = {
     try {
       const { meetingId } = req.params;
       const recordings = await recordingService.getRecordingsByMeetingId(meetingId);
-      
+
       res.json({
         success: true,
         data: recordings
@@ -46,7 +46,7 @@ const botController = {
     try {
       const { id } = req.params;
       const deleted = await recordingService.deleteRecording(id);
-      
+
       if (!deleted) {
         return res.status(404).json({
           success: false,
@@ -69,25 +69,29 @@ const botController = {
   },
 
   // Get bot status
-  async getBotStatus(req, res) {
-    try {
-      res.json({
-        success: true,
-        data: {
-          isRecording: botService.isRecording,
-          status: botService.isRecording ? 'recording' : 'idle',
-          timestamp: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('Error getting bot status:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to get bot status',
-        error: error.message
-      });
-    }
+  // In botController.js, update getBotStatus method:
+async getBotStatus(req, res) {
+  try {
+    const activeMeetings = botService.getActiveMeetings();
+    
+    res.json({
+      success: true,
+      data: {
+        isRecording: botService.isRecording,
+        status: botService.isRecording ? 'recording' : 'idle',
+        activeMeetings: activeMeetings,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error getting bot status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get bot status',
+      error: error.message
+    });
   }
+}
 };
 
 module.exports = botController;

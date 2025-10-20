@@ -5,71 +5,122 @@ class BotService {
   constructor() {
     this.isRecording = false;
     this.recordedChunks = [];
+    this.activeMeetings = new Map();
   }
 
-  async joinMeeting(meetingLink, meetingId) {
+
+  async scheduleBotMeeting(meetingId, meetingLink, scheduledTime, duration, joinUntilEnd, botDisplayName) {
+    const now = new Date();
+    const scheduled = new Date(scheduledTime);
+    const delay = scheduled.getTime() - now.getTime();
+
+    // Log scheduling with bot display name
+    await this.logBotAction(meetingId, 'scheduled', 'Meeting scheduled for bot', {
+      scheduledTime: scheduledTime,
+      duration: duration,
+      meetingLink: meetingLink,
+      botDisplayName: botDisplayName,
+      joinUntilEnd: joinUntilEnd
+    });
+
+    if (delay > 0) {
+      console.log(`⏰ Scheduled bot to join meeting in ${Math.round(delay / 1000 / 60)} minutes as "${botDisplayName}"`);
+      
+      setTimeout(async () => {
+        await this.joinMeeting(meetingLink, meetingId, botDisplayName, duration, joinUntilEnd);
+      }, delay);
+    } else {
+      console.log('⚠️ Meeting time is in the past, joining immediately');
+      await this.joinMeeting(meetingLink, meetingId, botDisplayName, duration, joinUntilEnd);
+    }
+  }
+
+  async joinMeeting(meetingLink, meetingId, botDisplayName, duration, joinUntilEnd) {
     try {
-      console.log(`🤖 Bot joining meeting: ${meetingLink}`);
+      console.log(`🤖 Bot joining meeting as: ${botDisplayName}`);
+      console.log(`🔗 Meeting: ${meetingLink}`);
       
       // Update meeting status to 'joined'
       await this.updateMeetingStatus(meetingId, 'joined');
 
-      // Simulate joining process (2 seconds)
+      // Store meeting info for tracking
+      this.activeMeetings.set(meetingId, {
+        meetingLink,
+        botDisplayName,
+        duration,
+        joinUntilEnd,
+        startTime: new Date()
+      });
+
+      // Simulate joining process with display name (2 seconds)
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      await this.startRecording(meetingId);
+      console.log(`✅ Bot "${botDisplayName}" successfully joined the meeting`);
+      
+      await this.startRecording(meetingId, duration, joinUntilEnd, botDisplayName);
       
       return true;
     } catch (error) {
       console.error('❌ Error joining meeting:', error);
       await this.updateMeetingStatus(meetingId, 'failed');
+      this.activeMeetings.delete(meetingId);
       return false;
     }
   }
 
-  async startRecording(meetingId) {
+  async startRecording(meetingId, duration, joinUntilEnd, botDisplayName) {
     try {
-      console.log('🎙️ Starting recording...');
+      console.log(`🎙️ Starting recording as "${botDisplayName}"...`);
       
       // Update meeting status to 'recording'
       await this.updateMeetingStatus(meetingId, 'recording');
       this.isRecording = true;
 
-      // Get meeting duration and title
+      // Get meeting title for recording
       const [meetings] = await db.execute(
-        'SELECT duration, meeting_title FROM bot_meetings WHERE id = ?',
+        'SELECT meeting_title FROM bot_meetings WHERE id = ?',
         [meetingId]
       );
 
-      const duration = meetings[0]?.duration || 60;
       const meetingTitle = meetings[0]?.meeting_title || 'meeting';
-      const recordingDuration = Math.min(duration * 60 * 1000, 300000); // Max 5 minutes for demo
-
-      // Simulate recording process - in real implementation, this would capture actual audio
-      console.log(`⏺️ Recording simulation started for meeting: ${meetingTitle}`);
       
-      // Simulate collecting audio chunks (in real app, this would be from audio stream)
+      let recordingDuration;
+      if (joinUntilEnd) {
+        // For "join until end" mode, use longer duration or implement meeting end detection
+        recordingDuration = 4 * 60 * 60 * 1000; // 4 hours max for safety
+        console.log(`⏱️ Recording until meeting ends (max 4 hours)`);
+      } else {
+        recordingDuration = Math.min(duration * 60 * 1000, 300000); // Max 5 minutes for demo
+        console.log(`⏱️ Recording for ${duration} minutes`);
+      }
+
+      // Simulate recording process
+      console.log(`⏺️ Recording simulation started for meeting: ${meetingTitle}`);
+      console.log(`👤 Bot display name: ${botDisplayName}`);
+      
+      // Simulate collecting audio chunks
       this.recordedChunks = [];
-      const simulatedChunk = Buffer.from('simulated_audio_data_' + Date.now());
+      const simulatedChunk = Buffer.from(`audio_data_${meetingId}_${Date.now()}`);
       this.recordedChunks.push(simulatedChunk);
 
       setTimeout(async () => {
-        await this.stopRecording(meetingId, meetingTitle);
+        await this.stopRecording(meetingId, meetingTitle, botDisplayName);
       }, recordingDuration);
 
     } catch (error) {
       console.error('❌ Error starting recording:', error);
       await this.updateMeetingStatus(meetingId, 'failed');
+      this.activeMeetings.delete(meetingId);
     }
   }
 
-  async stopRecording(meetingId, meetingTitle) {
+  async stopRecording(meetingId, meetingTitle, botDisplayName) {
     try {
-      console.log('⏹️ Stopping recording...');
+      console.log(`⏹️ Stopping recording for bot "${botDisplayName}"...`);
       this.isRecording = false;
 
-      // Generate audio buffer (in real implementation, combine recorded chunks)
-      const audioBuffer = this.generateMockAudioBuffer(meetingTitle);
+      // Generate audio buffer
+      const audioBuffer = this.generateMockAudioBuffer(meetingTitle, botDisplayName);
       
       // Upload to FTP
       console.log('📤 Uploading recording to FTP...');
@@ -86,35 +137,50 @@ class BotService {
 
       // Save recording info with FTP URL
       await db.execute(
-        'INSERT INTO bot_recordings (meeting_id, file_path, file_size, duration) VALUES (?, ?, ?, ?)',
-        [meetingId, ftpUrl, audioBuffer.length, 300] // Example duration
+        'INSERT INTO bot_recordings (meeting_id, file_path, file_size, duration, bot_display_name) VALUES (?, ?, ?, ?, ?)',
+        [meetingId, ftpUrl, audioBuffer.length, 300, botDisplayName]
       );
 
       // Log successful recording
       await this.logBotAction(meetingId, 'recording_stopped', 'Recording completed and uploaded to FTP', {
         ftpUrl: ftpUrl,
         fileSize: audioBuffer.length,
-        meetingId: meetingId
+        meetingId: meetingId,
+        botDisplayName: botDisplayName,
+        duration: '5 minutes' // Example duration
       });
 
-      console.log('✅ Recording completed and saved to database');
+      console.log(`✅ Recording completed for bot "${botDisplayName}" and saved to database`);
+      
+      // Remove from active meetings
+      this.activeMeetings.delete(meetingId);
 
     } catch (error) {
       console.error('❌ Error stopping recording:', error);
       await this.updateMeetingStatus(meetingId, 'failed');
+      this.activeMeetings.delete(meetingId);
       await this.logBotAction(meetingId, 'error', 'Failed to upload recording to FTP', {
         error: error.message,
-        meetingId: meetingId
+        meetingId: meetingId,
+        botDisplayName: botDisplayName
       });
     } finally {
       this.recordedChunks = [];
     }
   }
 
-  // Generate mock audio buffer for simulation
-  generateMockAudioBuffer(meetingTitle) {
-    const mockData = `Mock audio data for meeting: ${meetingTitle} - Recorded at: ${new Date().toISOString()}`;
+  // Update mock audio buffer to include bot display name
+  generateMockAudioBuffer(meetingTitle, botDisplayName) {
+    const mockData = `Mock audio data for meeting: ${meetingTitle} - Recorded by: ${botDisplayName} - Recorded at: ${new Date().toISOString()}`;
     return Buffer.from(mockData);
+  }
+
+  // Add method to get active meetings info
+  getActiveMeetings() {
+    return Array.from(this.activeMeetings.entries()).map(([meetingId, meetingInfo]) => ({
+      meetingId,
+      ...meetingInfo
+    }));
   }
 
   async updateMeetingStatus(meetingId, status) {
@@ -140,30 +206,6 @@ class BotService {
       );
     } catch (error) {
       console.error('❌ Error logging bot action:', error);
-    }
-  }
-
-  async scheduleBotMeeting(meetingId, meetingLink, scheduledTime, duration) {
-    const now = new Date();
-    const scheduled = new Date(scheduledTime);
-    const delay = scheduled.getTime() - now.getTime();
-
-    // Log scheduling
-    await this.logBotAction(meetingId, 'scheduled', 'Meeting scheduled for bot', {
-      scheduledTime: scheduledTime,
-      duration: duration,
-      meetingLink: meetingLink
-    });
-
-    if (delay > 0) {
-      console.log(`⏰ Scheduled bot to join meeting in ${Math.round(delay / 1000 / 60)} minutes`);
-      
-      setTimeout(async () => {
-        await this.joinMeeting(meetingLink, meetingId);
-      }, delay);
-    } else {
-      console.log('⚠️ Meeting time is in the past, joining immediately');
-      await this.joinMeeting(meetingLink, meetingId);
     }
   }
 }
