@@ -78,51 +78,50 @@ const PricingOptions = () => {
   }, [token]);
 
   useEffect(() => {
-  const fetchLocation = async (lat, lon) => {
-    try {
-      const url =
-        lat && lon
-          ? `${
-              import.meta.env.VITE_BACKEND_URL
+    const fetchLocation = async (lat, lon) => {
+      try {
+        const url =
+          lat && lon
+            ? `${import.meta.env.VITE_BACKEND_URL
             }/api/location?lat=${lat}&lon=${lon}&includeRates=true`
-          : `/api/location?includeRates=true`;
+            : `/api/location?includeRates=true`;
 
-      const res = await axios.get(url);
-      const locationData = res.data.data;
-      setLocation(locationData);
-      
-      // Set local currency based on location
-      if (locationData?.currency) {
-        setLocalCurrency(locationData.currency);
+        const res = await axios.get(url);
+        const locationData = res.data.data;
+        setLocation(locationData);
+
+        // Set local currency based on location
+        if (locationData?.currency) {
+          setLocalCurrency(locationData.currency);
+        }
+
+        // Use exchange rates from API response
+        if (res.data.exchangeRates) {
+          setExchangeRate(res.data.exchangeRates[locationData.currency] || 1);
+        }
+      } catch (err) {
+        console.error("Failed to fetch location:", err);
       }
-      
-      // Use exchange rates from API response
-      if (res.data.exchangeRates) {
-        setExchangeRate(res.data.exchangeRates[locationData.currency] || 1);
-      }
-    } catch (err) {
-      console.error("Failed to fetch location:", err);
+    };
+
+    // Try browser geolocation first
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchLocation(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn(
+            "Geolocation failed, falling back to IP:",
+            error.message
+          );
+          fetchLocation();
+        }
+      );
+    } else {
+      fetchLocation();
     }
-  };
-
-  // Try browser geolocation first
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        fetchLocation(position.coords.latitude, position.coords.longitude);
-      },
-      (error) => {
-        console.warn(
-          "Geolocation failed, falling back to IP:",
-          error.message
-        );
-        fetchLocation();
-      }
-    );
-  } else {
-    fetchLocation();
-  }
-}, []);
+  }, []);
 
   const getPlanIcon = (planName) => {
     const iconMap = {
@@ -180,8 +179,7 @@ const PricingOptions = () => {
       }
 
       const res = await axios.post(
-        `${
-          import.meta.env.VITE_BACKEND_URL
+        `${import.meta.env.VITE_BACKEND_URL
         }/api/stripe/create-checkout-session`,
         requestData,
         {
@@ -206,7 +204,7 @@ const PricingOptions = () => {
     return (monthlyPrice * 12 - monthlyPrice * 12 * 0.9).toFixed(0);
   };
 
-  // Format currency based on selection
+  // Format price with English numerals
   const formatPrice = (price) => {
     if (currency === "USD" || !exchangeRate) {
       return {
@@ -217,31 +215,49 @@ const PricingOptions = () => {
     }
 
     const localPrice = price * exchangeRate;
-    return {
-      amount: localPrice,
-      formatted: new Intl.NumberFormat('en-IN', {
+
+    // Always use 'en' locale for English numerals, but keep the currency
+    try {
+      const formatted = new Intl.NumberFormat('en', {
         style: 'currency',
         currency: localCurrency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
-      }).format(localPrice),
-      currency: localCurrency
-    };
+      }).format(localPrice);
+
+      return {
+        amount: localPrice,
+        formatted,
+        currency: localCurrency
+      };
+    } catch (error) {
+      // Fallback to USD
+      return {
+        amount: price,
+        formatted: `$${price}`,
+        currency: "USD"
+      };
+    }
   };
 
-  // Format savings in local currency
+  // Format savings with English numerals
   const formatSavings = (savings) => {
     if (currency === "USD" || !exchangeRate) {
       return `$${savings}`;
     }
 
     const localSavings = savings * exchangeRate;
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: localCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(localSavings);
+
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: localCurrency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(localSavings);
+    } catch (error) {
+      return `$${savings}`;
+    }
   };
 
   if (loading) {
@@ -284,7 +300,7 @@ const PricingOptions = () => {
             </p>
 
             {/* Billing Toggle - Top */}
-            <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:mb-8 mb-4">
               <div className="flex justify-center">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
@@ -295,11 +311,10 @@ const PricingOptions = () => {
                       <button
                         key={option.value}
                         onClick={() => setBillingCycle(option.value)}
-                        className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                          billingCycle === option.value
-                            ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
-                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                        }`}
+                        className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${billingCycle === option.value
+                          ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                          }`}
                       >
                         {option.label}
                         {option.value === "yearly" && (
@@ -324,11 +339,10 @@ const PricingOptions = () => {
                       <button
                         key={option.value}
                         onClick={() => setCurrency(option.value)}
-                        className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                          currency === option.value
-                            ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
-                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                        }`}
+                        className={`flex cursor-pointer items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${currency === option.value
+                          ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                          }`}
                       >
                         {option.icon}
                         {option.label}
@@ -350,16 +364,16 @@ const PricingOptions = () => {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
           {loading
             ? Array.from({ length: 5 }).map((_, index) => (
-                <SkeletonItem key={index} />
-              ))
+              <SkeletonItem key={index} />
+            ))
             : plans && plans.length > 0
-            ? plans.map((plan, index) => {
+              ? plans.map((plan, index) => {
                 if (!plan?.name) return null;
                 const IconComponent = getPlanIcon(plan.name);
                 const displayPrice =
                   billingCycle === "yearly" ? plan.yearlyPrice : plan.price;
                 const originalYearlyPrice = plan.price * 12;
-                
+
                 const formattedPrice = formatPrice(displayPrice);
                 const formattedYearlyPrice = formatPrice(originalYearlyPrice);
                 const formattedSavings = formatSavings(calculateYearlySavings(plan.price));
@@ -367,11 +381,10 @@ const PricingOptions = () => {
                 return (
                   <motion.div
                     key={plan.id}
-                    className={`relative rounded-2xl p-4 flex flex-col h-full transition-all duration-300 ${
-                      plan.isHighlighted
-                        ? "bg-gradient-to-br dark:from-indigo-600/30 dark:to-purple-600/30 from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/25 transform scale-105 border-2 border-indigo-500"
-                        : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700"
-                    }`}
+                    className={`relative rounded-2xl p-4 flex flex-col h-full transition-all duration-300 ${plan.isHighlighted
+                      ? "bg-gradient-to-br dark:from-indigo-600/30 dark:to-purple-600/30 from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/25 transform scale-105 border-2 border-indigo-500"
+                      : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700"
+                      }`}
                   >
                     {/* Popular Badge */}
                     {plan.isPopular === 1 && (
@@ -385,11 +398,10 @@ const PricingOptions = () => {
                     {/* Plan Icon */}
                     {IconComponent && (
                       <div
-                        className={`mb-6 p-3 rounded-xl w-fit ${
-                          plan.isHighlighted
-                            ? "bg-white/20"
-                            : "bg-indigo-100 dark:bg-indigo-900/30"
-                        }`}
+                        className={`mb-6 p-3 rounded-xl w-fit ${plan.isHighlighted
+                          ? "bg-white/20"
+                          : "bg-indigo-100 dark:bg-indigo-900/30"
+                          }`}
                       >
                         <IconComponent
                           size={24}
@@ -405,20 +417,18 @@ const PricingOptions = () => {
                     {/* Plan Header */}
                     <div className="mb-6">
                       <h3
-                        className={`text-2xl font-bold mb-2 ${
-                          plan.isHighlighted
-                            ? "text-white"
-                            : "text-gray-900 dark:text-white"
-                        }`}
+                        className={`text-2xl font-bold mb-2 ${plan.isHighlighted
+                          ? "text-white"
+                          : "text-gray-900 dark:text-white"
+                          }`}
                       >
                         {plan.name}
                       </h3>
                       <p
-                        className={`text-sm leading-relaxed ${
-                          plan.isHighlighted
-                            ? "text-indigo-100"
-                            : "text-gray-600 dark:text-gray-400"
-                        }`}
+                        className={`text-sm leading-relaxed ${plan.isHighlighted
+                          ? "text-indigo-100"
+                          : "text-gray-600 dark:text-gray-400"
+                          }`}
                       >
                         {plan.description}
                       </p>
@@ -428,20 +438,18 @@ const PricingOptions = () => {
                     <div className="mb-6">
                       <div className="flex items-baseline gap-2">
                         <span
-                          className={`text-3xl font-bold ${
-                            plan.isHighlighted
-                              ? "text-white"
-                              : "text-gray-900 dark:text-white"
-                          }`}
+                          className={`text-3xl font-bold ${plan.isHighlighted
+                            ? "text-white"
+                            : "text-gray-900 dark:text-white"
+                            }`}
                         >
                           {formattedPrice.formatted}
                         </span>
                         <span
-                          className={`text-lg ${
-                            plan.isHighlighted
-                              ? "text-indigo-100"
-                              : "text-gray-500 dark:text-gray-400"
-                          }`}
+                          className={`text-lg ${plan.isHighlighted
+                            ? "text-indigo-100"
+                            : "text-gray-500 dark:text-gray-400"
+                            }`}
                         >
                           {billingCycle === "yearly" ? "/year" : "/month"}
                         </span>
@@ -452,7 +460,7 @@ const PricingOptions = () => {
                           <div className="text-sm text-gray-500 dark:text-gray-400 line-through">
                             {formattedYearlyPrice.formatted}/year
                           </div>
-                          <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                          <div className={`text-sm font-medium ${plan.isHighlighted ? "text-green-100" : "text-green-500"}`}>
                             Save {formattedSavings} per year
                           </div>
                         </div>
@@ -466,18 +474,16 @@ const PricingOptions = () => {
                           <li key={i} className="flex items-start gap-3">
                             <Check
                               size={18}
-                              className={`flex-shrink-0 mt-0.5 ${
-                                plan.isHighlighted
-                                  ? "text-green-300"
-                                  : "text-green-500"
-                              }`}
+                              className={`flex-shrink-0 mt-0.5 ${plan.isHighlighted
+                                ? "text-green-300"
+                                : "text-green-500"
+                                }`}
                             />
                             <span
-                              className={`text-sm ${
-                                plan.isHighlighted
-                                  ? "text-indigo-100"
-                                  : "text-gray-600 dark:text-gray-300"
-                              }`}
+                              className={`text-sm ${plan.isHighlighted
+                                ? "text-indigo-100"
+                                : "text-gray-600 dark:text-gray-300"
+                                }`}
                             >
                               {feature}
                             </span>
@@ -488,18 +494,17 @@ const PricingOptions = () => {
                     {/* CTA Button */}
                     <button
                       onClick={() => handleOpenModal(plan)}
-                      className={`w-full disabled:cursor-not-allowed cursor-pointer py-3.5 px-6 rounded-xl font-semibold transition-all duration-200 ${
-                        plan.isHighlighted
-                          ? "bg-white text-indigo-600 hover:bg-gray-50 hover:shadow-lg transform hover:-translate-y-0.5"
-                          : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg transform hover:-translate-y-0.5"
-                      }`}
+                      className={`w-full disabled:cursor-not-allowed cursor-pointer py-3.5 px-6 rounded-xl font-semibold transition-all duration-200 ${plan.isHighlighted
+                        ? "bg-white text-indigo-600 hover:bg-gray-50 hover:shadow-lg transform hover:-translate-y-0.5"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg transform hover:-translate-y-0.5"
+                        }`}
                     >
-                      {subscription?.plan_name === plan.name?"Subscribed":plan.buttonText}
+                      {subscription?.plan_name === plan.name ? "Subscribed" : plan.buttonText}
                     </button>
                   </motion.div>
                 );
               })
-            : Array.from({ length: 5 }).map((_, index) => (
+              : Array.from({ length: 5 }).map((_, index) => (
                 <SkeletonItem key={index} />
               ))}
         </div>
@@ -544,9 +549,9 @@ const PricingOptions = () => {
         />
       )}
 
-      <PlanComparison 
-        plans={plans} 
-        billingCycle={billingCycle} 
+      <PlanComparison
+        plans={plans}
+        billingCycle={billingCycle}
         currency={currency}
         exchangeRate={exchangeRate}
         localCurrency={localCurrency}
