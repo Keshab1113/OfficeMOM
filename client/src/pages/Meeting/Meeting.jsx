@@ -313,24 +313,25 @@ const Meeting = () => {
       language: detectLanguage,
       audio_id: audioID,
     };
-    await addHistory(token, historyData, addToast, updatedMeetingId);
+    // await addHistory(token, historyData, addToast, updatedMeetingId);
     setShowModal2(false);
     setShowModal(false);
   };
 
-  const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
-    try {
-      await axios.patch(
-        `${import.meta.env.VITE_BACKEND_URL
-        }/api/live-meeting/audio-files/${updatedMeetingId}`,
-        historyData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (err) {
-      console.error("Add history error:", err);
-      addToast("error", "Failed to add history");
-    }
-  };
+  // const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
+  //   try {
+  //     await axios.patch(
+  //       `${
+  //         import.meta.env.VITE_BACKEND_URL
+  //       }/api/live-meeting/audio-files/${updatedMeetingId}`,
+  //       historyData,
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+  //   } catch (err) {
+  //     console.error("Add history error:", err);
+  //     addToast("error", "Failed to add history");
+  //   }
+  // };
 
   const handleInputChange = (e) => {
     const value = e.target.value.trim();

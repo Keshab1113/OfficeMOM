@@ -655,20 +655,25 @@ const processTranscript = async (req, res) => {
           source = row.source || source;
         }
 
-        await db.query(
-          `UPDATE history
-           SET isMoMGenerated = 1,
-               data = ?,
-               language = ?
-           WHERE id = ? AND user_id = ?`,
-          [JSON.stringify(finalData), "english", history_id, userId]
-        );
+        const formattedDate = req.body.date || new Date().toISOString().slice(0, 19).replace("T", " ");
+
+await db.query(
+  `UPDATE history
+   SET isMoMGenerated = 1,
+       data = ?,
+       language = ?,
+       date = ?,
+       uploadedAt = ?
+   WHERE id = ? AND user_id = ?`,
+  [JSON.stringify(finalData), "english", formattedDate, formattedDate, history_id, userId]
+);
+
         console.log(`✅ Updated existing history record ID: ${history_id}`);
       } else {
         console.log("🆕 No history_id provided — inserting new record");
 
-        const curDate = new Date();
-        const formattedDate = curDate.toISOString().slice(0, 19).replace("T", " ");
+        // const formattedDate = req.body.date || new Date().toISOString().slice(0, 19).replace("T", " ");
+
 
         await db.query(
           `INSERT INTO history (user_id, source, title, audioUrl, isMoMGenerated, date, data, language, uploadedAt)
