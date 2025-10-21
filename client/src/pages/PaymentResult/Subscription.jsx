@@ -288,9 +288,14 @@ const Subscription = () => {
                             <span className="text-gray-600 dark:text-gray-400">
                               Billing Cycle:
                             </span>
-                            <span className="font-semibold text-gray-900 dark:text-white capitalize">
-                              {subscription.billing_cycle}
-                            </span>
+                            {subscription.plan_name === "Free" ? (
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                N/A
+                              </span>) : (
+                              <span className="font-semibold text-gray-900 dark:text-white capitalize">
+                                {subscription.billing_cycle}
+                              </span>
+                            )}
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">
@@ -312,46 +317,56 @@ const Subscription = () => {
                             <span className="text-gray-600 dark:text-gray-400">
                               Current Period:
                             </span>
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              {new Date(
-                                subscription.created_at
-                              ).toLocaleDateString()}{" "}
-                              -{" "}
-                              {(() => {
-                                const startDate = new Date(
+                            {subscription.plan_name === "Free" ? (
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                N/A
+                              </span>) : (
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {new Date(
                                   subscription.created_at
-                                );
-                                let endDate = new Date(startDate);
-
-                                if (subscription.billing_cycle === "yearly") {
-                                  endDate.setFullYear(
-                                    endDate.getFullYear() + 1
+                                ).toLocaleDateString()}{" "}
+                                -{" "}
+                                {(() => {
+                                  const startDate = new Date(
+                                    subscription.created_at
                                   );
-                                } else if (
-                                  subscription.billing_cycle === "monthly"
-                                ) {
-                                  endDate.setMonth(endDate.getMonth() + 1);
-                                }
+                                  let endDate = new Date(startDate);
 
-                                return endDate.toLocaleDateString();
-                              })()}
-                            </span>
+                                  if (subscription.billing_cycle === "yearly") {
+                                    endDate.setFullYear(
+                                      endDate.getFullYear() + 1
+                                    );
+                                  } else if (
+                                    subscription.billing_cycle === "monthly"
+                                  ) {
+                                    endDate.setMonth(endDate.getMonth() + 1);
+                                  }
+
+                                  return endDate.toLocaleDateString();
+                                })()}
+                              </span>
+                            )}
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">
                               Auto Renewal:
                             </span>
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              {subscription.subscription_status === "active"
-                                ? "Enabled"
-                                : "Disabled"}
-                            </span>
+                            {subscription.plan_name === "Free" ? (
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                N/A
+                              </span>) : (
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {subscription.subscription_status === "active"
+                                  ? "Enabled"
+                                  : "Disabled"}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {subscription.subscription_status === "active" && (
+                    {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
                       <div className="flex gap-3">
                         <button
                           onClick={cancelSubscription}
@@ -404,11 +419,10 @@ const Subscription = () => {
 
                             <div className="flex items-center gap-3">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                                  payment.payment_status === "paid"
-                                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                                }`}
+                                className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${payment.payment_status === "paid"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                  }`}
                               >
                                 {payment.payment_status}
                               </span>
@@ -458,8 +472,9 @@ const Subscription = () => {
                         <span className="text-gray-600 dark:text-gray-400">
                           Customer ID:
                         </span>
+
                         <span className="font-mono text-sm text-gray-900 dark:text-white">
-                          {subscription.stripe_customer_id?.slice(-8)}
+                          {subscription.stripe_customer_id?.slice(-8) || "N/A"}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -467,7 +482,7 @@ const Subscription = () => {
                           Subscription ID:
                         </span>
                         <span className="font-mono text-sm text-gray-900 dark:text-white">
-                          {subscription.stripe_subscription_id?.slice(-8)}
+                          {subscription.stripe_subscription_id?.slice(-8) || "N/A"}
                         </span>
                       </div>
                       <div className="flex justify-between">

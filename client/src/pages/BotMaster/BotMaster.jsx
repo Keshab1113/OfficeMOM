@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Helmet } from "react-helmet";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 const BotMaster = () => {
   const [meetingData, setMeetingData] = useState({
@@ -19,6 +20,9 @@ const BotMaster = () => {
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [botStatus, setBotStatus] = useState("idle");
   const { token } = useSelector((state) => state.auth);
+  const [showUnderProcess, setShowUnderProcess] = useState(true);
+
+  const navigate = useNavigate();
 
   // Fetch meetings and bot status on component mount
   useEffect(() => {
@@ -55,55 +59,55 @@ const BotMaster = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setMessage("");
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage("");
 
-  try {
-    // Simple payload without complex data
-    const payload = {
-      meetingLink: meetingData.meetingLink,
-      scheduledTime: meetingData.scheduledTime,
-      meetingTitle: meetingData.meetingTitle,
-      duration: parseInt(meetingData.duration),
-      participants: meetingData.participants || '',
-      joinUntilEnd: Boolean(meetingData.joinUntilEnd)
-    };
+    try {
+      // Simple payload without complex data
+      const payload = {
+        meetingLink: meetingData.meetingLink,
+        scheduledTime: meetingData.scheduledTime,
+        meetingTitle: meetingData.meetingTitle,
+        duration: parseInt(meetingData.duration),
+        participants: meetingData.participants || '',
+        joinUntilEnd: Boolean(meetingData.joinUntilEnd)
+      };
 
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bot-meetings`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      setMessage("Meeting scheduled successfully!");
-      // Reset form and refresh
-      setMeetingData({
-        meetingLink: "",
-        scheduledTime: "",
-        meetingTitle: "",
-        participants: "",
-        duration: 60,
-        joinUntilEnd: false,
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bot-meetings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       });
-      fetchMeetings();
-      setActiveTab("meetings");
-    } else {
-      setMessage("Error: " + (data.message || "Failed to schedule meeting"));
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMessage("Meeting scheduled successfully!");
+        // Reset form and refresh
+        setMeetingData({
+          meetingLink: "",
+          scheduledTime: "",
+          meetingTitle: "",
+          participants: "",
+          duration: 60,
+          joinUntilEnd: false,
+        });
+        fetchMeetings();
+        setActiveTab("meetings");
+      } else {
+        setMessage("Error: " + (data.message || "Failed to schedule meeting"));
+      }
+    } catch (error) {
+      setMessage("Network error. Please check your connection and try again.");
+      console.error('Submission error:', error);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    setMessage("Network error. Please check your connection and try again.");
-    console.error('Submission error:', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -177,6 +181,56 @@ const BotMaster = () => {
         <title>Smart Minutes of the Meeting (OfficeMoM) | BotMaster</title>
         <link rel="canonical" href="https://officemom.me/bot-master" />
       </Helmet>
+      {showUnderProcess && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-auto transform transition-all duration-300 scale-100">
+            <div className="p-8 text-center">
+              {/* Icon */}
+              <div className="w-20 h-20 mx-auto mb-6 bg-yellow-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-10 h-10 text-yellow-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Under Progress
+              </h2>
+
+              {/* Message */}
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                This feature is currently under development. We're working hard to bring you the complete functionality soon. You can explore the existing features in our website.
+              </p>
+
+              {/* Action Button */}
+              <button
+                onClick={() => {
+                  navigate('/');
+                  setShowUnderProcess(false);
+                }}
+                className="w-full cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Continue Exploring
+              </button>
+
+              {/* Note */}
+              <p className="text-xs text-gray-500 mt-4">
+                You can reopen this message by refreshing the page
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section className="relative min-h-screen w-full overflow-hidden">
         {/* Background and other existing elements remain the same */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">

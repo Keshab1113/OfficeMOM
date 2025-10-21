@@ -64,7 +64,7 @@ const Meeting = () => {
   const [detectLanguage, setDetectLanguage] = useState("");
   const [updatedMeetingId, setUpdatedMeetingId] = useState(null);
   const [uploadedUserId, setUploadedUserId] = useState(null);
-const [historyID, setHistoryID] = useState(null); 
+  const [historyID, setHistoryID] = useState(null);
 
   const wsRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -226,9 +226,9 @@ const [historyID, setHistoryID] = useState(null);
               },
             }
           );
-           setHistoryID(response?.data?.id); 
+          setHistoryID(response?.data?.id);
           setAudioID(response?.data?.audioId);
-         setUpdatedMeetingId(response?.data?.transcriptAudioId);
+          setUpdatedMeetingId(response?.data?.transcriptAudioId);
           setUploadedUserId(response?.data?.userId); // save userId here
           setShowEndingModal(false);
           setFinalTranscript(response.data.transcription || "");
@@ -236,7 +236,7 @@ const [historyID, setHistoryID] = useState(null);
           setShowModal(true);
           setIsMeetingActive(false);
 
-         
+
         } catch (error) {
           console.error("AssemblyAI transcription failed:", error);
           addToast("error", "Failed to transcribe audio");
@@ -259,7 +259,7 @@ const [historyID, setHistoryID] = useState(null);
 
   const { email, fullName, token } = useSelector((state) => state.auth);
 
- 
+
   const handleSaveHeaders = async (
     headers,
     audioIdFromUpload,
@@ -274,8 +274,8 @@ const [historyID, setHistoryID] = useState(null);
         audioIdFromUpload,
         userIdFromUpload,
         transcriptAudioIdFromUpload,
-         detectLanguage,
-         historyID
+        detectLanguage,
+        historyID
       );
       console.log("Table data received:", tableData); // Debug log
       if (!Array.isArray(tableData.final_mom)) {
@@ -321,8 +321,7 @@ const [historyID, setHistoryID] = useState(null);
   const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
     try {
       await axios.patch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
+        `${import.meta.env.VITE_BACKEND_URL
         }/api/live-meeting/audio-files/${updatedMeetingId}`,
         historyData,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -398,7 +397,7 @@ const [historyID, setHistoryID] = useState(null);
                         headers,
                         audioID, // audio_id from upload
                         updatedMeetingId, // transcript_audio_id
-                         uploadedUserId  // userId from upload
+                        uploadedUserId  // userId from upload
                       )
                     }
                     isSending={isSending}
@@ -435,9 +434,8 @@ const [historyID, setHistoryID] = useState(null);
                                 style={{
                                   height: `${Math.random() * 40 + 20}px`,
                                   animationDelay: `${i * 0.1}s`,
-                                  animationDuration: `${
-                                    Math.random() * 0.5 + 0.5
-                                  }s`,
+                                  animationDuration: `${Math.random() * 0.5 + 0.5
+                                    }s`,
                                 }}></div>
                             ))}
                             <span className="ml-4 text-green-400 font-semibold text-lg animate-pulse">
@@ -450,9 +448,8 @@ const [historyID, setHistoryID] = useState(null);
                                 style={{
                                   height: `${Math.random() * 40 + 20}px`,
                                   animationDelay: `${(i + 5) * 0.1}s`,
-                                  animationDuration: `${
-                                    Math.random() * 0.5 + 0.5
-                                  }s`,
+                                  animationDuration: `${Math.random() * 0.5 + 0.5
+                                    }s`,
                                 }}></div>
                             ))}
                           </div>
@@ -462,11 +459,10 @@ const [historyID, setHistoryID] = useState(null);
                         <div className="flex flex-col sm:flex-row gap-4 mb-4">
                           <button
                             onClick={() => setShowCaptions(!showCaptions)}
-                            className={`px-8 cursor-pointer py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 shadow-lg ${
-                              showCaptions
-                                ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/25"
-                                : "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-blue-500 hover:to-purple-600"
-                            }`}>
+                            className={`px-8 cursor-pointer py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 shadow-lg ${showCaptions
+                              ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/25"
+                              : "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-blue-500 hover:to-purple-600"
+                              }`}>
                             {showCaptions
                               ? "🔊 Hide Live Captions"
                               : "📝 Show Live Captions"}
@@ -484,11 +480,10 @@ const [historyID, setHistoryID] = useState(null);
 
                         {/* Live Captions */}
                         <div
-                          className={`w-full transition-all duration-500 ease-in-out transform ${
-                            showCaptions
-                              ? "opacity-100 translate-y-0 max-h-96"
-                              : "opacity-0 -translate-y-4 max-h-0 overflow-hidden"
-                          }`}>
+                          className={`w-full transition-all duration-500 ease-in-out transform ${showCaptions
+                            ? "opacity-100 translate-y-0 max-h-96"
+                            : "opacity-0 -translate-y-4 max-h-0 overflow-hidden"
+                            }`}>
                           <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
                             <div className="flex items-center mb-4">
                               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-3"></div>
@@ -542,21 +537,19 @@ const [historyID, setHistoryID] = useState(null);
                         <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 mb-0">
                           <button
                             onClick={() => setActiveTab(1)}
-                            className={`flex-1 cursor-pointer py-3 px-4 rounded-lg font-semibold transition-all ${
-                              activeTab === 1
-                                ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
-                                : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
-                            }`}>
+                            className={`flex-1 cursor-pointer py-3 px-4 rounded-lg font-semibold transition-all ${activeTab === 1
+                              ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
+                              : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                              }`}>
                             <Video className="w-5 h-5 inline mr-2" />
                             Meeting Link
                           </button>
                           <button
                             onClick={() => setActiveTab(2)}
-                            className={`flex-1 cursor-pointer py-3 px-4 rounded-lg font-semibold transition-all ${
-                              activeTab === 2
-                                ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
-                                : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
-                            }`}>
+                            className={`flex-1 cursor-pointer py-3 px-4 rounded-lg font-semibold transition-all ${activeTab === 2
+                              ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform scale-105"
+                              : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                              }`}>
                             <Users className="w-5 h-5 inline mr-2" />
                             ID & Password
                           </button>
@@ -573,11 +566,10 @@ const [historyID, setHistoryID] = useState(null);
                                     key={platform.name}
                                     className={`flex flex-col items-center gap-2 p-3 rounded-lg 
                         bg-gray-200 dark:bg-slate-700 hover:scale-105 transition-transform animate-fade-in-up
-                        ${
-                          activePlatform === platform.name
-                            ? "ring-2 ring-offset-2 ring-blue-500"
-                            : ""
-                        }`}
+                        ${activePlatform === platform.name
+                                        ? "ring-2 ring-offset-2 ring-blue-500"
+                                        : ""
+                                      }`}
                                     style={{
                                       animationDelay: `${500 + index * 100}ms`,
                                     }}>
@@ -603,8 +595,8 @@ const [historyID, setHistoryID] = useState(null);
                           )}
 
                           {activeTab === 2 && (
-                            <div className="mt-2">
-                              <h1 className="text-gray-600 dark:text-white md:text-xl text-lg mb-3">
+                            <div className="mt-2 min-h-60 flex flex-col justify-center items-center">
+                              {/* <h1 className="text-gray-600 dark:text-white md:text-xl text-lg mb-3">
                                 Enter Meeting Details
                               </h1>
                               <div className="flex flex-col gap-4">
@@ -624,6 +616,59 @@ const [historyID, setHistoryID] = useState(null);
                                     setMeetingPassword(e.target.value)
                                   }
                                 />
+                              </div> */}
+                              <div className="relative">
+                                {/* Animated background circles */}
+                                <div className="absolute -inset-4">
+                                  <div className="absolute top-0 left-0 w-8 h-8 bg-purple-500 rounded-full opacity-70 animate-ping"></div>
+                                  <div className="absolute top-0 right-0 w-6 h-6 bg-blue-500 rounded-full opacity-60 animate-ping animation-delay-1000"></div>
+                                  <div className="absolute bottom-0 left-0 w-7 h-7 bg-green-500 rounded-full opacity-80 animate-ping animation-delay-1500"></div>
+                                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-yellow-500 rounded-full opacity-70 animate-ping animation-delay-500"></div>
+                                </div>
+
+                                {/* Main content */}
+                                <div className="relative z-10 text-center">
+                                  {/* Animated icon */}
+                                  <div className="flex justify-center mb-4">
+                                    <div className="relative">
+                                      <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center animate-spin">
+                                        <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full"></div>
+                                      </div>
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <svg
+                                          className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-pulse"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M13 10V3L4 14h7v7l9-11h-7z"
+                                          />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Text with gradient animation */}
+                                  <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-green-600 bg-clip-text text-transparent bg-size-200 bg-pos-0 animate-gradient">
+                                    Under Progress...
+                                  </h1>
+
+                                  {/* Subtitle with fade animation */}
+                                  <p className="text-gray-600 dark:text-gray-300 mt-3 animate-pulse">
+                                    Feature coming soon!
+                                  </p>
+
+                                  {/* Animated dots */}
+                                  <div className="flex justify-center space-x-1 mt-4">
+                                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce animation-delay-200"></div>
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce animation-delay-400"></div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -631,15 +676,15 @@ const [historyID, setHistoryID] = useState(null);
                         <button
                           disabled={!meetingLink.trim()}
                           onClick={startMeeting}
-                          className={`mt-6 w-full py-4 flex justify-center items-center gap-2 rounded-lg text-gray-600 dark:text-white font-semibold transition-colors duration-300 ${
-                            meetingLink.trim()
-                              ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
-                              : "bg-gray-500/30 cursor-not-allowed"
-                          }`}>
+                          className={`mt-6 w-full py-4 flex justify-center items-center gap-2 rounded-lg text-gray-600 dark:text-white font-semibold transition-colors duration-300 ${meetingLink.trim()
+                            ? "bg-blue-400 hover:bg-blue-500 cursor-pointer"
+                            : "bg-gray-500/30 cursor-not-allowed"
+                            }
+                            ${activeTab === 2 ? "hidden" : ""}`}>
                           <FileText className="w-6 h-6" />
-                          Create MoM (Minutes of Meeting)
+                          Start Meeting (Minutes of Meeting)
                         </button>
-                        <p className="text-xs text-gray-400 mt-3 text-center">
+                        <p className={`text-xs text-gray-400 mt-3 text-center ${activeTab === 2 ? "hidden" : ""}`}>
                           🆓 Meeting transcription is completely free now
                         </p>
                       </div>

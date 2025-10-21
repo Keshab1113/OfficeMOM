@@ -37,7 +37,7 @@ exports.createCheckoutSession = async (req, res) => {
 
     // 🔹 STEP 1: If no priceID provided, find or create the appropriate recurring price
     if (!stripePriceId) {
-      
+
       // Search for existing recurring prices for this plan
       const searchParams = new URLSearchParams({
         query: `active:'true' AND metadata['plan_name']:'${plan}' AND recurring interval:'${billingCycle === 'yearly' ? 'year' : 'month'}'`,
@@ -58,7 +58,7 @@ exports.createCheckoutSession = async (req, res) => {
         stripePriceId = searchResponse.data.data[0].id;
       } else {
         // Create a new recurring price
-        
+
         // First, find or create the product
         const productSearchParams = new URLSearchParams({
           query: `active:'true' AND metadata['plan_name']:'${plan}'`,
@@ -83,7 +83,7 @@ exports.createCheckoutSession = async (req, res) => {
           productParams.append("name", plan);
           productParams.append("description", `${plan} Plan`);
           productParams.append("metadata[plan_name]", plan);
-          
+
           const productResponse = await axios.post(
             `${process.env.STRIPE_URL}/products`,
             productParams,
@@ -133,7 +133,7 @@ exports.createCheckoutSession = async (req, res) => {
       );
 
       const priceData = priceRes.data;
-      
+
       // Check if this is a recurring price
       if (priceData.type !== 'recurring') {
         return res.status(400).json({
@@ -142,7 +142,7 @@ exports.createCheckoutSession = async (req, res) => {
         });
       }
 
-      
+
 
       const productId = priceData.product;
       const productRes = await axios.get(
@@ -157,7 +157,7 @@ exports.createCheckoutSession = async (req, res) => {
       productData = productRes.data;
 
     } catch (stripeError) {
-      
+
       return res.status(500).json({
         error: "Failed to fetch Stripe product details",
         details: stripeError.response?.data || stripeError.message,
@@ -186,7 +186,7 @@ exports.createCheckoutSession = async (req, res) => {
 
       customerId = customerResponse.data.id;
     } catch (customerError) {
-      
+
       return res.status(500).json({
         error: "Failed to create Stripe customer",
         details: customerError.response?.data || customerError.message,
@@ -607,10 +607,44 @@ exports.getSubscriptionDetails = async (req, res) => {
     );
 
     if (subscriptions.length === 0) {
+      const [FreeSubscriptions] = await connection.execute(
+        `SELECT * FROM user_subscription_details 
+       WHERE user_id = ? AND stripe_payment_id IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+        [userId]
+      );
+      const FreeSubscription = FreeSubscriptions[0];
+      if (FreeSubscription) {
+        connection.release();
+        return res.json({
+          success: true,
+          data: {
+            plan_name: "Free",
+            billing_cycle: "monthly",
+            amount: 0,
+            currency: "usd",
+            payment_status: "active",
+            customer_email: null,
+            customer_name: null,
+            stripe_customer_id: null,
+            stripe_subscription_id: null,
+            stripe_subscription: null,
+            invoice_number: null,
+            invoice_pdf: null,
+            subscription_status: "active",
+            current_period_start: null,
+            current_period_end: null,
+            created_at: FreeSubscription.created_at,
+          },
+        });
+      }
       return res.status(404).json({ error: "No subscription found" });
     }
 
     const subscription = subscriptions[0];
+    console.log("subscription: ", subscription);
+
 
     let stripeSubscription = null;
     let upcomingInvoice = null;
@@ -626,6 +660,8 @@ exports.getSubscriptionDetails = async (req, res) => {
         }
       );
       stripeSubscription = subscriptionResponse.data;
+      console.log("stripeSubscription: ", stripeSubscription);
+
 
       // Get upcoming invoice if subscription is active
       if (subscription.subscription_status === "active") {

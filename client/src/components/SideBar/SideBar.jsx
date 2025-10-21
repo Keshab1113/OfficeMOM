@@ -38,7 +38,7 @@ const navItems = [
     heading: "Start New Meeting",
     icon: MdMeetingRoom,
     url: "/live-meeting",
-    description: "Live transcription",
+    description: "In Person Meeting",
   },
   {
     heading: "Meeting Master",
