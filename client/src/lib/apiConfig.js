@@ -12,6 +12,10 @@ export const processTranscriptWithDeepSeek = async (
  historyId 
 ) => {
   try {
+
+     // 🕒 Get user's local time and convert to UTC
+    const utcDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+
     const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/process`, {
       transcript,
       headers,
@@ -20,6 +24,7 @@ export const processTranscriptWithDeepSeek = async (
       transcript_audio_id: transcriptAudioId,
       language, 
       history_id: historyId,
+       date: utcDate, // 👈 ADD THIS LINE
     });
     return response.data;
   } catch (error) {

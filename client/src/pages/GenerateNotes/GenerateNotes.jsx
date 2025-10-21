@@ -20,6 +20,7 @@ import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 const breadcrumbItems = [{ label: "Generate Notes" }];
 
 const GenerateNotes = () => {
+  const { email, fullName, token } = useSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState("computer");
   const [selectedFile, setSelectedFile] = useState(null);
   const [driveUrl, setDriveUrl] = useState("");
@@ -33,6 +34,9 @@ const GenerateNotes = () => {
   const [isSending, setIsSending] = useState(false);
   const [audioID, setAudioID] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
+  const [updatedMeetingId, setUpdatedMeetingId] = useState(null);
+  const [uploadedUserId, setUploadedUserId] = useState(null);
+  const [historyID, setHistoryID] = useState(null);
 
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
@@ -74,8 +78,9 @@ const GenerateNotes = () => {
     let apiUrl = "";
 
     if (activeTab === "computer") {
-      formData.append("audio", selectedFile);
-      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-audio/upload`;
+      formData.append("recordedAudio", selectedFile);
+      formData.append("source", "Generate Notes Conversion");
+      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
     } else {
       formData.append("driveUrl", driveUrl);
       apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;
@@ -84,6 +89,7 @@ const GenerateNotes = () => {
     try {
       const resp = await axios.post(apiUrl, formData, {
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -94,9 +100,12 @@ const GenerateNotes = () => {
 
       const data = await resp?.data;
       setAudioURL(data.audioUrl);
-      setAudioID(data.audio_id);
+      setAudioID(data.audioId);
       setDetectLanguage(data.language);
-      setFinalTranscript(data.text);
+      setFinalTranscript(data.transcription || "");
+      setHistoryID(data?.id);
+      setUpdatedMeetingId(data?.transcriptAudioId);
+      setUploadedUserId(data?.userId);
       setShowModal(true);
       setSelectedFile(null);
       setDriveUrl("");
@@ -111,67 +120,73 @@ const GenerateNotes = () => {
     }
   };
 
-  const { email, fullName, token } = useSelector((state) => state.auth);
-  const handleSaveHeaders = async (headers) => {
+  const handleSaveHeaders = async (
+    headers,
+    audioIdFromUpload,
+    transcriptAudioIdFromUpload,
+    userIdFromUpload
+  ) => {
     setIsSending(true);
     try {
       const tableData = await processTranscriptWithDeepSeek(
         finalTranscript,
-        headers
+        headers,
+        audioIdFromUpload,
+        userIdFromUpload,
+        transcriptAudioIdFromUpload,
+        detectLanguage,
+        historyID
       );
-
-      if (!Array.isArray(tableData)) {
+      console.log("Table data received:", tableData); // Debug log
+      if (!Array.isArray(tableData.final_mom)) {
         addToast("error", "Could not process meeting notes");
         return;
       }
-      setShowFullData(tableData);
-      setShowModal2(true);
+
+      setShowFullData(tableData.final_mom);
       setIsSending(false);
+      setShowModal2(true);
     } catch (error) {
       console.error("Error converting transcript:", error);
       addToast("error", "Failed to convert transcript");
       setShowModal2(false);
       setShowModal(false);
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  const HandleSaveTable = async (data, downloadOptions) => {
-    saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    const dateCreated = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+ const HandleSaveTable = async (data, downloadOptions) => {
+  saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
 
-    const historyData = {
-      source: "Generate Notes Conversion",
-      date: dateCreated,
-      data: data,
-      language: detectLanguage,
-      audio_id: audioID,
-    };
-    await addHistory(token, historyData, addToast);
-    setShowModal2(false);
-    setShowModal(false);
+  // 🕒 Get user's local time and convert to UTC
+  const localDate = new Date();
+  const utcDate = localDate.toISOString().slice(0, 19).replace("T", " "); // e.g. 2025-10-21 09:12:34
+
+  const historyData = {
+    source: "Generate Notes Conversion",
+    date: utcDate, // send UTC time to backend
+    data: data,
+    language: detectLanguage,
+    audio_id: audioID,
   };
-  const addHistory = async (token, historyData, addToast) => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-        historyData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+
+  // await addHistory(token, historyData, addToast);
+  setShowModal2(false);
+  setShowModal(false);
+};
+
+  // const addHistory = async (token, historyData, addToast) => {
+  //   try {
+  //     await axios.post(
+  //       `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+  //       historyData,
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
       
-    } catch (err) {
-      console.error("Add history error:", err);
-      addToast("error", "Failed to add history");
-    }
-  };
+  //   } catch (err) {
+  //     console.error("Add history error:", err);
+  //     addToast("error", "Failed to add history");
+  //   }
+  // };
 
   return (
     <>
@@ -216,7 +231,14 @@ const GenerateNotes = () => {
                   />
                 ) : (
                   <TablePreview
-                    onSaveHeaders={(headers) => handleSaveHeaders(headers)}
+                    onSaveHeaders={(headers) =>
+                      handleSaveHeaders(
+                        headers,
+                        audioID, // audio_id from upload
+                        updatedMeetingId, // transcript_audio_id
+                        uploadedUserId  // userId from upload
+                      )
+                    }
                     isSending={isSending}
                   />
                 )}
