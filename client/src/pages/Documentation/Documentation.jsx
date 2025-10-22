@@ -272,7 +272,7 @@ const Documentation = () => {
                   >
                     Contact Support
                   </button>
-                  <button className="border cursor-pointer border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">
+                  <button onClick={() => navigate("/contact-us")} className="border cursor-pointer border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">
                     Schedule Demo
                   </button>
                 </div>

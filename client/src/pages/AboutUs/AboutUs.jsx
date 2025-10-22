@@ -366,12 +366,12 @@ export default function AboutUs() {
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </button>
-                    <button onClick={() => nav(token?"/meeting":"/login")} className=" cursor-pointer inline-flex items-center justify-center px-10 py-5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-lg rounded-xl hover:border-blue-600 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-105">
+                    <button onClick={() => nav("/contact-us")} className=" cursor-pointer inline-flex items-center justify-center px-10 py-5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-lg rounded-xl hover:border-blue-600 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 transform hover:scale-105">
                       Schedule Demo
                     </button>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-8">
-                    No credit card required • Unlimited free trial • Cancel
+                    No credit card required • 300 min free trial • Cancel
                     anytime
                   </p>
                 </div>

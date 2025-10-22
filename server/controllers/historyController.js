@@ -114,9 +114,46 @@ const deleteHistory = async (req, res) => {
   }
 };
 
+const getUserHistoryStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [historyRows] = await db.execute(`
+      SELECT 
+        COUNT(*) as totalHistory,
+        SUM(CASE WHEN source = 'Generate Notes Conversion' THEN 1 ELSE 0 END) as totalGeneratesNotes,
+        SUM(CASE WHEN source = 'Online Meeting Conversion' THEN 1 ELSE 0 END) as totalOnlineMeeting,
+        SUM(CASE WHEN source = 'Live Transcript Conversion' THEN 1 ELSE 0 END) as totalLiveMeeting
+      FROM history 
+      WHERE user_id = ?
+    `, [userId]);
+
+    const stats = historyRows[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalHistory: parseInt(stats.totalHistory) || 0,
+        totalGeneratesNotes: parseInt(stats.totalGeneratesNotes) || 0,
+        totalOnlineMeeting: parseInt(stats.totalOnlineMeeting) || 0,
+        totalLiveMeeting: parseInt(stats.totalLiveMeeting) || 0,
+      },
+      message: 'History statistics retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('Get user history stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching history statistics',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   addHistory,
   getHistory,
   updateHistoryTitle,
   deleteHistory,
+  getUserHistoryStats,
 };
