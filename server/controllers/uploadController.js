@@ -96,34 +96,8 @@ const uploadAudio = async (req, res) => {
 const created = await createTranscription(ftpUrl);
 const resultTranscript = await pollTranscription(created.id);
 
-// 🎙️ Build speaker-attributed transcript
-// 🎙️ Build speaker-attributed transcript with better formatting
-let speakerText = "";
-
-if (resultTranscript.utterances && Array.isArray(resultTranscript.utterances)) {
-  // Filter out very short utterances (often mistakes)
-  const filteredUtterances = resultTranscript.utterances.filter(
-    u => (u.end - u.start) > 500 // at least 0.5 seconds
-  );
-  
-  speakerText = filteredUtterances
-    .map(u => {
-      const speaker = u.speaker || "Unknown";
-      const timestamp = `[${formatTime(u.start)}]`;
-      return `${speaker} ${timestamp}: ${u.text}`;
-    })
-    .join("\n\n"); // double newline for readability
-} else {
-  speakerText = resultTranscript.text;
-}
-
-// Helper function for timestamps
-function formatTime(ms) {
-  const seconds = Math.floor(ms / 1000);
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
+// 📝 Use plain transcript text (utterances removed)
+const speakerText = resultTranscript.text || "";
 
 
 // Optional: store transcript in DB
