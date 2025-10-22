@@ -1,7 +1,18 @@
 # OfficeMoM (Smart Minutes of Meeting)
 
-OfficeMoM is a web application that helps teams automatically **record meetings, generate transcripts, manage history, and share minutes of meeting (MoM)** efficiently.  
-It combines **frontend (React + TailwindCSS)** and **backend (Node.js + Express + MySQL)** technologies, providing a seamless experience for both meeting admins and participants.
+OfficeMoM is an intelligent AI Meeting Assistant designed to make meetings smarter, faster, and more productive. The platform automates meeting minutes seamlessly using advanced AI-powered transcription and smart formatting. With OfficeMoM, users can capture every important detail from online, offline, or recorded meetings — without having to take a single note manually.
+
+The platform offers four main features:
+
+1. Join Online Meetings (like Google Meet, Zoom, or Teams) where OfficeMoM can automatically record and transcribe conversations in real time.
+
+2. Generate Notes from Files, allowing users to upload audio or video recordings and instantly turn them into clear, organized meeting summaries.
+
+3. Start New Meetings for in-person sessions, making it easy to log and document face-to-face discussions.
+
+4. Meeting Master, a smart meeting bot that can join virtual meetings on behalf of users to capture and summarize everything automatically.
+
+The elegant, dark-themed interface provides quick access to all these tools with options to start a free trial or watch a demo, helping users explore the full capabilities of the platform. OfficeMoM helps teams save time, boost productivity, and ensure every meeting ends with actionable, structured outcomes — turning conversations into organized knowledge effortlessly.
 
 ---
 

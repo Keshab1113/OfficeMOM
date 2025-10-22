@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+  import React, { useEffect, useRef, useState } from "react";
 import {
   Plus,
   X,
@@ -16,15 +16,12 @@ import { setTableData } from "../../redux/meetingSlice";
 
 const TablePreview = ({ onSaveHeaders, isSending }) => {
   const [columns, setColumns] = useState([
-    { id: 1, heading: "Date" },
-    { id: 2, heading: "Meeting Title" },
-    { id: 3, heading: "Agenda / Objective" },
-    { id: 4, heading: "Key Discussion Points" },
-    { id: 5, heading: "Decisions Made" },
-    { id: 6, heading: "Action Items" },
-    { id: 7, heading: "Assigned To" },
-    { id: 8, heading: "Deadline" },
-    { id: 9, heading: "Status" },
+    { id: 1, heading: "Discussion Summary" },
+    { id: 2, heading: "Action Items" },
+    { id: 3, heading: "Responsibility" },
+    { id: 4, heading: "Target Date" },
+    { id: 5, heading: "Status" },
+    
   ]);
 
   // eslint-disable-next-line no-unused-vars
