@@ -15,7 +15,7 @@ const PricingOptions = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [billingCycle, setBillingCycle] = useState("monthly");
-  const [currency, setCurrency] = useState("USD"); // 'USD' or 'local'
+  const [currency, setCurrency] = useState("local"); // 'USD' or 'local'
   const { token } = useSelector((state) => state.auth);
   const nav = useNavigate();
   const { addToast } = useToast();
@@ -29,23 +29,21 @@ const PricingOptions = () => {
   const [localCurrency, setLocalCurrency] = useState("USD");
 
   const fetchPlans = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/plans`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        `${import.meta.env.VITE_BACKEND_URL}/api/plans`
       );
 
       if (response?.data?.success) {
         setPlans(response?.data?.data);
       } else {
-        setError(response?.data?.message);
+        setError(response?.data?.message || "Failed to fetch plans");
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Fetch plans error: ", err);
+      setError(err.response?.data?.message || err.message || "Network error");
     } finally {
       setLoading(false);
     }
@@ -89,7 +87,6 @@ const PricingOptions = () => {
         const res = await axios.get(url);
         const locationData = res.data.data;
         setLocation(locationData);
-
         // Set local currency based on location
         if (locationData?.currency) {
           setLocalCurrency(locationData.currency);

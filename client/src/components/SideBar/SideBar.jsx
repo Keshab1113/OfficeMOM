@@ -20,6 +20,7 @@ import {
   MdMeetingRoom,
 } from "react-icons/md";
 import { Zap, LogOut, CreditCard, Bot } from "lucide-react";
+import axios from "axios";
 
 const navItems = [
   {
@@ -68,6 +69,7 @@ const SideBar = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [subscription, setSubscription] = useState(null);
 
   const hiddenRoutes = ["/meeting", "/audio-notes", "/live-meeting"];
 
@@ -81,6 +83,28 @@ const SideBar = () => {
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      const fetchSubscription = async () => {
+        try {
+          const res = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          setSubscription(res.data.data);
+        } catch (err) {
+          console.error("Failed to load subscription details.", err);
+        }
+      };
+
+      fetchSubscription();
+    }
+  }, [token]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -213,10 +237,9 @@ const SideBar = () => {
                 className={({ isActive }) =>
                   `group border-0 border-none flex items-center cursor-pointer gap-4 p-4 rounded-2xl transition-all duration-300 relative overflow-hidden
                   ${isCollapsed ? "justify-center" : "justify-start"}
-                  ${
-                    isActive
-                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transform scale-[1.02]"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-md hover:border hover:border-white/50 dark:hover:border-gray-600/50"
+                  ${isActive
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transform scale-[1.02]"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-md hover:border hover:border-white/50 dark:hover:border-gray-600/50"
                   }`
                 }
               >
@@ -224,10 +247,9 @@ const SideBar = () => {
                   <>
                     <motion.div
                       className={`flex items-center justify-center rounded-xl min-w-12 min-h-12 shadow-lg
-                        ${
-                          isActive
-                            ? "bg-white/20"
-                            : "bg-gradient-to-br from-indigo-500 to-purple-500 group-hover:scale-110"
+                        ${isActive
+                          ? "bg-white/20"
+                          : "bg-gradient-to-br from-indigo-500 to-purple-500 group-hover:scale-110"
                         }`}
                       whileHover={{ scale: 1.1 }}
                       transition={{
@@ -237,9 +259,8 @@ const SideBar = () => {
                       }}
                     >
                       <IconComponent
-                        className={`w-6 h-6 ${
-                          isActive ? "text-white" : "text-white"
-                        }`}
+                        className={`w-6 h-6 ${isActive ? "text-white" : "text-white"
+                          }`}
                       />
                     </motion.div>
 
@@ -249,11 +270,10 @@ const SideBar = () => {
                           {item.heading}
                         </h3>
                         <p
-                          className={`text-xs mt-1 ${
-                            isActive
-                              ? "text-gray-300 dark:text-gray-400"
-                              : "text-gray-600 dark:text-gray-400"
-                          }`}
+                          className={`text-xs mt-1 ${isActive
+                            ? "text-gray-300 dark:text-gray-400"
+                            : "text-gray-600 dark:text-gray-400"
+                            }`}
                         >
                           {item.description}
                         </p>
@@ -275,58 +295,66 @@ const SideBar = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="bg-white/60 dark:bg-gray-700/60 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/30 dark:border-gray-600/50">
-            <div className="flex justify-between items-center">
-              {/* User Info */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <motion.div
-                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg relative overflow-hidden"
-                  whileHover={{ scale: 1.05, rotate: 2 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                  {profileImage?.profileImage ? (
-                    <img
-                      src={profileImage?.profileImage}
-                      alt="profile"
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    <IoPerson className="w-6 h-6 text-white" />
-                  )}
-                </motion.div>
+          <div className="relative bg-gradient-to-br from-indigo-500/90 via-purple-500/90 to-pink-500/90 dark:from-indigo-600/90 dark:via-purple-600/90 dark:to-pink-600/90 backdrop-blur-xl rounded-2xl p-[2px] shadow-2xl hover:shadow-indigo-500/50 dark:hover:shadow-purple-500/50 transition-all duration-300 group">
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 rounded-2xl blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-300 -z-10"></div>
 
+            <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl p-4">
+              <div className="flex justify-between items-center">
+                {/* User Info */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <motion.div
+                    className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 dark:from-cyan-500 dark:via-blue-600 dark:to-indigo-700 flex items-center justify-center shadow-lg relative overflow-hidden"
+                    // whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  >
+                    {/* Animated ring */}
+                    <div className="absolute inset-0 rounded-2xl border-2 border-white/50 animate-pulse"></div>
+
+                    {profileImage?.profileImage ? (
+                      <img
+                        src={profileImage?.profileImage}
+                        alt="profile"
+                        className="w-full h-full object-cover rounded-2xl"
+                      />
+                    ) : (
+                      <IoPerson className="w-7 h-7 text-white drop-shadow-lg" />
+                    )}
+
+
+                  </motion.div>
+
+                  {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                      <motion.h3
+                        className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 font-bold text-base truncate"
+
+                      >
+                        {fullName}
+                      </motion.h3>
+                      <motion.p
+                        className="text-gray-600 dark:text-gray-400 text-xs font-medium flex items-center gap-1 w-full min-w-0 overflow-hidden"
+                      >
+                        <span className="truncate block w-full">{email}</span>
+                      </motion.p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dropdown Menu Button */}
                 {!isCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <motion.h3
-                      className="text-gray-800 dark:text-white font-semibold text-sm truncate"
-                      whileHover={{ scale: 1.02 }}
+                  <div className="relative" ref={dropdownRef}>
+                    <motion.button
+                      className="p-2.5 ml-1 rounded-xl cursor-pointer bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 
+                        dark:from-indigo-600 dark:to-purple-700 dark:hover:from-indigo-700 dark:hover:to-purple-800 
+                        transition-all shadow-md hover:shadow-lg border border-indigo-300/50 dark:border-indigo-500/50"
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
                     >
-                      {fullName}
-                    </motion.h3>
-                    <motion.p
-                      className="text-gray-600 dark:text-gray-300 text-xs truncate"
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      {email}
-                    </motion.p>
+                      <BsThreeDotsVertical className="text-white text-sm drop-shadow" />
+                    </motion.button>
                   </div>
                 )}
               </div>
-
-              {/* Dropdown Menu Button */}
-              {!isCollapsed && (
-                <div className="relative" ref={dropdownRef}>
-                  <motion.button
-                    className="p-2 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-600/80 backdrop-blur-sm
-                      hover:bg-white dark:hover:bg-gray-500 transition-colors border border-white/30 dark:border-gray-500/50"
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <BsThreeDotsVertical className="text-gray-600 dark:text-gray-300 text-sm" />
-                  </motion.button>
-                </div>
-              )}
             </div>
           </div>
         </motion.div>
@@ -365,20 +393,20 @@ const SideBar = () => {
                   Total Time:
                 </span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base">
-                  {totalTimes || 300}
+                  {`${subscription?.total_minutes || 300} min`}
                 </span>
               </div>
 
               <div className="flex justify-between items-center relative z-10">
                 <span className="font-semibold text-gray-700 dark:text-gray-200">
-                  Total Remaining:
+                  Time Remaining:
                 </span>
                 <span className="text-teal-600 dark:text-teal-400 font-bold text-base">
-                  {totalRemainingTime || 300}
+                  {`${subscription?.total_remaining_time || 300} min`}
                 </span>
               </div>
 
-              <div
+              {/* <div
                 className="flex justify-between items-center relative z-10 pt-2 border-t border-purple-200/40 
                     dark:border-purple-400/30"
               >
@@ -388,7 +416,7 @@ const SideBar = () => {
                 <span className="text-purple-600 dark:text-purple-400 font-bold text-base">
                   {totalCreatedMoMs || 0}
                 </span>
-              </div>
+              </div> */}
             </div>
             {/* Menu Items with Colorful Hover Effects */}
             <Link
@@ -462,9 +490,8 @@ const SideBar = () => {
     <>
       {isMobile && !isSidebarOpen && (
         <motion.button
-          className={`p-2.5 fixed left-3  bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${
-            hideSidebar ? "top-3" : "top-3"
-          } ${isMobile ? "z-50" : "z-40"}`}
+          className={`p-2.5 fixed left-3  bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${hideSidebar ? "top-3" : "top-3"
+            } ${isMobile ? "z-50" : "z-40"}`}
           onClick={() => setIsSidebarOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

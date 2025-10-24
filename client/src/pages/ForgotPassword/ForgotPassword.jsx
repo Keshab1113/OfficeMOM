@@ -201,7 +201,7 @@ const ForgotPassword = () => {
         <link rel="canonical" href="https://officemom.me/forgot-password" />
       </Helmet>
 
-      <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden py-10">
+      <section className="relative w-full min-h-screen overflow-hidden flex items-center justify-center">
         {/* Background with gradient and patterns */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
           {/* Animated background elements */}
@@ -216,419 +216,416 @@ const ForgotPassword = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <button
-          onClick={toggleTheme}
-          className="absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+
+        <div className=" z-10 overflow-y-auto max-h-screen">
+          <button
+            onClick={toggleTheme}
+            className="absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
               shadow-lg border border-white/30 dark:border-gray-700/50
               hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
               text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          {isDarkMode ? (
-            <MdLightMode className="text-xl" />
-          ) : (
-            <MdDarkMode className="text-xl" />
-          )}
-        </button>
-
-        {/* Main content */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left side - Branding and Info */}
-            <div className="text-center lg:text-left space-y-8">
-              <div className="flex items-center justify-center lg:justify-start space-x-3">
-                <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
-                  <img src="/logo.webp" alt="logo" loading="lazy" />
-                </div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                  OfficeMoM
-                </span>
-              </div>
-
-              <div className="space-y-6">
-                <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
-                  Reset Your{" "}
-                  <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    Password
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? (
+              <MdLightMode className="text-xl" />
+            ) : (
+              <MdDarkMode className="text-xl" />
+            )}
+          </button>
+          {/* Main content */}
+          <div className="max-w-7xl mx-auto px-4 py-20">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              {/* Left side - Branding and Info */}
+              <div className="text-center lg:text-left space-y-8">
+                <div className="flex items-center justify-center lg:justify-start space-x-3">
+                  <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+                    <img src="/logo.webp" alt="logo" loading="lazy" />
+                  </div>
+                  <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                    OfficeMoM
                   </span>
-                </h1>
-                <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
-                  Secure your account with a new password. We'll help you get
-                  back to productive meetings in no time.
-                </p>
-              </div>
+                </div>
 
-              {/* Security features */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                  <Shield className="w-5 h-5 text-green-500" />
-                  <span>End-to-end encrypted process</span>
-                </div>
-                <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  <span>Instant email verification</span>
-                </div>
-                <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                  <Lock className="w-5 h-5 text-green-500" />
-                  <span>Strong password requirements</span>
-                </div>
-              </div>
-
-              {/* Progress indicator */}
-              <div className="pt-4">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        step >= 1 ? "bg-indigo-600" : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <span
-                      className={`text-sm font-medium ${
-                        step >= 1 ? "text-indigo-600" : "text-gray-500"
-                      }`}
-                    >
-                      Verify Email
+                <div className="space-y-6">
+                  <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                    Reset Your{" "}
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      Password
                     </span>
+                  </h1>
+                  <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Secure your account with a new password. We'll help you get
+                    back to productive meetings in no time.
+                  </p>
+                </div>
+
+                {/* Security features */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                    <Shield className="w-5 h-5 text-green-500" />
+                    <span>End-to-end encrypted process</span>
                   </div>
-                  <div className="w-8 h-0.5 bg-gray-300"></div>
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        step >= 2 ? "bg-indigo-600" : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <span
-                      className={`text-sm font-medium ${
-                        step >= 2 ? "text-indigo-600" : "text-gray-500"
-                      }`}
-                    >
-                      New Password
-                    </span>
+                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    <span>Instant email verification</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                    <Lock className="w-5 h-5 text-green-500" />
+                    <span>Strong password requirements</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                    <Mail className="w-5 h-5 text-green-500" />
+                    <span>For OTP also check your SPAM folder</span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Right side - Form */}
-            <div className="flex justify-center lg:justify-end">
-              <div className="w-full max-w-md">
-                <form
-                  onSubmit={step === 1 ? sendOtp : resetPassword}
-                  className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:shadow-3xl"
-                >
-                  {/* Header */}
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full mx-auto flex items-center justify-center shadow-lg mb-4">
-                      {step === 1 ? (
-                        <Mail className="w-8 h-8 text-white" />
-                      ) : (
-                        <Lock className="w-8 h-8 text-white" />
-                      )}
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {step === 1 ? "Verify Your Email" : "Create New Password"}
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {step === 1
-                        ? "Enter your email to receive a verification code"
-                        : "Enter the code and set your new password"}
-                    </p>
-                  </div>
-
-                  {/* Step 1: Email */}
-                  {step === 1 && (
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Email Address
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                          </div>
-                          <input
-                            type="email"
-                            placeholder="Enter your email address"
-                            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={!validEmail || isProcessing}
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={() => setIsHovered(false)}
-                        className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                {/* Progress indicator */}
+                <div className="pt-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className={`w-3 h-3 rounded-full ${step >= 1 ? "bg-indigo-600" : "bg-gray-300"
+                          }`}
+                      ></div>
+                      <span
+                        className={`text-sm font-medium ${step >= 1 ? "text-indigo-600" : "text-gray-500"
+                          }`}
                       >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Sending Code...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Send Verification Code</span>
-                            <ArrowLeft
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                isHovered ? "translate-x-1" : ""
-                              }`}
-                            />
-                          </>
-                        )}
-                      </button>
-
-                      <div className="text-center">
-                        <button
-                          type="button"
-                          onClick={() => navigate("/login")}
-                          className="text-indigo-600 cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline flex items-center justify-center space-x-1 mx-auto"
-                        >
-                          <ArrowLeft className="w-4 h-4" />
-                          <span>Back to Sign In</span>
-                        </button>
-                      </div>
+                        Verify Email
+                      </span>
                     </div>
-                  )}
+                    <div className="w-8 h-0.5 bg-gray-300"></div>
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className={`w-3 h-3 rounded-full ${step >= 2 ? "bg-indigo-600" : "bg-gray-300"
+                          }`}
+                      ></div>
+                      <span
+                        className={`text-sm font-medium ${step >= 2 ? "text-indigo-600" : "text-gray-500"
+                          }`}
+                      >
+                        New Password
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Step 2: OTP + New Password */}
-                  {step === 2 && (
-                    <div className="space-y-6">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                            Verification Code
+              {/* Right side - Form */}
+              <div className="flex justify-center lg:justify-end">
+                <div className="w-full max-w-md">
+                  <form
+                    onSubmit={step === 1 ? sendOtp : resetPassword}
+                    className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:shadow-3xl"
+                  >
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                      <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full mx-auto flex items-center justify-center shadow-lg mb-4">
+                        {step === 1 ? (
+                          <Mail className="w-8 h-8 text-white" />
+                        ) : (
+                          <Lock className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                        {step === 1 ? "Verify Your Email" : "Create New Password"}
+                      </h2>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {step === 1
+                          ? "Enter your email to receive a verification code"
+                          : "Enter the code and set your new password"}
+                      </p>
+                    </div>
+
+                    {/* Step 1: Email */}
+                    {step === 1 && (
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Email Address
                           </label>
-                          <div className="flex justify-center space-x-3">
-                            {otp.map((digit, index) => (
-                              <input
-                                key={index}
-                                id={`otp-${index}`}
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                maxLength="1"
-                                className="w-12 h-12 text-center text-xl font-bold bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all duration-300 text-gray-900 dark:text-white shadow-sm"
-                                value={digit}
-                                onChange={(e) =>
-                                  handleOtpChange(index, e.target.value)
-                                }
-                                onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                                onPaste={(e) => {
-                                  e.preventDefault();
-                                  const pastedData =
-                                    e.clipboardData.getData("text");
-                                  if (/^[0-9]{6}$/.test(pastedData)) {
-                                    const newOtp = pastedData.split("");
-                                    setOtp(newOtp);
-                                  }
-                                }}
-                              />
-                            ))}
-                          </div>
-
-                          {/* Timer and Resend */}
-                          <div className="text-center mt-3">
-                            {timer > 0 ? (
-                              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                Resend code in{" "}
-                                <span className="font-mono font-bold text-indigo-600">
-                                  {String(timer).padStart(2, "0")}s
-                                </span>
-                              </p>
-                            ) : (
-                              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                Didn't receive the code?
-                              </p>
-                            )}
+                          <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                            </div>
+                            <input
+                              type="email"
+                              placeholder="Enter your email address"
+                              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                            />
                           </div>
                         </div>
 
-                        {canResend && (
-                          <div className="text-center">
+                        <button
+                          type="submit"
+                          disabled={!validEmail || isProcessing}
+                          onMouseEnter={() => setIsHovered(true)}
+                          onMouseLeave={() => setIsHovered(false)}
+                          className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span>Sending Code...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Send Verification Code</span>
+                              <ArrowLeft
+                                className={`w-5 h-5 transition-transform duration-200 ${isHovered ? "translate-x-1" : ""
+                                  }`}
+                              />
+                            </>
+                          )}
+                        </button>
+
+                        <div className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => navigate("/login")}
+                            className="text-indigo-600 cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline flex items-center justify-center space-x-1 mx-auto"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span>Back to Sign In</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 2: OTP + New Password */}
+                    {step === 2 && (
+                      <div className="space-y-6">
+                        <div className="space-y-0">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
+                              Verification Code
+                            </label>
+                            <div className="flex justify-center space-x-3">
+                              {otp.map((digit, index) => (
+                                <input
+                                  key={index}
+                                  id={`otp-${index}`}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength="1"
+                                  className="w-12 h-12 text-center text-xl font-bold bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all duration-300 text-gray-900 dark:text-white shadow-sm"
+                                  value={digit}
+                                  onChange={(e) =>
+                                    handleOtpChange(index, e.target.value)
+                                  }
+                                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                  onPaste={(e) => {
+                                    e.preventDefault();
+                                    const pastedData =
+                                      e.clipboardData.getData("text");
+                                    if (/^[0-9]{6}$/.test(pastedData)) {
+                                      const newOtp = pastedData.split("");
+                                      setOtp(newOtp);
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Timer and Resend */}
+                            <div className="text-center mt-3">
+                              {timer > 0 ? (
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                                  Resend code in{" "}
+                                  <span className="font-mono font-bold text-indigo-600">
+                                    {String(timer).padStart(2, "0")}s
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                                  Didn't receive the code?
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {canResend && (
+                            <div className="text-center">
+                              <button
+                                type="button"
+                                disabled={isProcessingResend}
+                                className="text-indigo-600 disabled:cursor-not-allowed cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
+                                onClick={handleResendOtp}
+                              >
+                                {isProcessingResend
+                                  ? "Sending code..."
+                                  : "Resend verification code"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            New Password
+                          </label>
+                          <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                            </div>
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Create a strong password"
+                              className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              required
+                            />
                             <button
                               type="button"
-                              disabled={isProcessingResend}
-                              className="text-indigo-600 disabled:cursor-not-allowed cursor-pointer dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 hover:underline"
-                              onClick={handleResendOtp}
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                             >
-                              {isProcessingResend
-                                ? "Sending code..."
-                                : "Resend verification code"}
+                              {showPassword ? (
+                                <EyeOff className="h-5 w-5" />
+                              ) : (
+                                <Eye className="h-5 w-5" />
+                              )}
                             </button>
                           </div>
-                        )}
-                      </div>
 
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          New Password
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                          </div>
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Create a strong password"
-                            className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
-                            ) : (
-                              <Eye className="h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Password Strength Indicator */}
-                        {password && (
-                          <div className="space-y-2 mt-3">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-600 dark:text-gray-400">
-                                Password strength
-                              </span>
-                              <span
-                                className={`font-medium ${
-                                  strengthScore >= 4
+                          {/* Password Strength Indicator */}
+                          {password && (
+                            <div className="space-y-2 mt-3">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Password strength
+                                </span>
+                                <span
+                                  className={`font-medium ${strengthScore >= 4
                                     ? "text-green-600"
                                     : strengthScore >= 3
-                                    ? "text-yellow-600"
-                                    : "text-red-600"
-                                }`}
-                              >
-                                {strengthScore >= 4
-                                  ? "Strong"
-                                  : strengthScore >= 3
-                                  ? "Medium"
-                                  : "Weak"}
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full transition-all duration-300 ${
-                                  strengthScore >= 4
+                                      ? "text-yellow-600"
+                                      : "text-red-600"
+                                    }`}
+                                >
+                                  {strengthScore >= 4
+                                    ? "Strong"
+                                    : strengthScore >= 3
+                                      ? "Medium"
+                                      : "Weak"}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all duration-300 ${strengthScore >= 4
                                     ? "bg-green-500"
                                     : strengthScore >= 3
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                                }`}
-                                style={{
-                                  width: `${(strengthScore / 5) * 100}%`,
-                                }}
-                              ></div>
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                    }`}
+                                  style={{
+                                    width: `${(strengthScore / 5) * 100}%`,
+                                  }}
+                                ></div>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Confirm Password
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                          </div>
-                          <input
-                            type={showConfirm ? "text" : "password"}
-                            placeholder="Confirm your new password"
-                            className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
-                              confirm && !passwordsMatch
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Confirm Password
+                          </label>
+                          <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                            </div>
+                            <input
+                              type={showConfirm ? "text" : "password"}
+                              placeholder="Confirm your new password"
+                              className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${confirm && !passwordsMatch
                                 ? "border-red-500 focus:ring-red-500"
                                 : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-transparent group-hover:border-gray-400 dark:group-hover:border-gray-500"
-                            }`}
-                            value={confirm}
-                            onChange={(e) => setConfirm(e.target.value)}
-                            required
-                          />
+                                }`}
+                              value={confirm}
+                              onChange={(e) => setConfirm(e.target.value)}
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirm(!showConfirm)}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            >
+                              {showConfirm ? (
+                                <EyeOff className="h-5 w-5" />
+                              ) : (
+                                <Eye className="h-5 w-5" />
+                              )}
+                            </button>
+                          </div>
+                          {confirm && !passwordsMatch && (
+                            <p className="text-red-500 text-xs mt-1">
+                              Passwords do not match
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={
+                            isProcessing ||
+                            otp.some((digit) => !digit) ||
+                            !strongPassword ||
+                            !passwordsMatch
+                          }
+                          className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-blue-600 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        >
+                          {isProcessing ? (
+                            <div className="flex items-center justify-center space-x-2">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span>Resetting Password...</span>
+                            </div>
+                          ) : (
+                            "Reset Password"
+                          )}
+                        </button>
+
+                        <div className="text-center">
                           <button
                             type="button"
-                            onClick={() => setShowConfirm(!showConfirm)}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            onClick={() => {
+                              setStep(1);
+                              setOtp(["", "", "", "", "", ""]);
+                              setTimer(0);
+                              setCanResend(false);
+                              setStep(1);
+                            }}
+                            className="text-gray-500 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-200 flex items-center justify-center mx-auto space-x-1"
                           >
-                            {showConfirm ? (
-                              <EyeOff className="h-5 w-5" />
-                            ) : (
-                              <Eye className="h-5 w-5" />
-                            )}
+                            <ArrowLeft className="w-4 h-4" />
+                            <span>Back to email verification</span>
                           </button>
                         </div>
-                        {confirm && !passwordsMatch && (
-                          <p className="text-red-500 text-xs mt-1">
-                            Passwords do not match
-                          </p>
-                        )}
                       </div>
+                    )}
+                  </form>
 
-                      <button
-                        type="submit"
-                        disabled={
-                          isProcessing ||
-                          otp.some((digit) => !digit) ||
-                          !strongPassword ||
-                          !passwordsMatch
-                        }
-                        className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:from-green-600 hover:to-blue-600 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                      >
-                        {isProcessing ? (
-                          <div className="flex items-center justify-center space-x-2">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Resetting Password...</span>
-                          </div>
-                        ) : (
-                          "Reset Password"
-                        )}
-                      </button>
-
-                      <div className="text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStep(1);
-                            setOtp(["", "", "", "", "", ""]);
-                            setTimer(0);
-                            setCanResend(false);
-                            setStep(1);
-                          }}
-                          className="text-gray-500 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium transition-colors duration-200 flex items-center justify-center mx-auto space-x-1"
-                        >
-                          <ArrowLeft className="w-4 h-4" />
-                          <span>Back to email verification</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </form>
-
-                {/* Security Notice */}
-                <div className="mt-6 text-center">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
-                    <Shield className="w-3 h-3" />
-                    <span>
-                      Your security is our priority. All data is encrypted.
-                    </span>
-                  </p>
+                  {/* Security Notice */}
+                  <div className="mt-6 text-center">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
+                      <Shield className="w-3 h-3" />
+                      <span>
+                        Your security is our priority. All data is encrypted.
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
         {/* Floating elements */}
         <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>

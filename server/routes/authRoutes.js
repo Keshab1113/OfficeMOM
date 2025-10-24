@@ -8,6 +8,7 @@ const {
   uploadProfilePicture,
   sendPasswordResetOtp,
   resetPasswordWithOtp,
+  resetPasswordWithoutOtp,
 } = require("../controllers/authController.js");
 const authMiddleware = require("../middlewares/authMiddleware.js");
 const multer = require("multer");
@@ -32,6 +33,7 @@ router.post(
 );
 router.post("/forgot-password/send-otp", sendPasswordResetOtp);
 router.post("/forgot-password/reset", resetPasswordWithOtp);
+router.put("/forgot-password/reset-without-otp", resetPasswordWithoutOtp);
 
 
 

@@ -37,9 +37,9 @@ const features = [
     icon: (
       <CheckCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
     ),
-    title: "Task Tracking",
+    title: "Meeting Bot (Coming Soon)",
     description:
-      "Automatically extract action items and assign tasks to team members.",
+      "Automatically join meetings to take notes and generate minutes for you.",
   },
 ];
 

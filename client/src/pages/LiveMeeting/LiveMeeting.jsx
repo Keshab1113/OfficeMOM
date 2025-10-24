@@ -878,9 +878,9 @@ const LiveMeeting = () => {
                       </>
                     )}
                   </button>
-                  <p className="text-xs text-gray-400 mt-3 text-center">
+                  {/* <p className="text-xs text-gray-400 mt-3 text-center">
                     🆓 Meeting transcription is completely free now
-                  </p>
+                  </p> */}
 
                   <MultipleAudioPlayer
                     onContinue={continueNextProcess}

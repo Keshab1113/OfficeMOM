@@ -217,8 +217,35 @@ const resendOtp = async (req, res) => {
       to: email,
       subject: "Resend OTP",
       replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
-      text: `Your new OTP is ${otp}`,
-      html: `<p>Your new OTP is <b>${otp}</b></p>`,
+      subject: "Resend OTP - OfficeMoM",
+      html: `
+      <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8" /><title>Resend OTP</title></head>
+        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f5f5f5;">
+          <table align="center" cellpadding="0" cellspacing="0" width="100%" style="padding:20px 0;">
+            <tr><td align="center">
+              <table cellpadding="0" cellspacing="0" width="600" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+                <tr><td style="background-color:#4a90e2; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
+                  OfficeMoM Resend OTP
+                </td></tr>
+                <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
+                  <p>Hello,</p>
+                  <p>Your new OTP is:</p>
+                  <p style="text-align:center; margin:30px 0;">
+                    <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
+                  </p>
+                  <p>This OTP is valid for <b>10 minutes</b>.</p>
+                  <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
+                </td></tr>
+                <tr><td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#777777;">
+                  &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>`,
     });
 
     res.json({ message: "OTP resent successfully" });
@@ -306,10 +333,13 @@ const sendPasswordResetOtp = async (req, res) => {
       "SELECT id, fullName FROM users WHERE email = ?",
       [email]
     );
+
+    // Check if user exists - return error if not found
     if (rows.length === 0) {
-      return res
-        .status(200)
-        .json({ message: "If the email exists, an OTP has been sent" });
+      return res.status(404).json({
+        success: false,
+        message: "User with this email does not exist"
+      });
     }
 
     const otp = String(crypto.randomInt(100000, 1000000)).padStart(6, "0");
@@ -326,23 +356,45 @@ const sendPasswordResetOtp = async (req, res) => {
       replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
       subject: "Password Reset OTP - OfficeMoM",
       html: `
-        <div style="font-family:Arial,sans-serif">
-          <h2>OfficeMoM Password Reset</h2>
-          <p>Hello${rows[0].fullName ? ` ${rows[0].fullName}` : ""},</p>
-          <p>Use the OTP below to reset your password. It is valid for <b>10 minutes</b>.</p>
-          <div style="margin:20px 0">
-            <span style="display:inline-block;padding:12px 24px;background:#4a90e2;color:#fff;font-size:20px;border-radius:6px;letter-spacing:2px">${otp}</span>
-          </div>
-          <p>If you did not request this, you can ignore this email.</p>
-          <p>— OfficeMoM Team</p>
-        </div>
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8" /><title>OfficeMoM Password Reset</title></head>
+        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f5f5f5;">
+          <table align="center" cellpadding="0" cellspacing="0" width="100%" style="padding:20px 0;">
+            <tr><td align="center">
+              <table cellpadding="0" cellspacing="0" width="600" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+                <tr><td style="background-color:#4a90e2; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
+                  OfficeMoM Password Reset
+                </td></tr>
+                <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
+                  <p>Hello ${rows[0].fullName ? ` ${rows[0].fullName}` : ""},</p>
+                  <p>Use the OTP below to reset your password. It is valid for <b>10 minutes</b>:</p>
+                  <p style="text-align:center; margin:30px 0;">
+                    <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
+                  </p>
+                  <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
+                </td></tr>
+                <tr><td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#777777;">
+                  &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>
       `,
     });
 
-    return res.status(200).json({ message: "OTP sent if email exists" });
+    return res.status(200).json({
+      success: true,
+      message: "Password reset OTP has been sent to your email"
+    });
   } catch (err) {
     console.error("sendPasswordResetOtp error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later."
+    });
   }
 };
 
@@ -401,6 +453,70 @@ const resetPasswordWithOtp = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+const resetPasswordWithoutOtp = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and new password are required"
+      });
+    }
+
+    // Find user
+    const [rows] = await db.query(
+      "SELECT id, password FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const user = rows[0];
+
+    // Validate that new password is different from current password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password"
+      });
+    }
+
+    // Validate password strength
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword);
+    if (!strongPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long and include uppercase letter, lowercase letter, and a number"
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await db.query(
+      "UPDATE users SET password = ? WHERE email = ?",
+      [hashedPassword, email]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully"
+    });
+  } catch (err) {
+    console.error("resetPasswordWithoutOtp error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later."
+    });
+  }
+};
 
 module.exports = {
   signup,
@@ -411,4 +527,5 @@ module.exports = {
   uploadProfilePicture,
   sendPasswordResetOtp,
   resetPasswordWithOtp,
+  resetPasswordWithoutOtp
 };
