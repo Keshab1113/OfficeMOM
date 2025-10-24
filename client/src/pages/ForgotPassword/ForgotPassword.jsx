@@ -275,6 +275,10 @@ const ForgotPassword = () => {
                     <Lock className="w-5 h-5 text-green-500" />
                     <span>Strong password requirements</span>
                   </div>
+                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                    <Mail className="w-5 h-5 text-green-500" />
+                    <span>For OTP also check your SPAM folder</span>
+                  </div>
                 </div>
 
                 {/* Progress indicator */}
@@ -396,7 +400,7 @@ const ForgotPassword = () => {
                     {/* Step 2: OTP + New Password */}
                     {step === 2 && (
                       <div className="space-y-6">
-                        <div className="space-y-4">
+                        <div className="space-y-0">
                           <div>
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
                               Verification Code

@@ -366,8 +366,9 @@ const Subscription = () => {
                       </div>
                     </div>
 
-                    {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
+                    
                       <div className="flex gap-3">
+                        {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
                         <button
                           onClick={cancelSubscription}
                           className="px-4 cursor-pointer py-2 border border-red-300 text-red-600 dark:text-red-400 
@@ -375,8 +376,16 @@ const Subscription = () => {
                         >
                           Cancel Subscription
                         </button>
+                        )}
+                        <button
+                          onClick={() => nav("/pricing")}
+                          className="px-4 cursor-pointer py-2 border border-green-300 text-green-600 dark:text-green-400 
+                        hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                        >
+                          Upgrade Subscription
+                        </button>
                       </div>
-                    )}
+                    
                   </div>
 
                   {/* Billing History */}

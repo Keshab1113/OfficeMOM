@@ -685,9 +685,9 @@ const Meeting = () => {
                           <FileText className="w-6 h-6" />
                           Start Meeting (Minutes of Meeting)
                         </button>
-                        <p className={`text-xs text-gray-400 mt-3 text-center ${activeTab === 2 ? "hidden" : ""}`}>
+                        {/* <p className={`text-xs text-gray-400 mt-3 text-center ${activeTab === 2 ? "hidden" : ""}`}>
                           🆓 Meeting transcription is completely free now
-                        </p>
+                        </p> */}
                       </div>
                     </section>
                     <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0">

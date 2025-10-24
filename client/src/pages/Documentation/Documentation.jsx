@@ -27,9 +27,9 @@ const sections = [
     Start by creating an account, uploading meeting audio, and generating transcripts.`,
     features: [
       "Create your account in under 2 minutes",
-      "Set up your team workspace",
+      "Choose a subscription plan",
       "Configure your meeting preferences",
-      "Invite team members to collaborate",
+      "Upload your first audio file",
     ],
   },
   {
@@ -40,7 +40,7 @@ const sections = [
     Supported formats: MP3, WAV, M4A, MP4, and MOV. The system will securely store your media and generate transcripts.`,
     features: [
       "Drag & drop file upload",
-      "Batch upload support",
+      "Supports multiple formats",
       "Automatic format detection",
       "Secure cloud storage",
     ],
@@ -58,19 +58,19 @@ const sections = [
       "Customizable templates",
     ],
   },
-  {
-    id: "api",
-    title: "API Integration",
-    icon: Code,
-    content: `Developers can integrate OfficeMoM via our REST API. 
-    Use your API key from the dashboard to upload files, fetch transcripts, and manage meeting data programmatically.`,
-    features: [
-      "RESTful API endpoints",
-      "Webhook support",
-      "Comprehensive SDKs",
-      "Rate limiting & quotas",
-    ],
-  },
+  // {
+  //   id: "api",
+  //   title: "API Integration",
+  //   icon: Code,
+  //   content: `Developers can integrate OfficeMoM via our REST API. 
+  //   Use your API key from the dashboard to upload files, fetch transcripts, and manage meeting data programmatically.`,
+  //   features: [
+  //     "RESTful API endpoints",
+  //     "Webhook support",
+  //     "Comprehensive SDKs",
+  //     "Rate limiting & quotas",
+  //   ],
+  // },
   {
     id: "faq",
     title: "Frequently Asked Questions",
@@ -81,14 +81,14 @@ const sections = [
       "Data security & privacy",
       "Format compatibility",
       "Accuracy & limitations",
-      "Team collaboration features",
+      "Features and Pricing",
     ],
   },
 ];
 
 const quickStats = [
   { icon: Zap, label: "Setup Time", value: "2 minutes" },
-  { icon: Users, label: "Team Members", value: "Unlimited" },
+  { icon: Users, label: "Subscription", value: "4 options" },
   { icon: Shield, label: "Security", value: "Enterprise-grade" },
   { icon: Clock, label: "Support", value: "24/7" },
 ];

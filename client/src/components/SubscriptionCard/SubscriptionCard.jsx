@@ -85,7 +85,7 @@ const SubscriptionCard = () => {
     };
     const mySubscription = plans.find((plan => plan.name === subscription?.plan_name));
 
-   
+
 
     const features = mySubscription?.features || [
         "Unlimited meetings",
@@ -119,7 +119,7 @@ const SubscriptionCard = () => {
                     <span className="font-bold text-gray-800 dark:text-white capitalize">{subscription?.billing_cycle || "N/A"}</span>
                 </div>
 
-                
+
             </div>
 
             <div className="space-y-3 mb-6">
@@ -140,13 +140,21 @@ const SubscriptionCard = () => {
                     </motion.div>
                 ))}
             </div>
-
-            <motion.button
-                className="w-full cursor-pointer py-4 px-6 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 transition-all"
-                onClick={() => navigate("/subscription")}
-            >
-                Manage Subscription
-            </motion.button>
+            {subscription?.plan_name === "Free" ? (
+                <motion.button
+                    className="w-full cursor-pointer py-4 px-6 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 transition-all"
+                    onClick={() => navigate("/pricing")}
+                >
+                    Upgrade Subscription
+                </motion.button>
+            ) : (
+                <motion.button
+                    className="w-full cursor-pointer py-4 px-6 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 transition-all"
+                    onClick={() => navigate("/subscription")}
+                >
+                    Manage Subscription
+                </motion.button>
+            )}
         </motion.div>
     );
 };

@@ -25,7 +25,7 @@ const SkeletonItem = () => (
   </div>
 );
 
-const AllHistory = ({ title, NeedFor }) => {
+const AllHistory = ({ title, NeedFor, height }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [history, setHistory] = useState([]);
   const [notCompleted, setNotCompleted] = useState([]);
@@ -172,7 +172,7 @@ const AllHistory = ({ title, NeedFor }) => {
   const allData = title ? notCompleted : history;
   const displayHistory =
     allData.length > 2 ? [...allData, ...allData] : allData;
-    
+
   useEffect(() => {
     if (allData.length > 2 && !isPaused && !editingId && !menuOpenId) {
       controls.start({
@@ -189,7 +189,7 @@ const AllHistory = ({ title, NeedFor }) => {
   }, [allData.length, isPaused, editingId, menuOpenId, controls]);
 
   return (
-    <div className={`h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900/30 bg-white p-4 flex flex-col border dark:border-gray-700 border-gray-200 relative ${NeedFor && " md:h-[80vh]"}`}>
+    <div className={`h-[18rem] shadow-lg rounded-md w-full dark:bg-gray-900/30 bg-white p-4 flex flex-col border dark:border-gray-700 border-gray-200 relative ${NeedFor && (height || " md:h-[80vh]")}`}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
           <History className="text-purple-600 dark:text-purple-400 w-5 h-5" />
@@ -202,7 +202,7 @@ const AllHistory = ({ title, NeedFor }) => {
       {/* Show skeleton loading state */}
       {isLoading ? (
         <div className="flex-1 space-y-3">
-          {Array.from({ length: NeedFor?4:2 }).map((_, index) => (
+          {Array.from({ length: NeedFor ? 4 : 2 }).map((_, index) => (
             <SkeletonItem key={index} />
           ))}
         </div>
@@ -249,9 +249,8 @@ const AllHistory = ({ title, NeedFor }) => {
                       setIsPaused(false);
                       setHoveredItemId(null);
                     }}
-                    className={`bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg p-3 shadow-sm transition-all duration-300 relative border border-transparent ${
-                      isHovered ? "shadow-md" : ""
-                    }`}
+                    className={`bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg p-3 shadow-sm transition-all duration-300 relative border border-transparent ${isHovered ? "shadow-md" : ""
+                      }`}
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex gap-2 justify-start items-center flex-1 min-w-0">

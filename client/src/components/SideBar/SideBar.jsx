@@ -399,7 +399,7 @@ const SideBar = () => {
 
               <div className="flex justify-between items-center relative z-10">
                 <span className="font-semibold text-gray-700 dark:text-gray-200">
-                  Total Remaining:
+                  Time Remaining:
                 </span>
                 <span className="text-teal-600 dark:text-teal-400 font-bold text-base">
                   {`${subscription?.total_remaining_time || 300} min`}

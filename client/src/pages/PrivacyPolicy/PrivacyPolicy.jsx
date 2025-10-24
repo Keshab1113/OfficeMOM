@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
       icon: UserCheck,
       title: "Information We Collect",
       content:
-        "We may collect personal information such as your name, email, and meeting recordings when you use OfficeMoM to manage and generate meeting minutes. This includes audio/video data for transcription purposes and account information for service delivery.",
+        "We may collect personal information such as your name, email, and meeting recordings when you use OfficeMoM to manage and generate meeting minutes. This includes audio/video data for Minutes of Meeting purpose and account information for service delivery.",
     },
     {
       icon: Eye,
