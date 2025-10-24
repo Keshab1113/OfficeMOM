@@ -55,12 +55,13 @@ const GenerateNotes = () => {
         setError("Invalid file type. Please upload an audio or video file.");
         return;
       }
-      if (file.size > 10.74 * 1024 * 1024 * 1024) {
-        setError("File size exceeds maximum limit of 10.74GB");
-        return;
-      }
-      setSelectedFile(file);
-      setError(null);
+      if (file.size > 2 * 1024 * 1024 * 1024) {
+  setError("File size exceeds maximum limit of 2GB");
+  return;
+}
+setSelectedFile(file);
+setError(null);
+
     }
   };
 
@@ -348,7 +349,7 @@ const GenerateNotes = () => {
                                 Supported: MP3, WAV, MP4, WebM
                               </p>
                               <p className="text-xs text-gray-400">
-                                Max size: 10.74GB
+                                Max size: 2 GB
                               </p>
                             </>
                           )}
@@ -378,7 +379,7 @@ const GenerateNotes = () => {
                             }}
                           />
                           <p className="text-xs text-gray-400 mt-2 self-end">
-                            Max size: 10.74GB
+                            Max size: 2 GB
                           </p>
                         </div>
                       )}
