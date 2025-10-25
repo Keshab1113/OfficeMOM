@@ -2,6 +2,7 @@
 
 const axios = require("axios");
 const db = require("../config/db.js");
+const { semanticChunkTranscript } = require("../utils/semanticChunker");
 
 // =====================
 // Helper: Delay function
@@ -40,57 +41,57 @@ async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 2000) {
 // =====================
 // Helper: Chunk Transcript Text
 // =====================
-function chunkTranscript(text) {
-  const totalWords = text.split(/\s+/).length;
+// function chunkTranscript(text) {
+//   const totalWords = text.split(/\s+/).length;
 
-  let maxWords = 800;
-  let overlapSentences = 1;
+//   let maxWords = 800;
+//   let overlapSentences = 1;
 
-  if (totalWords <= 800) {
-    maxWords = totalWords;
-    overlapSentences = 0;
-  } else if (totalWords <= 2000) {
-    maxWords = 500;
-    overlapSentences = 1;
-  } else if (totalWords <= 5000) {
-    maxWords = 700;
-    overlapSentences = 2;
-  } else if (totalWords <= 10000) {
-    maxWords = 900;
-    overlapSentences = 2;
-  } else {
-    maxWords = 1000;
-    overlapSentences = 3;
-  }
+//   if (totalWords <= 800) {
+//     maxWords = totalWords;
+//     overlapSentences = 0;
+//   } else if (totalWords <= 2000) {
+//     maxWords = 500;
+//     overlapSentences = 1;
+//   } else if (totalWords <= 5000) {
+//     maxWords = 700;
+//     overlapSentences = 2;
+//   } else if (totalWords <= 10000) {
+//     maxWords = 900;
+//     overlapSentences = 2;
+//   } else {
+//     maxWords = 1000;
+//     overlapSentences = 3;
+//   }
 
-  const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
-  const chunks = [];
-  let currentChunk = [];
-  let currentWordCount = 0;
+//   const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
+//   const chunks = [];
+//   let currentChunk = [];
+//   let currentWordCount = 0;
 
-  for (let i = 0; i < sentences.length; i++) {
-    const sentence = sentences[i];
-    const words = sentence.trim().split(/\s+/).length;
+//   for (let i = 0; i < sentences.length; i++) {
+//     const sentence = sentences[i];
+//     const words = sentence.trim().split(/\s+/).length;
 
-    if (currentWordCount + words > maxWords && currentChunk.length > 0) {
-      chunks.push(currentChunk.join(" "));
-      currentChunk = sentences.slice(Math.max(0, i - overlapSentences), i);
-      currentWordCount = currentChunk.join(" ").split(/\s+/).length;
-    }
+//     if (currentWordCount + words > maxWords && currentChunk.length > 0) {
+//       chunks.push(currentChunk.join(" "));
+//       currentChunk = sentences.slice(Math.max(0, i - overlapSentences), i);
+//       currentWordCount = currentChunk.join(" ").split(/\s+/).length;
+//     }
 
-    currentChunk.push(sentence);
-    currentWordCount += words;
-  }
+//     currentChunk.push(sentence);
+//     currentWordCount += words;
+//   }
 
-  if (currentChunk.length > 0) {
-    chunks.push(currentChunk.join(" "));
-  }
+//   if (currentChunk.length > 0) {
+//     chunks.push(currentChunk.join(" "));
+//   }
 
-  console.log(
-    `🧠 Total words: ${totalWords}, Chunk size: ${maxWords}, Total chunks: ${chunks.length}`
-  );
-  return chunks;
-}
+//   console.log(
+//     `🧠 Total words: ${totalWords}, Chunk size: ${maxWords}, Total chunks: ${chunks.length}`
+//   );
+//   return chunks;
+// }
 
 // =====================
 // Build Summary Prompt
@@ -105,6 +106,8 @@ EXTRACTION GUIDELINES:
 4. Maintain chronological flow and logical connections between topics
 5. Include ALL specific commitments, deadlines, and responsibilities mentioned
 6. DO NOT infer, interpret, or add information not present in the text
+7. When summarizing, retain the *exact factual tone and terminology* of the speaker — do not generalize or reinterpret key points.
+8. Avoid subjective adjectives like "important", "significant", etc., unless explicitly mentioned.
 
 SUMMARY STRUCTURE (150-250 words):
 - Opening: Meeting context and participants (if mentioned)
@@ -125,59 +128,159 @@ Return only the detailed summary. No preamble or additional commentary.
 // Build MoM prompt
 // =====================
 const buildPrompt = (text, headers) => `
-You are a precision extraction system for Minutes of Meeting (MoM) generation.
+You are an advanced Minutes of Meeting (MoM) extraction and generation system designed for precision, professionalism, and accuracy.
 
-CRITICAL INSTRUCTIONS:
-1. Extract ONLY information explicitly stated in the meeting summary.
-2. Create concise, meaningful MoM entries. Avoid long descriptions.
-3. Each MoM entry must cover ONE distinct topic, decision, or action discussed in the meeting.
-4. All header fields provided by the user MUST be filled. If a field is not explicitly mentioned, infer the closest relevant information without inventing facts.
-5. Apply the following formatting rule:
-   - The **first header** in the user-provided headers list (e.g., Discussion Summary) should have a **short content-based label** summarizing the topic, e.g., "Performance concern: Manager raised issues about evaluation accuracy."
-   - All other headers should contain **only the plain extracted content**, without any prefix.
+═══════════════════════════════════════════════════════════════════════════════
+CORE PRINCIPLES
+═══════════════════════════════════════════════════════════════════════════════
 
-6. Dates:
-   - If dates are explicitly mentioned in the summary (e.g., "December 31st", "31/12", "next Friday", "end of Q3"), extract and include them in the relevant fields.
-   - If dates are not explicitly mentioned, infer approximate timing intelligently based on context (e.g., "next quarter", "end of month") but do NOT invent exact dates.
-   - Always reflect the date as clearly as it appears or reasonably inferred from the summary.
+1. **ACCURACY FIRST**: Extract ONLY information explicitly stated or reasonably inferable from the meeting summary.
+2. **NO EMPTY FIELDS**: Every header field must be populated. No field should be left empty or contain placeholder text.
+3. **PROFESSIONAL TONE**: Use business-appropriate language, active voice, and clear, actionable statements.
+4. **CONCISENESS**: Keep descriptions brief yet comprehensive - aim for 1-2 sentences per field unless detail is necessary.
 
-7. Multiple items:
-   - If multiple distinct topics or decisions are present in the summary, create **separate MoM entries** for each.
+═══════════════════════════════════════════════════════════════════════════════
+EXTRACTION RULES
+═══════════════════════════════════════════════════════════════════════════════
 
-8. Accuracy:
-   - Do NOT hallucinate information.
-   - Only extract information present in the summary.
-   - Responsibilities, action items, or status must be based on what is explicitly mentioned or strongly implied.
+**RULE 1: Header-Specific Formatting**
+- **First Header Only** (typically "Discussion Summary" or similar): 
+  • Format: "[Topic Category]: [Concise description]"
+  • Example: "Budget Approval: Finance team presented Q4 budget projections"
+  • Keep under 100 characters when possible
+  
+- **All Other Headers**:
+  • Use plain, direct content without prefixes or labels
+  • Be specific and actionable
+  • Link logically to the first header's topic
 
-9. Detail:
-   - Include all headers with as much detail as possible from the summary.
-   - List items clearly and concisely, suitable for a professional MoM.
+**RULE 2: Field Population Strategy**
+For each header, follow this priority:
+1. **Explicit Information**: Use exact details from the summary
+2. **Strong Inference**: Derive from clear context (e.g., "team will review" → Responsibility: "Team")
+3. **Logical Deduction**: Use meeting context and business norms
+4. **Never**: Leave empty, use "N/A", "None", "TBD", or placeholders
 
-INPUTS:
-- Meeting Summary: ${text}
-- Headers: ${headers} (any list of headers user sets; the first header will receive the content-based label)
+**RULE 3: Multi-Topic Handling**
+- Create **separate MoM entries** for each distinct topic, decision, or action item
+- Each entry should be independently understandable
+- Maintain consistent header structure across all entries
 
-OUTPUT FORMAT:
-1. Return ONLY a JSON array, starting with [ and ending with ].
-2. Each object must include **all headers** provided by the user.
-3. Each entry should be concise, meaningful, and distinct.
-4. Only the **first header** should have a short content-based label; all other headers remain plain.
-5. Dates should be extracted or inferred intelligently as described above.
+**RULE 4: Date Intelligence**
+- **Explicit dates**: Use as stated (e.g., "March 15, 2025")
+- **Relative timeframes**: Convert to approximate dates (e.g., "next week" → "Early November 2025")
+- **Implied urgency**: Use context clues (e.g., "urgent" → "Within 3 days")
+- **No timeframe mentioned**: Infer reasonable deadline based on action type (e.g., routine follow-up → "End of month")
+- Always provide a date or timeframe - never leave date fields empty
 
-EXAMPLE:
-If headers = ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"], an entry should look like:
+**RULE 5: Cross-Column Linkage**
+Ensure logical consistency across all fields in each row:
+- **Action Items** must align with **Responsibility** assignments
+- **Target Dates** must be realistic for the **Action Items** described
+- **Status** must reflect the current state mentioned in the **Discussion Summary**
+- **Descriptions** should provide context for **Action Items**
 
-{
-  "Discussion Summary": "Performance concern: Manager raised issues about evaluation accuracy following recent incidents.",
-  "Action Items": "Team Leaders to share accountability for evaluation accuracy alongside Heads of Unit.",
-  "Responsibility": "Team Leaders and Heads of Unit",
-  "Target Date": "December 31st (or as per Q3 deadline mentioned in text)",
-  "Status": "In progress"
-}
+═══════════════════════════════════════════════════════════════════════════════
+CONTENT GUIDELINES
+═══════════════════════════════════════════════════════════════════════════════
 
-TASK:
-Using the headers provided (${headers}) and the meeting summary (${text}), extract all relevant MoM entries. Only the **first header** should have a **short content-based label**; all other headers should remain plain. Ensure all details are captured, dates are included where mentioned or inferred responsibly, and multiple topics are separated into distinct, accurate entries.
+**Discussion Summary / Description Fields:**
+- Lead with the topic category or issue type
+- Include key context: what was discussed, why it matters, what triggered it
+- Mention key stakeholders or departments involved
+- Length: 15-25 words optimal
+
+**Action Items:**
+- Use action verbs (e.g., "Review", "Implement", "Coordinate", "Approve")
+- Be specific about what needs to be done
+- Include measurable outcomes when possible
+- Format: "[Action verb] [specific task] [context/scope]"
+
+**Responsibility:**
+- List specific roles, names, or departments
+- Use consistent formatting: "Name/Role" or "Department Team"
+- For shared responsibility: "Team A & Team B" or "Team A (lead), Team B (support)"
+- Never use vague terms like "relevant team" without specifying who
+
+**Target Date / Deadline:**
+- Always provide a specific date or timeframe
+- Format: "MMM DD, YYYY" for specific dates (e.g., "Nov 15, 2025")
+- Format: "[Timeframe]" for ranges (e.g., "End of Q4 2025", "Mid-November 2025")
+- Add urgency indicators when relevant: "(High Priority)", "(Urgent)"
+
+**Status:**
+- Use standard statuses: "Not Started", "In Progress", "Pending Review", "Completed", "Blocked", "On Hold"
+- Add context when helpful: "In Progress (80% complete)", "Blocked (awaiting approval)"
+- Infer from discussion context if not explicitly stated
+
+═══════════════════════════════════════════════════════════════════════════════
+QUALITY STANDARDS
+═══════════════════════════════════════════════════════════════════════════════
+
+**Mandatory Checks:**
+✓ All headers filled with meaningful content
+✓ No empty fields, placeholders, or "N/A" entries
+✓ Logical consistency across row columns
+✓ Each entry represents one distinct topic
+✓ Professional language throughout
+✓ Dates provided for all time-sensitive items
+✓ Clear responsibility assignments
+✓ Actionable and specific descriptions
+
+**Formatting Standards:**
+- Use proper capitalization for names, departments, and titles
+- Maintain consistent verb tenses (present for status, future for actions)
+- Use oxford commas in lists
+- No excessive punctuation or formatting
+- Keep abbreviations standard and professional (e.g., "Q4", "EOD", "MVP")
+
+═══════════════════════════════════════════════════════════════════════════════
+INPUT DATA
+═══════════════════════════════════════════════════════════════════════════════
+
+**Meeting Summary:**
+${text}
+
+**Headers (in order):**
+${headers}
+
+Note: The first header will receive topic-based labeling; all subsequent headers will contain plain content.
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+**Format:** Valid JSON array only (must start with [ and end with ])
+
+**Structure:** Each object must contain ALL headers as keys with non-empty values
+
+**Validation:**
+- Minimum 1 entry, maximum based on distinct topics in summary
+- Each entry must be complete and independently meaningful
+- All cross-references between fields must be logically consistent
+- No duplicate entries for the same topic
+
+**Example Output Structure:**
+[
+  {
+    "${headers[0]}": "[Topic Label]: [Concise description with context and key stakeholders]",
+    "${headers[1]}": "[Specific, actionable content with clear deliverables]",
+    "${headers[2]}": "[Clearly assigned individual/team/department]",
+    "${headers[3]}": "[Specific date or reasonable timeframe]",
+    "${headers[4]}": "[Current status with context if relevant]"
+  }
+]
+
+═══════════════════════════════════════════════════════════════════════════════
+EXECUTION
+═══════════════════════════════════════════════════════════════════════════════
+
+Now, analyze the meeting summary and extract professional, accurate MoM entries following all rules above. Ensure every field is populated, all columns are logically linked, and the output is immediately usable for formal documentation.
+
+Generate the JSON array now:
 `;
+
+
 
 // =====================
 // Enhanced API Configuration
@@ -341,7 +444,8 @@ const processTranscript = async (req, res) => {
 
   try {
     // STEP 1: Chunk transcript
-    const chunks = chunkTranscript(transcript);
+    const chunks = await semanticChunkTranscript(transcript, process.env.OPENAI_API_KEY);
+
     console.log(`🧠 Chunking transcript into ${chunks.length} parts`);
 
     // STEP 2: Insert all chunks with pending status

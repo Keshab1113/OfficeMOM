@@ -170,24 +170,12 @@ setError(null);
     audio_id: audioID,
   };
 
-  // await addHistory(token, historyData, addToast);
+  
   setShowModal2(false);
   setShowModal(false);
 };
 
-  // const addHistory = async (token, historyData, addToast) => {
-  //   try {
-  //     await axios.post(
-  //       `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-  //       historyData,
-  //       { headers: { Authorization: `Bearer ${token}` } }
-  //     );
-      
-  //   } catch (err) {
-  //     console.error("Add history error:", err);
-  //     addToast("error", "Failed to add history");
-  //   }
-  // };
+  
 
   return (
     <>
