@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Disallow: /meeting
+Disallow: /audio-notes
+Disallow: /live-meeting
+
+Sitemap: https://officemom.me/sitemap-index.xml

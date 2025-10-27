@@ -1,13 +1,182 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.webp" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Minutes of the Meeting (OfficeMoM)</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/logo.webp" />
+
+  <!-- Basic SEO -->
+  <title>OfficeMoM – AI Assistant for Smart Meeting Minutes & Team Productivity</title>
+  <meta name="description"
+    content="OfficeMoM is your smart AI assistant that records meetings, generates minutes, and boosts productivity effortlessly." />
+
+  <meta name="keywords"
+    content="OfficeMoM, meeting minutes, AI assistant, MOM, productivity tool, team management, task manager" />
+  <meta name="author" content="OfficeMoM" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph for Google, LinkedIn & Facebook -->
+  <meta property="og:title" content="OfficeMoM – AI Assistant for Smart Meeting Minutes" />
+  <meta property="og:description"
+    content="Generate meeting minutes and boost team productivity using OfficeMoM." />
+  <meta property="og:image" content="/og-image.webp" />
+  <meta property="og:url" content="https://officemom.me" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="OfficeMoM – AI Assistant for Smart Meeting Minutes" />
+  <meta name="twitter:description"
+    content="Record meetings, generate MOM & enhance productivity with AI-powered OfficeMoM." />
+  <meta name="twitter:image" content="/og-image.webp" />
+
+  <!-- Mobile Viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Schema Markup for Sitelinks Search Box -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://officemom.me/#organization",
+      "name": "QuantumHash Corporation",
+      "legalName": "QuantumHash Corporation",
+      "url": "https://officemom.me",
+      "logo": "https://officemom.me/logo.webp",
+      "sameAs": [
+        "https://www.facebook.com/share/1BkL8ddJko",
+        "https://www.linkedin.com/company/quantumhash-corporation/?viewAsMember=true",
+        "https://x.com/QuantumhashCrp",
+        "https://www.youtube.com/@QuantumHashCorporation"
+      ],
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "support@officemom.me"
+        }
+      ],
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "800 N King Street, Suite 304",
+        "addressLocality": "Wilmington",
+        "addressRegion": "DE",
+        "postalCode": "19801",
+        "addressCountry": "US"
+      }
+    },
+
+    {
+      "@type": "WebSite",
+      "@id": "https://officemom.me/#website",
+      "url": "https://officemom.me",
+      "name": "OfficeMoM",
+      "description": "OfficeMoM - AI assistant that records meetings, generates minutes and boosts team productivity.",
+      "publisher": {
+        "@id": "https://officemom.me/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://officemom.me/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+
+    {
+      "@type": "Product",
+      "@id": "https://officemom.me/#product",
+      "name": "OfficeMoM",
+      "brand": {
+        "@type": "Brand",
+        "name": "OfficeMoM",
+        "parentOrganization": {
+          "@type": "Organization",
+          "name": "QuantumHash Corporation"
+        }
+      },
+      "description": "OfficeMoM is an AI-powered SaaS that generates meeting minutes, transcribes audio, and provides AI insights to streamline office collaboration.",
+      "url": "https://officemom.me",
+      "image": [
+        "https://officemom.me/og-image.webp"
+      ],
+      "offers": {
+        "@type": "OfferCatalog",
+        "name": "OfficeMoM Plans",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "description": "300 total minutes (lifetime), max 30 minutes per file or meeting, basic transcription features, email support",
+            "price": "0.00",
+            "priceCurrency": "USD",
+            "url": "https://officemom.me/pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Professional",
+            "description": "900 minutes/month, $0.01 per extra minute, priority processing, AI insights, email support",
+            "price": "9.00",
+            "priceCurrency": "USD",
+            "url": "https://officemom.me/pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Professional Plus",
+            "description": "2000 minutes/month, $0.01 per extra minute, priority support, advanced export options",
+            "price": "19.00",
+            "priceCurrency": "USD",
+            "url": "https://officemom.me/pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Business",
+            "description": "4500 minutes/month, $0.01 per extra minute, team management, security controls, custom integrations",
+            "price": "37.00",
+            "priceCurrency": "USD",
+            "url": "https://officemom.me/pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Business Plus",
+            "description": "7000 minutes/month, $0.01 per extra minute, dedicated account manager, advanced security, custom integrations",
+            "price": "55.00",
+            "priceCurrency": "USD",
+            "url": "https://officemom.me/pricing"
+          }
+        ]
+      }
+    },
+
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://officemom.me/#breadcrumbs",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://officemom.me/" },
+        { "@type": "ListItem", "position": 2, "name": "About", "item": "https://officemom.me/about-us" },
+        { "@type": "ListItem", "position": 3, "name": "Features", "item": "https://officemom.me/features" },
+        { "@type": "ListItem", "position": 4, "name": "Documentation", "item": "https://officemom.me/documentation" },
+        { "@type": "ListItem", "position": 5, "name": "Pricing", "item": "https://officemom.me/pricing" },
+        { "@type": "ListItem", "position": 6, "name": "FAQ", "item": "https://officemom.me/#faq" },
+        { "@type": "ListItem", "position": 7, "name": "Contact", "item": "https://officemom.me/contact-us" },
+        { "@type": "ListItem", "position": 8, "name": "Login", "item": "https://officemom.me/login" },
+        { "@type": "ListItem", "position": 9, "name": "Sign Up", "item": "https://officemom.me/signup" },
+        { "@type": "ListItem", "position": 10, "name": "Privacy Policy", "item": "https://officemom.me/privacy-policy" },
+        { "@type": "ListItem", "position": 11, "name": "Terms of Service", "item": "https://officemom.me/terms-of-service" }
+      ]
+    },
+  ]
+}
+</script>
+
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>

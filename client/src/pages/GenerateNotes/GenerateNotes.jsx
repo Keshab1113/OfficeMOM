@@ -191,7 +191,7 @@ const GenerateNotes = () => {
   return (
     <>
       <Helmet>
-        <meta charSet="utf-8" />
+        <meta charSet="utf-8" name="robots" content="noindex, nofollow"/>
         <title>Smart Minutes of the Meeting (OfficeMoM) | GenerateNotes</title>
         <link rel="canonical" href="https://officemom.me/audio-notes" />
       </Helmet>

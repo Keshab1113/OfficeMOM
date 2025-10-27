@@ -66,7 +66,7 @@ const FAQ = () => {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 dark:bg-gray-700 transition-all duration-700">
+    <div className="min-h-screen bg-blue-50 dark:bg-gray-700 transition-all duration-700" id="faq">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
