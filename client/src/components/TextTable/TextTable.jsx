@@ -410,7 +410,7 @@ export const saveTranscriptFiles = async (
                         text: label + ":",
                         bold: true,
                         size: 24, // Larger than content text
-                        highlight: "yellow", // Yellow highlight
+                         
                       }),
                       new TextRun({
                         text: "\n" + content, // Line break before content

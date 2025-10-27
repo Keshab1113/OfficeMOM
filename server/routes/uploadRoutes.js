@@ -8,7 +8,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post(
   "/upload-audio",
   authMiddleware,
-  upload.single("recordedAudio"),
+  upload.single("audio"),
   uploadAudio
 );
 
