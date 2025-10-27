@@ -65,61 +65,141 @@ setError(null);
     }
   };
 
-  const handleStartMakingNotes = async () => {
-    if (activeTab === "computer" && !selectedFile) {
-      return;
-    }
-    if (activeTab === "drive" && !driveUrl) {
-      setError("Please paste a valid Google Drive URL");
-      return;
-    }
-    setIsProcessing(true);
+  // const handleStartMakingNotes = async () => {
+  //   if (activeTab === "computer" && !selectedFile) {
+  //     return;
+  //   }
+  //   if (activeTab === "drive" && !driveUrl) {
+  //     setError("Please paste a valid Google Drive URL");
+  //     return;
+  //   }
+  //   setIsProcessing(true);
 
-    const formData = new FormData();
-    let apiUrl = "";
+  //   const formData = new FormData();
+  //   let apiUrl = "";
+
+  //   if (activeTab === "computer") {
+  //     formData.append("recordedAudio", selectedFile);
+  //     formData.append("source", "Generate Notes Conversion");
+  //     apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
+  //   } else {
+  //     formData.append("driveUrl", driveUrl);
+  //     apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;
+  //   }
+
+  //   try {
+  //     const resp = await axios.post(apiUrl, formData, {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         "Content-Type": "multipart/form-data",
+  //       },
+  //     });
+
+  //     if (resp.statusText !== "OK") {
+  //       throw new Error(`Server error: ${resp.status}`);
+  //     }
+
+  //     const data = await resp?.data;
+  //     setAudioURL(data.audioUrl);
+  //     setAudioID(data.audioId);
+  //     setDetectLanguage(data.language);
+  //     setFinalTranscript(data.transcription || "");
+  //     setHistoryID(data?.id);
+  //     setUpdatedMeetingId(data?.transcriptAudioId);
+  //     setUploadedUserId(data?.userId);
+  //     setShowModal(true);
+  //     setSelectedFile(null);
+  //     setDriveUrl("");
+  //     if (fileInputRef.current) {
+  //       fileInputRef.current.value = "";
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     addToast("error", "Failed to process file. Please try again.");
+  //   } finally {
+  //     setIsProcessing(false);
+  //   }
+  // };
+
+  const handleStartMakingNotes = async () => {
+  if (activeTab === "computer" && !selectedFile) {
+    return;
+  }
+  if (activeTab === "drive" && !driveUrl) {
+    setError("Please paste a valid Google Drive URL");
+    return;
+  }
+  setIsProcessing(true);
+
+  // 🔥 Single API endpoint for both file upload and Google Drive
+  const apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
+
+  try {
+    let response;
 
     if (activeTab === "computer") {
-      formData.append("recordedAudio", selectedFile);
+      // 📁 File Upload - use FormData
+      const formData = new FormData();
+      formData.append("audio", selectedFile); // Changed from "recordedAudio" to "audio"
       formData.append("source", "Generate Notes Conversion");
-      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
-    } else {
-      formData.append("driveUrl", driveUrl);
-      apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;
-    }
 
-    try {
-      const resp = await axios.post(apiUrl, formData, {
+      response = await axios.post(apiUrl, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
-
-      if (resp.statusText !== "OK") {
-        throw new Error(`Server error: ${resp.status}`);
-      }
-
-      const data = await resp?.data;
-      setAudioURL(data.audioUrl);
-      setAudioID(data.audioId);
-      setDetectLanguage(data.language);
-      setFinalTranscript(data.transcription || "");
-      setHistoryID(data?.id);
-      setUpdatedMeetingId(data?.transcriptAudioId);
-      setUploadedUserId(data?.userId);
-      setShowModal(true);
-      setSelectedFile(null);
-      setDriveUrl("");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    } catch (err) {
-      console.error(err);
-      addToast("error", "Failed to process file. Please try again.");
-    } finally {
-      setIsProcessing(false);
+    } else {
+      // 🔗 Google Drive URL - use JSON
+      response = await axios.post(
+        apiUrl,
+        {
+          driveUrl: driveUrl,
+          source: "google_drive",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
-  };
+
+    if (response.status !== 200) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = response.data;
+    
+    // ✅ Set all the state values
+    setAudioURL(data.audioUrl);
+    setAudioID(data.audioId);
+    setDetectLanguage(data.language);
+    setFinalTranscript(data.transcription || "");
+    setHistoryID(data.id);
+    setUpdatedMeetingId(data.transcriptAudioId);
+    setUploadedUserId(data.userId);
+    setShowModal(true);
+    
+    // 🧹 Clear inputs
+    setSelectedFile(null);
+    setDriveUrl("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    // Optional: Show success message
+    addToast("success", data.message || "Audio processed successfully!");
+
+  } catch (err) {
+    console.error("Processing error:", err);
+    const errorMessage = err.response?.data?.message || err.message || "Failed to process file. Please try again.";
+    addToast("error", errorMessage);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleSaveHeaders = async (
     headers,
