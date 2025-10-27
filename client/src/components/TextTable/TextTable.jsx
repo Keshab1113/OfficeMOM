@@ -456,7 +456,7 @@ export const saveTranscriptFiles = async (
             new Paragraph({
               children: [
                 new TextRun({ 
-                  text: "Meeting Notes", 
+                  text: "Minutes of the Meeting", 
                   bold: true,
                   italics: true, 
                   size: 40,
@@ -500,7 +500,7 @@ export const saveTranscriptFiles = async (
 
     const excelRows = [
       ["OfficeMoM"],
-      ["Meeting Notes"],
+      ["Minutes of the Meeting"],
       [],
       tableHeaders,
       ...processedData.map((r) =>
