@@ -49,7 +49,7 @@ const navItems = [
   },
 ];
 
-const SideBar = () => {
+const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const dispatch = useDispatch();
   const {
     email,
@@ -61,7 +61,7 @@ const SideBar = () => {
   } = useSelector((state) => state.auth);
   const { profileImage } = useSelector((state) => state.auth);
   const { addToast } = useToast();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -70,6 +70,7 @@ const SideBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [subscription, setSubscription] = useState(null);
+  const [isHovering, setIsHovering] = useState(false);
 
   const hiddenRoutes = ["/meeting", "/audio-notes", "/live-meeting"];
 
@@ -155,29 +156,71 @@ const SideBar = () => {
     }
   };
 
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    setIsCollapsed(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (!dropdownOpen) {
+      setIsCollapsed(true);
+    }
+  };
+  useEffect(() => {
+    if (!dropdownOpen && !isHovering) {
+      setIsCollapsed(true);
+    }
+  }, [dropdownOpen, isHovering]);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 1024); // Mobile & tablet: < 1024px, Desktop: >= 1024px
+    };
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
+
+
   const SidebarContent = (
     <motion.section
       initial={isMobile ? { x: -300 } : false}
-      animate={isMobile ? { x: 0 } : false}
-      transition={
-        isMobile ? { type: "spring", damping: 25, stiffness: 200 } : {}
-      }
+      animate={{
+        x: isMobile ? 0 : undefined,
+        width: isCollapsed && !isMobile ? "5rem" : isMobile ? "100vw" : "20rem",
+        paddingLeft: isCollapsed && !isMobile ? "0.5rem" : "1.5rem",
+        paddingRight: isCollapsed && !isMobile ? "0.5rem" : "1.5rem",
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 80,
+        damping: 20,
+      }}
+      onMouseEnter={!isMobile ? handleMouseEnter : undefined}
+      onMouseLeave={!isMobile ? handleMouseLeave : undefined}
+      style={{
+        '--sidebar-width': isCollapsed && !isMobile ? '5rem' : isMobile ? '100vw' : '20rem'
+      }}
       className={`backdrop-blur-xl bg-white/80 dark:bg-gray-800/80 
-    shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-[100dvh] py-8 
-    sticky top-0 left-0 flex flex-col justify-between items-start z-40 transition-all duration-500 ease-in-out
-    border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
-    ${isCollapsed ? "w-20" : "md:w-80 w-screen px-6"}`}
+  shadow-2xl shadow-blue-500/20 dark:shadow-indigo-500/30 h-[100dvh] py-8 
+  sticky top-0 left-0 flex flex-col justify-between items-start z-40
+  border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
+  transition-all ease-in-out duration-500
+  ${isMobile ? "w-screen max-w-full" : ""}`}
     >
+
       <div className="w-full space-y-8">
-        <div className="flex items-center justify-between w-full">
+        <div className={`flex items-center ${(isCollapsed && !isMobile) ? " justify-center" : "justify-between"} w-full`}>
           <motion.button
             onClick={() => navigate("/")}
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-3 group cursor-pointer "
           >
             <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
               <img src="/logo.webp" alt="logo" loading="lazy" />
             </div>
-            {!isCollapsed && (
+            {(!isCollapsed || isMobile) && (
               <div className="text-left">
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent  transition-all duration-300">
                   OfficeMoM
@@ -191,26 +234,6 @@ const SideBar = () => {
 
           {/* Theme Toggle and Close Button */}
           <div className="flex items-center gap-2">
-            {(hideSidebar || isMobile) && (
-              <motion.button
-                onClick={toggleTheme}
-                className="p-2 rounded-xl border-0 border-none cursor-pointer bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm
-                shadow-lg 
-                hover:bg-white dark:hover:bg-gray-600 transition-all duration-300
-                text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title={
-                  isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
-                }
-              >
-                {isDarkMode ? (
-                  <MdLightMode className="text-xl" />
-                ) : (
-                  <MdDarkMode className="text-xl" />
-                )}
-              </motion.button>
-            )}
             {isMobile && (
               <motion.button
                 className="p-2 rounded-xl bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm
@@ -233,15 +256,14 @@ const SideBar = () => {
                 key={index}
                 to={item.url}
                 onClick={handleNavClick}
-                title={isCollapsed ? item.heading : ""}
+                title={(isCollapsed && !isMobile) ? item.heading : ""}
                 className={({ isActive }) =>
                   `group border-0 border-none flex items-center cursor-pointer gap-4 p-4 rounded-2xl transition-all duration-300 relative overflow-hidden
-                  ${isCollapsed ? "justify-center" : "justify-start"}
+                  ${(isCollapsed && !isMobile) ? "justify-center" : "justify-start"}
                   ${isActive
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transform scale-[1.02]"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-md hover:border hover:border-white/50 dark:hover:border-gray-600/50"
-                  }`
-                }
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transform "
+                    : (`text-gray-700 dark:text-gray-300 ${(!isCollapsed || isMobile) && " hover:bg-white/60 dark:hover:bg-gray-700/60 hover:shadow-md hover:border hover:border-white/50 dark:hover:border-gray-600/50"}`)
+                  }`}
               >
                 {({ isActive }) => (
                   <>
@@ -264,7 +286,7 @@ const SideBar = () => {
                       />
                     </motion.div>
 
-                    {!isCollapsed && (
+                    {(!isCollapsed || isMobile) && (
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-base leading-tight">
                           {item.heading}
@@ -299,13 +321,12 @@ const SideBar = () => {
             {/* Glow effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 rounded-2xl blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-300 -z-10"></div>
 
-            <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl p-4">
+            <div className={`bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl ${(isCollapsed && !isMobile) ? "p-1" : "p-4"}`}>
               <div className="flex justify-between items-center">
                 {/* User Info */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <motion.div
-                    className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 dark:from-cyan-500 dark:via-blue-600 dark:to-indigo-700 flex items-center justify-center shadow-lg relative overflow-hidden"
-                    // whileHover={{ scale: 1.1, rotate: 5 }}
+                    className={`w-14 h-14 rounded-2xl ${(!isCollapsed || isMobile) && "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 dark:from-cyan-500 dark:via-blue-600 dark:to-indigo-700"}  flex items-center justify-center shadow-lg relative overflow-hidden`}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
                     {/* Animated ring */}
@@ -320,15 +341,12 @@ const SideBar = () => {
                     ) : (
                       <IoPerson className="w-7 h-7 text-white drop-shadow-lg" />
                     )}
-
-
                   </motion.div>
 
-                  {!isCollapsed && (
+                  {(!isCollapsed || isMobile) && (
                     <div className="flex-1 min-w-0">
                       <motion.h3
                         className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 font-bold text-base truncate"
-
                       >
                         {fullName}
                       </motion.h3>
@@ -342,7 +360,7 @@ const SideBar = () => {
                 </div>
 
                 {/* Dropdown Menu Button */}
-                {!isCollapsed && (
+                {(!isCollapsed || isMobile) && (
                   <div className="relative" ref={dropdownRef}>
                     <motion.button
                       className="p-2.5 ml-1 rounded-xl cursor-pointer bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 
@@ -365,16 +383,16 @@ const SideBar = () => {
   // Dropdown Content - Moved outside the sidebar
   const DropdownContent = (
     <AnimatePresence>
-      {dropdownOpen && !isCollapsed && (
+      {dropdownOpen && (!isCollapsed || isMobile) && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="fixed z-[60] lg:bottom-25 bottom-30 lg:left-[300px] md:left-[300px] left-auto right-5 md:right-auto"
+          className="fixed z-[60] lg:bottom-25 bottom-32 lg:left-[300px] md:left-[450px] left-auto right-5 lg:right-auto min-w-[250px]"
         >
           <div
-            className="w-56 bg-gradient-to-br from-white via-purple-50/50 to-blue-50 
+            className="w-full bg-gradient-to-br from-white via-purple-50/50 to-blue-50 
               dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20 backdrop-blur-xl shadow-2xl 
               rounded-2xl border-2 border-purple-200/60 dark:border-purple-500/40 overflow-hidden"
           >
@@ -490,8 +508,8 @@ const SideBar = () => {
     <>
       {isMobile && !isSidebarOpen && (
         <motion.button
-          className={`p-2.5 fixed left-3  bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${hideSidebar ? "top-3" : "top-3"
-            } ${isMobile ? "z-50" : "z-40"}`}
+          className={`p-2.5 fixed left-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/30 dark:border-gray-600/50 text-indigo-600 dark:text-indigo-400 ${hideSidebar ? "top-3" : "top-3"}
+            z-50`}
           onClick={() => setIsSidebarOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -506,15 +524,25 @@ const SideBar = () => {
       {isMobile ? (
         <AnimatePresence>
           {isSidebarOpen && (
-            <motion.div
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: "spring", stiffness: 200, damping: 25 }}
-              className="fixed top-0 left-0 h-full z-50"
-            >
-              {SidebarContent}
-            </motion.div>
+            <>
+              {/* Backdrop overlay for mobile */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                onClick={() => setIsSidebarOpen(false)}
+              />
+              <motion.div
+                initial={{ x: -300 }}
+                animate={{ x: 0 }}
+                exit={{ x: -300 }}
+                transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                className="fixed top-0 left-0 h-full z-50"
+              >
+                {SidebarContent}
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       ) : (

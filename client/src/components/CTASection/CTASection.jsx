@@ -15,7 +15,7 @@ const CTASection = () => {
         <div className="absolute inset-0 dark:bg-gray-900 bg-gray-50 opacity-95"></div>
 
         <div className="relative max-w-5xl mx-auto text-center">
-          <div className="transform hover:scale-105 transition-transform duration-500">
+          <div className="transform transition-transform duration-500">
             <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black dark:text-white mb-8 leading-tight">
               <span className="inline-block animate-bounce animation-delay-200">
                 Ready
@@ -36,19 +36,19 @@ const CTASection = () => {
             </h2>
           </div>
 
-          <div className="transform hover:scale-105 transition-transform duration-700">
+          <div className="transform transition-transform duration-700">
             <p className="text-xl sm:text-2xl dark:text-purple-100 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
               Join{" "}
               <span className="font-bold text-yellow-300 animate-pulse">
-                10,000+
+                Many
               </span>{" "}
-              professionals who've revolutionized their transcription workflow
+              users who've revolutionized their transcription workflow
               with{" "}
               <span className="font-semibold text-cyan-300">OfficeMoM</span>
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12">
+          {/* <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12">
             <button
               onMouseEnter={() => setHoveredButton("trial")}
               onMouseLeave={() => setHoveredButton(null)}
@@ -78,7 +78,7 @@ const CTASection = () => {
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-400 opacity-20 animate-pulse"></div>
               )}
             </button>
-          </div>
+          </div> */}
 
           {/* Trust Indicators */}
           <div className="flex flex-wrap justify-center items-center gap-8 dark:text-purple-200 text-sm opacity-80">
@@ -86,10 +86,10 @@ const CTASection = () => {
               <span className="text-green-400">✅</span>
               <span>No Credit Card Required</span>
             </div>
-            <div className="flex items-center gap-2 animate-fade-in animation-delay-500">
+            {/* <div className="flex items-center gap-2 animate-fade-in animation-delay-500">
               <span className="text-yellow-400">⭐</span>
               <span>4.9/5 Rating</span>
-            </div>
+            </div> */}
             <div className="flex items-center gap-2 animate-fade-in animation-delay-1000">
               <span className="text-blue-400">🔒</span>
               <span>Enterprise Security</span>
@@ -135,17 +135,18 @@ const CTASection = () => {
                 )}
 
                 <iframe
-                  className={`w-full h-full transition-opacity duration-500 ${
-                    videoLoaded ? "opacity-100" : "opacity-0"
-                  }`}
-                  src="https://www.youtube.com/embed/iZpkSaWPtSA?si=rNxJBY5rwnczPc9W&autoplay=1&mute=1&loop=1&controls=0&playlist=iZpkSaWPtSA&end=10&modestbranding=1&rel=0"
+                  className={`w-full h-full transition-opacity duration-500 ${videoLoaded ? "opacity-100" : "opacity-0"
+                    }`}
+                  src="https://www.youtube.com/embed/dNX-mHF5ddw?si=qas6kwgZOjH1qoSu&autoplay=1&mute=1&loop=1&controls=0&playlist=dNX-mHF5ddw&modestbranding=1&rel=0"
                   title="OfficeMoM Demo - Revolutionary Transcription"
                   frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   allowFullScreen
                   onLoad={() => setVideoLoaded(true)}
                 ></iframe>
               </div>
+
 
               {/* Video Stats */}
               <div className="flex justify-center mt-6 gap-8 text-sm text-gray-600 dark:text-gray-400">
@@ -189,7 +190,7 @@ const CTASection = () => {
             ].map((feature, index) => (
               <div
                 key={index}
-                className={`group p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-105 border border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-500 ${feature.delay}`}
+                className={`group p-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-105 border border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-500 ${feature.delay}`}
               >
                 <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
                   {feature.icon}

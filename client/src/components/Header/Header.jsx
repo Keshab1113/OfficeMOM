@@ -68,17 +68,17 @@ const Header = () => {
 
   const hiddenRoutes = [
     "/join-meeting/",
-    "/pricing",
-    "/contact-us",
-    "/features",
-    "/about-us",
-    "/documentation",
-    "/privacy-policy",
+    // "/pricing",
+    // "/contact-us",
+    // "/features",
+    // "/about-us",
+    // "/documentation",
+    // "/privacy-policy",
     "/login",
     "/signup",
     "/forgot-password",
-    "/momGenerate/",
-    "/terms-of-service",
+    // "/momGenerate/",
+    // "/terms-of-service",
   ];
   const hiddenRoutes2 = [
     "/documentation",

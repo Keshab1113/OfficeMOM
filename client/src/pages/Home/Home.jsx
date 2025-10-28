@@ -5,7 +5,7 @@ import FAQ from "../../components/FAQ/FAQ";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Header from "../../components/Header/Header";
+import CTASection from "../../components/CTASection/CTASection";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -30,9 +30,9 @@ const Home = () => {
           </div>
           {/* <Header/> */}
           <div className="relative z-10 ">
-            
+
             <div className="text-center space-y-12">
-              
+
               <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -74,21 +74,21 @@ const Home = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={()=>navigate("/meeting")}
+                    onClick={() => navigate("/meeting")}
                     className="flex items-center cursor-pointer gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <Play className="w-5 h-5" />
                     Start Free Trial
-                    <ArrowRight className="w-5 h-5" />
+                    {/* <ArrowRight className="w-5 h-5" /> */}
                   </motion.button>
 
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={()=>navigate("/contact-us")}
+                    onClick={() => navigate("/contact-us")}
                     className="flex items-center cursor-pointer gap-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-xl font-semibold hover:bg-white/50 dark:hover:bg-gray-700/50 transition-all duration-200"
                   >
-                    Watch Demo
+                    Schedule Demo
                   </motion.button>
                 </div>
               </motion.div>
@@ -99,6 +99,7 @@ const Home = () => {
           <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
           <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
         </section>
+        <CTASection />
         <FAQ />
         <Footer />
       </div>
