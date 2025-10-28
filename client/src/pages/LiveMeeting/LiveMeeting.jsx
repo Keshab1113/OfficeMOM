@@ -673,7 +673,7 @@ const LiveMeeting = () => {
   return (
     <>
       <Helmet>
-        <meta charSet="utf-8" />
+        <meta charSet="utf-8" name="robots" content="noindex, nofollow"/>
         <title>Smart Minutes of the Meeting (OfficeMoM) | LiveMeeting</title>
         <link rel="canonical" href="https://officemom.me/live-meeting" />
       </Helmet>
