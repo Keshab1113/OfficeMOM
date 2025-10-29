@@ -76,7 +76,7 @@ const MeetingHistory = () => {
           </div>
         </div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
-          <div className=" min-h-screen flex justify-center items-center md:py-4 py-10 ">
+          <div className=" min-h-screen flex justify-center items-center md:py-4 py-10 px-4">
             {error ? (
               <NoPage />
             ) : (

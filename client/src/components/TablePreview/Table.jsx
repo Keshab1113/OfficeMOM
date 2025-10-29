@@ -37,7 +37,7 @@ export default function DataTable({
     if (!content || content === "Click to Edit") return content;
     
     // Check if content contains bullet points
-    if (content.includes("•") && content.includes("\n")) {
+    if (content?.includes("•") && content?.includes("\n")) {
       const points = content.split("\n").filter(point => point.trim() !== "");
       return (
         <ul className="list-disc pl-5 space-y-1">
