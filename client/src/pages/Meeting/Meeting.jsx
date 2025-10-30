@@ -213,7 +213,7 @@ const Meeting = () => {
           type: "audio/mpeg",
         });
         const formData = new FormData();
-        formData.append("recordedAudio", file);
+        formData.append("audio", file);
         formData.append("source", "Online Meeting Conversion");
         try {
           const response = await axios.post(
