@@ -28,20 +28,20 @@ const RealTablePreview = ({
     );
   }, [tableData]);
 
-  useEffect(() => {
-    const translateColumns = async () => {
-      if (detectLanguage === "en") {
-        setTranslatedColumns(allColumns);
-      } else {
-        const allColLang = await translateText(detectLanguage, allColumns);
-        setTranslatedColumns(allColLang);
-      }
-    };
+  // useEffect(() => {
+  //   const translateColumns = async () => {
+  //     if (detectLanguage === "en") {
+  //       setTranslatedColumns(allColumns);
+  //     } else {
+  //       const allColLang = await translateText(detectLanguage, allColumns);
+  //       setTranslatedColumns(allColLang);
+  //     }
+  //   };
 
-    if (allColumns.length && detectLanguage) {
-      translateColumns();
-    }
-  }, [allColumns, detectLanguage]);
+  //   if (allColumns.length && detectLanguage) {
+  //     translateColumns();
+  //   }
+  // }, [allColumns, detectLanguage]);
 
   const handleAddRow = () => {
     const newRow = {};
