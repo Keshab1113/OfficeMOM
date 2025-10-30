@@ -747,7 +747,7 @@ const LiveMeeting = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10">
           <div className=" min-h-screen">
             {!showModal && (
                 <Breadcrumb items={breadcrumbItems} />

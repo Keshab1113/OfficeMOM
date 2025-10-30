@@ -112,16 +112,14 @@ const SubscriptionCard = () => {
                     <p className="text-yellow-600 dark:text-yellow-400 font-semibold">Active • ${subscription?.amount || 0}/month</p>
                 </div>
             </div>
-
-            <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center p-4 rounded-xl bg-white/30 dark:bg-gray-700/30 backdrop-blur-sm">
-                    <span className="text-gray-600 dark:text-gray-300">Billing Cycle</span>
-                    <span className="font-bold text-gray-800 dark:text-white capitalize">{subscription?.billing_cycle || "N/A"}</span>
+            {subscription?.plan_name != "Free" &&
+                <div className="space-y-4 mb-6">
+                    <div className="flex justify-between items-center p-4 rounded-xl bg-white/30 dark:bg-gray-700/30 backdrop-blur-sm">
+                        <span className="text-gray-600 dark:text-gray-300">Billing Cycle</span>
+                        <span className="font-bold text-gray-800 dark:text-white capitalize">{subscription?.billing_cycle || "N/A"}</span>
+                    </div>
                 </div>
-
-
-            </div>
-
+            }
             <div className="space-y-3 mb-6">
                 <h4 className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                     <FiZap className="text-yellow-500" />

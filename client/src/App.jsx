@@ -25,6 +25,7 @@ import Failure from "./pages/PaymentResult/Failure";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import Subscription from './pages/PaymentResult/Subscription';
 import BotMaster from "./pages/BotMaster/BotMaster";
+import SupportedLanguages from "./pages/SupportedLanguages/SupportedLanguages";
 
 function App() {
   return (
@@ -98,6 +99,7 @@ function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService/>} />
           <Route path="/documentation" element={<Documentation />} />
+          <Route path="/supported-language" element={<SupportedLanguages/>} />
           <Route
             path="/success"
             element={

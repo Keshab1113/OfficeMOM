@@ -167,10 +167,10 @@ const UsageStats = () => {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[70vh] h-[60%] overflow-y-auto ">
+        <div className="p-6 max-h-[70vh] h-[50vh] overflow-y-auto ">
           <AllHistory
             NeedFor={selectedStatType}
-            height="h-[7rem]"
+            height="45vh"
           />
         </div>
       </motion.div>
@@ -210,7 +210,8 @@ const UsageStats = () => {
                   </div>
                   <button
                     onClick={() => handleHistoryClick(stat.type)}
-                    className={`${colorClasses.text} ${colorClasses.border} border font-semibold text-xs lg:text-sm bg-white/50 dark:bg-gray-600/50 px-4 cursor-pointer py-1 rounded-full hover:bg-white/70 dark:hover:bg-gray-600/70 transition-colors`}
+                    disabled={stat.label === "Bot Sessions"}
+                    className={`${colorClasses.text} ${colorClasses.border} border disabled:cursor-not-allowed font-semibold text-xs lg:text-sm bg-white/50 dark:bg-gray-600/50 px-4 cursor-pointer py-1 rounded-full hover:bg-white/70 dark:hover:bg-gray-600/70 transition-colors`}
                   >
                     History
                   </button>
@@ -247,8 +248,10 @@ const UsageStats = () => {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{userHistory?.totalHistory || "0"}</div>
+              <div className="text-center border border-solid rounded-md p-1 px-4 border-blue-700 cursor-pointer hover:bg-blue-600/10 transition-colors"
+               onClick={() => handleHistoryClick("All History")}
+               >
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 ">{userHistory?.totalHistory || "0"}</div>
                 <div className="text-xs text-gray-600 dark:text-gray-400">Total Sessions</div>
               </div>
             </div>

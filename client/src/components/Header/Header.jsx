@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sun, Moon } from "lucide-react";
@@ -12,6 +12,10 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Ref for the mobile menu
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   useEffect(() => {
     const checkScreen = () => setIsMobile(window.innerWidth < 1024);
@@ -24,6 +28,45 @@ const Header = () => {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if click is outside both menu and menu button
+      if (
+        isMenuOpen &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        menuButtonRef.current &&
+        !menuButtonRef.current.contains(event.target)
+      ) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    // Add event listener
+    document.addEventListener("mousedown", handleClickOutside);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
+  // Close menu when pressing Escape key
+  useEffect(() => {
+    const handleEscapeKey = (event) => {
+      if (event.key === "Escape" && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscapeKey);
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [isMenuOpen]);
 
   const navigation = [
     { name: "Home", href: "/" },
@@ -98,7 +141,7 @@ const Header = () => {
   return (
     <>
       <header
-        className={` absolute top-0 z-40 w-full transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700`}
+        className={`absolute top-0 z-40 w-full transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700`}
       >
         <div className="px-4 sm:px-6 lg:px-8">
           <div
@@ -182,6 +225,7 @@ const Header = () => {
               </button>
 
               <button
+                ref={menuButtonRef}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
               >
@@ -196,6 +240,7 @@ const Header = () => {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
+            ref={menuRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
