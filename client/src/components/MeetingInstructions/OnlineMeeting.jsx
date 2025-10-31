@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Zap, CheckCircle, Link, Mic, MessageCircle, FileText, Download, Users, Clock, Sparkles, Rocket, Target } from "lucide-react";
+import { Zap, CheckCircle, Link, Mic, MessageCircle, FileText, Download, Users, Clock, Sparkles, Rocket, Target, Play, Pause } from "lucide-react";
 
 const OnlineMeeting = () => {
     const [currentStep, setCurrentStep] = useState(0);
     const [progress, setProgress] = useState(0);
     const [loopCount, setLoopCount] = useState(1);
+    const [isPlaying, setIsPlaying] = useState(false);
     const stepRefs = useRef([]);
     const containerRef = useRef(null);
 
@@ -87,8 +88,10 @@ const OnlineMeeting = () => {
         }
     }, [currentStep]);
 
-    // Auto progression with continuous loop
+    // Auto progression with play/pause control
     useEffect(() => {
+        if (!isPlaying) return;
+
         const currentStepDuration = steps[currentStep].duration;
         const progressIncrement = 100 / (currentStepDuration / 80);
 
@@ -112,8 +115,10 @@ const OnlineMeeting = () => {
                         });
                     }
                 }, 100);
+                setCurrentStep(0);
+            } else {
+                setCurrentStep(prev => prev + 1);
             }
-            setCurrentStep(prev => (prev + 1) % steps.length);
             setProgress(0);
         }, currentStepDuration);
 
@@ -121,7 +126,23 @@ const OnlineMeeting = () => {
             clearInterval(progressInterval);
             clearTimeout(stepTimeout);
         };
-    }, [currentStep]);
+    }, [currentStep, isPlaying]);
+
+    const togglePlayPause = () => {
+        setIsPlaying(!isPlaying);
+    };
+
+    const resetDemo = () => {
+        setCurrentStep(0);
+        setProgress(0);
+        setIsPlaying(false);
+        if (containerRef.current) {
+            containerRef.current.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    };
 
     const getStepStatus = (index) => {
         if (index === currentStep) return "active";
@@ -161,16 +182,42 @@ const OnlineMeeting = () => {
                             Smart Meeting Workflow
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mt-1 flex items-center">
-                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse-slow mr-2"></span>
-                            Auto-demonstration
+                            <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-2 ${
+                                isPlaying ? "bg-green-400 animate-pulse-slow" : "bg-gray-400"
+                            }`}></span>
+                            {isPlaying ? "Demo Running" : "Demo Paused"}
                         </p>
                     </div>
                 </div>
 
-                {/* Live Indicator */}
-                <div className="flex items-center space-x-2 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border border-green-200 dark:border-green-800 self-start sm:self-center">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse-slow"></div>
-                    <span className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-300">Live Demo</span>
+                {/* Play/Pause Controls */}
+                <div className="flex items-center space-x-2 self-start sm:self-center">
+                    <button
+                        onClick={resetDemo}
+                        className=" cursor-pointer px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                    >
+                        Reset
+                    </button>
+                    <button
+                        onClick={togglePlayPause}
+                        className={`cursor-pointer flex items-center space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-medium transition-all duration-200 ${
+                            isPlaying 
+                                ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30" 
+                                : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30"
+                        }`}
+                    >
+                        {isPlaying ? (
+                            <>
+                                <Pause className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span>Pause</span>
+                            </>
+                        ) : (
+                            <>
+                                <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span>Play</span>
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -196,7 +243,7 @@ const OnlineMeeting = () => {
                                     ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 shadow-md sm:shadow-lg scale-100"
                                     : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 shadow scale-99 sm:scale-98"
                             } ${
-                                isActive ? "animate-step-glow-slow" : ""
+                                isActive && isPlaying ? "animate-step-glow-slow" : ""
                             }`}
                         >
                             {/* Animated Connection Line - Hide on mobile */}
@@ -232,7 +279,7 @@ const OnlineMeeting = () => {
                                     )}
                                     
                                     {/* Enhanced Pulsing Ring for Active Step */}
-                                    {isActive && (
+                                    {isActive && isPlaying && (
                                         <>
                                             <div className="absolute -inset-1.5 sm:-inset-2 border-2 border-blue-300/50 rounded-xl sm:rounded-2xl animate-ping-very-slow"></div>
                                             <div className="absolute -inset-1 sm:-inset-1 border border-white/30 rounded-xl sm:rounded-2xl animate-pulse-slow"></div>
@@ -250,7 +297,7 @@ const OnlineMeeting = () => {
                                 {/* Enhanced Content */}
                                 <div className="ml-3 sm:ml-4 lg:ml-6 flex-1 min-w-0">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0">
-                                        <h4 className={`text-sm sm:text-base  font-semibold transition-all duration-300 truncate ${
+                                        <h4 className={`text-sm sm:text-base font-semibold transition-all duration-300 truncate ${
                                             isActive
                                                 ? "text-gray-900 dark:text-white"
                                                 : isCompleted
@@ -259,9 +306,8 @@ const OnlineMeeting = () => {
                                         }`}>
                                             {step.title}
                                         </h4>
-                                        
                                     </div>
-                                    <p className={`mt-0 text-xs  transition-all duration-300 line-clamp-2 ${
+                                    <p className={`mt-0 text-xs transition-all duration-300 line-clamp-2 ${
                                         isActive
                                             ? "text-gray-700 dark:text-gray-300"
                                             : isCompleted
@@ -272,7 +318,7 @@ const OnlineMeeting = () => {
                                     </p>
                                     
                                     {/* Step Progress Bar */}
-                                    {isActive && (
+                                    {isActive && isPlaying && (
                                         <div className="mt-2 sm:mt-3 lg:mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 sm:h-2 overflow-hidden">
                                             <div 
                                                 className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-200 ease-linear relative"
@@ -297,7 +343,7 @@ const OnlineMeeting = () => {
                             </div>
 
                             {/* Enhanced Active Step Glow */}
-                            {isActive && (
+                            {isActive && isPlaying && (
                                 <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-step-glow-slow"></div>
                             )}
 
@@ -309,8 +355,6 @@ const OnlineMeeting = () => {
                     );
                 })}
             </div>
-
-            
 
             {/* Enhanced Footer with Stats */}
             <div className="relative z-10 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">

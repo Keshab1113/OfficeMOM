@@ -154,7 +154,7 @@ const Header = () => {
             {/* Logo */}
             {(needLogo || isMobile) && (
               <div
-                className={`flex-shrink-0 flex items-center ${
+                className={`flex-shrink-0 flex items-center  ${
                   hideSidebar ? "ml-0 md:ml-0" : "ml-12 lg:ml-0"
                 }`}
               >
@@ -216,7 +216,7 @@ const Header = () => {
             </div>
 
             {/* Mobile menu button */}
-            <div className="lg:hidden flex items-center space-x-2">
+            <div className="lg:hidden flex items-center ">
               <button
                 onClick={handleThemeToggle}
                 className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
@@ -227,7 +227,7 @@ const Header = () => {
               <button
                 ref={menuButtonRef}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="p-2 hidden rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
               >
                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>

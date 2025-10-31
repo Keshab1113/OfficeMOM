@@ -19,7 +19,7 @@ import {
   MdAudiotrack,
   MdMeetingRoom,
 } from "react-icons/md";
-import { Zap, LogOut, CreditCard, Bot, ChevronsRight } from "lucide-react";
+import { Zap, LogOut, CreditCard, Bot, ChevronsRight, ChevronDown, Wallet, BookUser, Contact } from "lucide-react";
 import axios from "axios";
 
 const navItems = [
@@ -49,6 +49,25 @@ const navItems = [
   },
 ];
 
+// Additional menu items for mobile dropdown
+const mobileMenuItems = [
+  {
+    heading: "Pricing",
+    icon: Wallet,
+    url: "/pricing",
+  },
+  {
+    heading: "About",
+    icon: BookUser,
+    url: "/about-us",
+  },
+  {
+    heading: "Contact",
+    icon: Contact,
+    url: "/contact-us",
+  },
+];
+
 const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const dispatch = useDispatch();
   const {
@@ -65,7 +84,9 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // New state for mobile menu
   const dropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null); // New ref for mobile menu
   const [isDarkMode, setIsDarkMode] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -118,6 +139,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const handleNavClick = () => {
     if (isMobile) {
       setIsSidebarOpen(false);
+      setMobileMenuOpen(false); // Close mobile menu on nav click
     }
   };
 
@@ -125,6 +147,8 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target))
         setDropdownOpen(false);
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target))
+        setMobileMenuOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -248,6 +272,10 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
             )}
           </div>
         </div>
+
+        {/* Mobile Only Dropdown Menu */}
+
+
         <div className="space-y-3 2xl:mt-20 mt-10">
           {navItems.map((item, index) => {
             const IconComponent = item.icon;
@@ -307,7 +335,60 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
               </NavLink>
             );
           })}
-          
+          {isMobile && (
+            <div className="relative " ref={mobileMenuRef}>
+              <motion.button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="w-full flex items-center justify-between p-4 rounded-2xl 
+                bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600
+                text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600
+                transition-all duration-300 shadow-md border border-white/30 dark:border-gray-600/50"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span className="font-semibold text-[15px]">More Options</span>
+                <ChevronDown
+                  className={`w-5 h-5 transition-transform duration-300 ${mobileMenuOpen ? "rotate-180" : ""}`}
+                />
+              </motion.button>
+
+              <AnimatePresence>
+                {mobileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 space-y-2 pl-4 ">
+                      {mobileMenuItems.map((item, index) => {
+                        const IconComponent = item.icon;
+                        return (
+                          <Link
+                            key={index}
+                            to={item.url}
+                            onClick={handleNavClick}
+                            className=" w-full text-left p-3 rounded-xl 
+                          bg-white/60 dark:bg-gray-700/60 
+                          text-gray-700 dark:text-gray-300 
+                          hover:bg-white/80 dark:hover:bg-gray-600/80
+                          transition-all duration-300 border border-white/30 dark:border-gray-600/50
+                          hover:shadow-md flex items-center gap-1"
+                          >
+                            <IconComponent
+                              className={`w-4 h-4 text-white}`}
+                            />
+                            <span className="font-medium text-[14px]">{item.heading}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 
@@ -397,10 +478,9 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.1 }}
     >
-      <ChevronsRight 
-        className={`h-5 w-5 text-gray-700 dark:text-gray-300 transition-transform duration-300 ${
-          !isCollapsed && "rotate-180"
-        }`} 
+      <ChevronsRight
+        className={`h-5 w-5 text-gray-700 dark:text-gray-300 transition-transform duration-300 ${!isCollapsed && "rotate-180"
+          }`}
       />
     </motion.button>
   );
