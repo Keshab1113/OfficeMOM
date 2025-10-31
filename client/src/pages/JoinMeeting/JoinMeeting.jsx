@@ -95,34 +95,25 @@ const JoinMeeting = () => {
           localStreamRef.current = stream;
 
           console.log("Guest audio tracks:", stream.getAudioTracks());
-          const audioContext = new AudioContext();
-          const source = audioContext.createMediaStreamSource(stream);
-          const destination = audioContext.createMediaStreamDestination();
-          source.connect(destination);
-
-          const silentSource = audioContext.createOscillator();
-          silentSource.frequency.setValueAtTime(0.1, audioContext.currentTime);
-          silentSource.connect(audioContext.destination);
-          silentSource.start();
-
           const pc = new RTCPeerConnection({
-            iceServers: ICE,
-            sdpSemantics: "unified-plan",
-          });
+  iceServers: ICE,
+  sdpSemantics: "unified-plan",
+});
 
-          pcRef.current = pc;
+pcRef.current = pc;
 
-          for (const track of destination.stream.getTracks()) {
-            console.log(
-              "Adding processed track:",
-              track.id,
-              "enabled:",
-              track.enabled,
-              "muted:",
-              track.muted
-            );
-            pc.addTrack(track, destination.stream);
-          }
+// ✅ Use actual microphone stream directly (not virtual destination)
+for (const track of stream.getAudioTracks()) {
+  console.log(
+    "Adding mic track:",
+    track.id,
+    "enabled:",
+    track.enabled,
+    "muted:",
+    track.muted
+  );
+  pc.addTrack(track, stream);
+}
 
           pc.onconnectionstatechange = () => {
             console.log("Guest connection state:", pc.connectionState);
@@ -149,6 +140,23 @@ const JoinMeeting = () => {
               });
             }
           };
+
+          // ✅ Handle renegotiation automatically
+pc.onnegotiationneeded = async () => {
+  try {
+    console.log("Renegotiation triggered, creating new offer");
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    if (hostSocketIdRef.current) {
+      sock.emit("signal", {
+        to: hostSocketIdRef.current,
+        data: { sdp: pc.localDescription },
+      });
+    }
+  } catch (err) {
+    console.error("Renegotiation error:", err);
+  }
+};
 
           const offer = await pc.createOffer({
             offerToReceiveAudio: false,
