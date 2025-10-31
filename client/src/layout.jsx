@@ -12,7 +12,7 @@ function Layout() {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const hiddenRoutes = [
-    "/join-meeting/",
+    // "/join-meeting/",
     // "/pricing",
     // "/contact-us",
     // "/features",
