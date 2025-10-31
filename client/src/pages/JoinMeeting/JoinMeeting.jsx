@@ -26,6 +26,7 @@ const JoinMeeting = () => {
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
   const hostSocketIdRef = useRef(null);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   useEffect(() => {
     const run = async () => {
@@ -326,7 +327,9 @@ const JoinMeeting = () => {
         />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll flex">
-          <SideBar />
+          <SideBar
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed} />
           <div className=" min-h-screen flex flex-col justify-center items-center px-4 w-[100%] md:w-[80%]">
             <p className=" text-center dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-[34px] font-bold text-transparent md:text-5xl">
               Welcome to Office<span className="text-blue-400">MoM</span>
@@ -367,11 +370,10 @@ const JoinMeeting = () => {
                       </span>
                       <button
                         onClick={toggleMute}
-                        className={`flex cursor-pointer items-center gap-2 px-4 py-2 rounded-full ${
-                          isMuted
-                            ? "bg-red-100 text-red-700 hover:bg-red-200"
-                            : "bg-green-100 text-green-700 hover:bg-green-200"
-                        } transition-colors`}
+                        className={`flex cursor-pointer items-center gap-2 px-4 py-2 rounded-full ${isMuted
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-green-100 text-green-700 hover:bg-green-200"
+                          } transition-colors`}
                       >
                         {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
                         {isMuted ? "Unmute" : "Mute"}

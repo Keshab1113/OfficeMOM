@@ -19,7 +19,7 @@ import {
   MdAudiotrack,
   MdMeetingRoom,
 } from "react-icons/md";
-import { Zap, LogOut, CreditCard, Bot } from "lucide-react";
+import { Zap, LogOut, CreditCard, Bot, ChevronsRight } from "lucide-react";
 import axios from "axios";
 
 const navItems = [
@@ -198,8 +198,8 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
         ease: "easeOut",
         duration: 0.3
       }}
-      onMouseEnter={!isMobile ? handleMouseEnter : undefined}
-      onMouseLeave={!isMobile ? handleMouseLeave : undefined}
+      // onMouseEnter={!isMobile ? handleMouseEnter : undefined}
+      // onMouseLeave={!isMobile ? handleMouseLeave : undefined}
       style={{
         '--sidebar-width': isCollapsed && !isMobile ? '5rem' : isMobile ? '100vw' : '20rem'
       }}
@@ -208,7 +208,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   sticky top-0 left-0 flex flex-col justify-between items-start z-40
   border-r border-white/30 dark:border-gray-700/50 overflow-hidden 
   transition-all ease-in-out duration-500
-  ${isMobile ? "w-screen max-w-full" : ""}`}
+  ${isMobile ? "w-screen max-w-full" : " relative"}`}
     >
 
       <div className="w-full space-y-8">
@@ -307,6 +307,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
               </NavLink>
             );
           })}
+          
         </div>
       </div>
 
@@ -379,6 +380,29 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
         </motion.div>
       )}
     </motion.section>
+  );
+
+  // Toggle Button - Now outside the sidebar
+  const ToggleButton = !isMobile && (
+    <motion.button
+      onClick={isCollapsed ? handleMouseEnter : handleMouseLeave}
+      className="absolute -right-5 top-1/2 transform -translate-y-1/2 z-50
+        w-10 h-10 bg-white/90 dark:bg-indigo-600/30 backdrop-blur-sm
+        rounded-full shadow-2xl border border-white/50 dark:border-indigo-600
+        flex items-center justify-center cursor-pointer
+        hover:bg-white dark:hover:bg-indigo-700/30 transition-all duration-300
+        hover:shadow-indigo-500/25 dark:hover:shadow-indigo-400/25
+        "
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.1 }}
+    >
+      <ChevronsRight 
+        className={`h-5 w-5 text-gray-700 dark:text-gray-300 transition-transform duration-300 ${
+          !isCollapsed && "rotate-180"
+        }`} 
+      />
+    </motion.button>
   );
 
   // Dropdown Content - Moved outside the sidebar
@@ -522,6 +546,15 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
       {/* Render Dropdown Content */}
       {DropdownContent}
 
+      {/* Desktop Sidebar with Toggle Button */}
+      {!isMobile && (
+        <div className="relative">
+          {SidebarContent}
+          {ToggleButton}
+        </div>
+      )}
+
+      {/* Mobile Sidebar */}
       {isMobile ? (
         <AnimatePresence>
           {isSidebarOpen && (
@@ -552,9 +585,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
             </>
           )}
         </AnimatePresence>
-      ) : (
-        SidebarContent
-      )}
+      ) : null}
     </>
   );
 };

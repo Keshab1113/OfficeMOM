@@ -395,25 +395,7 @@ const Meeting = () => {
                 </p>
 
                 {/* Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12 mb-8 container mx-auto lg:px-6">
-                  {features.map((feature, index) => (
-                    <div
-                      key={index}
-                      className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up"
-                      style={{ animationDelay: `${500 + index * 100}ms` }}
-                    >
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white mb-4 mx-auto">
-                        {feature.icon}
-                      </div>
-                      <h3 className="font-bold text-gray-800 dark:text-white mb-2 text-center">
-                        {feature.title}
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm text-center">
-                        {feature.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                
               </div>
             )}
 
@@ -780,6 +762,25 @@ const Meeting = () => {
                     <div className="w-full">
                       <OnlineMeeting />
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12 mb-8 container mx-auto lg:px-6">
+                  {features.map((feature, index) => (
+                    <div
+                      key={index}
+                      className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up"
+                      style={{ animationDelay: `${500 + index * 100}ms` }}
+                    >
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white mb-4 mx-auto">
+                        {feature.icon}
+                      </div>
+                      <h3 className="font-bold text-gray-800 dark:text-white mb-2 text-center">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm text-center">
+                        {feature.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
                   </div>
                 )}
               </>
