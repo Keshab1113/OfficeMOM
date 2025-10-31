@@ -379,7 +379,7 @@ const PricingOptions = () => {
                   <motion.div
                     key={plan.id}
                     className={`relative rounded-2xl p-4 flex flex-col h-full transition-all duration-300 ${plan.isHighlighted
-                      ? "bg-gradient-to-br dark:from-indigo-600/30 dark:to-purple-600/30 from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/25 transform scale-105 border-2 border-indigo-500"
+                      ? "bg-gradient-to-br dark:from-indigo-600/30 dark:to-purple-600/30 from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/25 transform lg:scale-105 border-2 border-indigo-500 "
                       : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700"
                       }`}
                   >

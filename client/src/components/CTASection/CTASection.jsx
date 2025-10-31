@@ -149,7 +149,7 @@ const CTASection = () => {
 
 
               {/* Video Stats */}
-              <div className="flex justify-center mt-6 gap-8 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex flex-col md:flex-row justify-center mt-6 md:gap-8 gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                   <span>2 min demo</span>

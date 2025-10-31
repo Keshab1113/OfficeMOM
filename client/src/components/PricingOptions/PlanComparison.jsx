@@ -257,7 +257,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pt-20 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto pt-20 ">
       {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
@@ -401,7 +401,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
             return (
               <div
                 key={plan.id || plan.name}
-                className="col-span-6 lg:col-span-3 p-6 lg:p-8 border-l-2 border-gray-200 dark:border-gray-700"
+                className="col-span-6 lg:col-span-3 p-6 lg:p-8 border-2 border-gray-200 dark:border-gray-700"
               >
                 <div className="text-center">
                   <div
@@ -485,7 +485,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
                     return (
                       <div
                         key={`${plan.name}-${feature.name}`}
-                        className="col-span-6 lg:col-span-3 p-5 lg:p-6 border-l border-gray-200 dark:border-gray-700 flex items-center justify-center"
+                        className="col-span-6 lg:col-span-3 p-5 lg:p-6 border border-gray-200 dark:border-gray-700 flex items-center justify-center"
                       >
                         {isCheckmark ? (
                           <div

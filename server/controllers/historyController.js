@@ -120,11 +120,11 @@ const getUserHistoryStats = async (req, res) => {
     const [historyRows] = await db.execute(`
       SELECT 
         COUNT(*) as totalHistory,
-        SUM(CASE WHEN source = 'Generate Notes Conversion' THEN 1 ELSE 0 END) as totalGeneratesNotes,
-        SUM(CASE WHEN source = 'Online Meeting Conversion' THEN 1 ELSE 0 END) as totalOnlineMeeting,
-        SUM(CASE WHEN source = 'Live Transcript Conversion' THEN 1 ELSE 0 END) as totalLiveMeeting
+        SUM(CASE WHEN source = 'Generate Notes Conversion' AND isMoMGenerated = 1 THEN 1 ELSE 0 END) as totalGeneratesNotes,
+        SUM(CASE WHEN source = 'Online Meeting Conversion' AND isMoMGenerated = 1 THEN 1 ELSE 0 END) as totalOnlineMeeting,
+        SUM(CASE WHEN source = 'Live Transcript Conversion' AND isMoMGenerated = 1 THEN 1 ELSE 0 END) as totalLiveMeeting
       FROM history 
-      WHERE user_id = ?
+      WHERE user_id = ? AND isMoMGenerated = 1 AND source IN ('Generate Notes Conversion', 'Online Meeting Conversion', 'Live Transcript Conversion')
     `, [userId]);
 
     const stats = historyRows[0];

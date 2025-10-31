@@ -194,9 +194,9 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
         paddingRight: isCollapsed && !isMobile ? "0.5rem" : "1.5rem",
       }}
       transition={{
-        type: "spring",
-        stiffness: 80,
-        damping: 20,
+        type: "tween",
+        ease: "easeOut",
+        duration: 0.3
       }}
       onMouseEnter={!isMobile ? handleMouseEnter : undefined}
       onMouseLeave={!isMobile ? handleMouseLeave : undefined}
@@ -287,20 +287,21 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                     </motion.div>
 
                     {(!isCollapsed || isMobile) && (
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base leading-tight">
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3, duration: 0.1 }}
+                        className="flex-1 min-w-0"
+                      >
+                        <h3 className="font-semibold text-[15px] leading-tight whitespace-nowrap">
                           {item.heading}
                         </h3>
-                        <p
-                          className={`text-xs mt-1 ${isActive
-                            ? "text-gray-300 dark:text-gray-400"
-                            : "text-gray-600 dark:text-gray-400"
-                            }`}
-                        >
+                        <p className={`text-xs mt-1 whitespace-nowrap ${isActive ? "text-gray-300 dark:text-gray-400" : "text-gray-600 dark:text-gray-400"}`}>
                           {item.description}
                         </p>
-                      </div>
+                      </motion.div>
                     )}
+
                   </>
                 )}
               </NavLink>
@@ -534,11 +535,17 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                 onClick={() => setIsSidebarOpen(false)}
               />
               <motion.div
-                initial={{ x: -300 }}
+                initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
-                exit={{ x: -300 }}
-                transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                className="fixed top-0 left-0 h-full z-50"
+                exit={{ x: "-100%" }}
+                transition={{
+                  type: "tween", // Changed from default to tween for smoother animation
+                  ease: "easeOut",
+                  duration: 0.3 // Slightly faster
+                }}
+                className="fixed top-0 left-0 h-full z-50 w-[85vw] max-w-[20rem]"
+                style={{ willChange: "transform" }}
+
               >
                 {SidebarContent}
               </motion.div>
