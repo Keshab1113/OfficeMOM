@@ -79,8 +79,22 @@ app.use('/api/subscription', userSubscriptionRoutes);
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
+
+// 👇 ADD THIS HERE — before io.on("connection")
+io.engine.on("connection_error", (err) => {
+  console.log("🚨 Socket.IO connection error:");
+  console.log("Origin:", err.req.headers.origin);
+  console.log("Code:", err.code);
+  console.log("Message:", err.message);
+  if (err.context) console.log("Context:", err.context);
+});
+
 
 const rooms = new Map();
 const liveStreams = new Map();
@@ -164,6 +178,11 @@ function closeAssemblyAIWS(roomId) {
 }
 
 io.on("connection", (socket) => {
+
+   console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
+  console.log(`📡 Connected from: ${socket.handshake.headers.origin || "Unknown Origin"}`);
+
+  // --- Host joins room ---
   socket.on("host:join-room", ({ roomId }) => {
     if (rooms.has(roomId)) {
       const existingRoom = rooms.get(roomId);
