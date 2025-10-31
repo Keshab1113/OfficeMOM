@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Timing from "../../components/Timing/Timing";
 import { cn } from "../../lib/utils";
 import { FcConferenceCall } from "react-icons/fc";
@@ -9,14 +9,14 @@ import Footer from "../../components/Footer/Footer";
 import { useSelector } from "react-redux";
 import AllHistory from "../../components/History/History";
 import { Video, Users, FileText, Play, Pause, Square, Mic, Shield, Zap, Clock, CheckCircle, BrushCleaning } from "lucide-react";
-import Heading from "../../components/LittleComponent/Heading";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import { Helmet } from "react-helmet";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
-import OnlineMeeting from "../../components/MeetingInstructions/OnlineMeeting";
+import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
+import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
 
 const meetingPlatforms = [
   {
@@ -49,29 +49,6 @@ const meetingPlatforms = [
   },
 ];
 
-const features = [
-  {
-    icon: <Mic className="w-6 h-6" />,
-    title: "Real-time Transcription",
-    description: "Automatic speech-to-text conversion as you speak"
-  },
-  {
-    icon: <Zap className="w-6 h-6" />,
-    title: "AI-Powered Summaries",
-    description: "Smart meeting minutes with action items"
-  },
-  {
-    icon: <Shield className="w-6 h-6" />,
-    title: "Secure & Private",
-    description: "Your data is encrypted and never stored unnecessarily"
-  },
-  {
-    icon: <Clock className="w-6 h-6" />,
-    title: "Time Saving",
-    description: "Reduce meeting documentation time by 80%"
-  }
-];
-
 const breadcrumbItems = [{ label: "Online Meeting" }];
 
 // New Instructions Component
@@ -97,6 +74,8 @@ const Meeting = () => {
   const [updatedMeetingId, setUpdatedMeetingId] = useState(null);
   const [uploadedUserId, setUploadedUserId] = useState(null);
   const [historyID, setHistoryID] = useState(null);
+  const [meetingTime, setMeetingTime] = useState(0); // in seconds
+  const [timerActive, setTimerActive] = useState(false);
 
   const wsRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -131,6 +110,7 @@ const Meeting = () => {
 
       // Join a room (for example, using meetingLink as roomId)
       socket.emit("host:join-room", { roomId: meetingLink });
+      setTimerActive(true);
     });
 
     socket.on("error", (err) => {
@@ -227,6 +207,7 @@ const Meeting = () => {
 
   const endMeeting = async () => {
     console.log("Clicked end meeting button", mediaRecorderRef.current);
+    setTimerActive(false);
     setShowEndingModal(true);
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
@@ -356,6 +337,40 @@ const Meeting = () => {
     }
   };
 
+  useEffect(() => {
+    let interval;
+    if (timerActive) {
+      interval = setInterval(() => {
+        setMeetingTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive]);
+
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (captionsRef.current && showCaptions) {
+      const scrollContainer = captionsRef.current;
+      // Smooth scroll to bottom with a small delay to ensure content is rendered
+      setTimeout(() => {
+        scrollContainer.scrollTo({
+          top: scrollContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [transcript, liveTranscript, showCaptions]);
+
   return (
     <>
       <Helmet>
@@ -393,9 +408,6 @@ const Meeting = () => {
                 <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto animate-fade-in-up animation-delay-300">
                   Transform your meetings with AI-powered transcription, automatic minutes, and actionable insights
                 </p>
-
-                {/* Features Grid */}
-                
               </div>
             )}
 
@@ -428,7 +440,7 @@ const Meeting = () => {
                 {isMeetingActive ? (
                   <div className="h-screen flex items-center justify-center p-4">
                     <div className="w-full max-w-4xl">
-                      <section className="px-8 flex flex-col items-center">
+                      <section className="md:px-8 flex flex-col items-center ">
                         {/* Enhanced Live Recording Status */}
                         <div className="mb-8 text-center">
                           <div className="flex items-center justify-center mb-4">
@@ -444,12 +456,14 @@ const Meeting = () => {
                           <h1 className="text-4xl pb-4 md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 animate-pulse mb-2">
                             Meeting is Live
                           </h1>
+
                           <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
                             AI transcription is actively capturing your meeting
                           </p>
 
+
                           {/* Enhanced Audio Wave Animation */}
-                          <div className="flex items-center justify-center space-x-1 mb-6">
+                          <div className="flex items-center justify-center space-x-1 mb-6  h-[5rem]">
                             {[...Array(7)].map((_, i) => (
                               <div
                                 key={i}
@@ -474,6 +488,14 @@ const Meeting = () => {
                                   animationDuration: `${Math.random() * 0.5 + 0.5}s`,
                                 }}></div>
                             ))}
+                          </div>
+                          <div className="mb-4">
+                            <div className="inline-flex items-center bg-black/30 backdrop-blur-sm px-6 py-3 rounded-full border border-white/20">
+                              <Clock className="w-5 h-5 text-green-400 mr-2" />
+                              <span className="text-2xl font-mono font-bold text-white">
+                                {formatTime(meetingTime)}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
@@ -507,11 +529,10 @@ const Meeting = () => {
                           </button>
                         </div>
 
-                        {/* Enhanced Live Captions */}
                         <div
-                          className={`w-full transition-all duration-500 ease-in-out transform ${showCaptions
-                            ? "opacity-100 translate-y-0 max-h-96"
-                            : "opacity-0 -translate-y-4 max-h-0 overflow-hidden"
+                          className={`w-full  transition-all duration-500 ease-in-out ${showCaptions
+                            ? "opacity-100 max-h-96"
+                            : "opacity-0 max-h-0 overflow-hidden"
                             }`}>
                           <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
                             <div className="flex items-center mb-4">
@@ -525,14 +546,21 @@ const Meeting = () => {
                               </span>
                             </div>
 
+                            {/* Remove animations from the text container */}
                             <div
                               ref={captionsRef}
-                              className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                              <div className="dark:text-white/90 leading-relaxed flex flex-wrap gap-1 text-lg">
-                                {transcript.join(" ") + " "}
-                                <span className="text-green-300 italic animate-pulse">
-                                  {liveTranscript}
-                                </span>
+                              className="h-48 overflow-y-auto bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+                              <div className="dark:text-white/90 leading-relaxed text-lg">
+                                {transcript.map((text, index) => (
+                                  <span key={index} className="mr-1">
+                                    {text}
+                                  </span>
+                                ))}
+                                {liveTranscript && (
+                                  <span className="text-green-300 ml-1">
+                                    {liveTranscript}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -586,8 +614,8 @@ const Meeting = () => {
                             <button
                               onClick={() => setActiveTab(1)}
                               className={`flex-1 cursor-pointer py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all flex items-center justify-center text-sm sm:text-base ${activeTab === 1
-                                  ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform"
-                                  : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                                ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform"
+                                : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
                                 }`}
                             >
                               <Video className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
@@ -597,8 +625,8 @@ const Meeting = () => {
                             <button
                               onClick={() => setActiveTab(2)}
                               className={`flex-1 cursor-pointer py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all flex items-center justify-center text-sm sm:text-base ${activeTab === 2
-                                  ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform"
-                                  : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
+                                ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md transform"
+                                : "text-gray-600 dark:text-gray-300 hover:text-indigo-600"
                                 }`}
                             >
                               <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
@@ -627,8 +655,8 @@ const Meeting = () => {
                                     <div
                                       key={platform.name}
                                       className={`flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg transition-all cursor-pointer bg-gray-200 dark:bg-slate-700 hover:scale-105 ${activePlatform === platform.name
-                                          ? "ring-2 ring-offset-1 sm:ring-offset-2 ring-blue-500 bg-blue-100 dark:bg-blue-800"
-                                          : ""
+                                        ? "ring-2 ring-offset-1 sm:ring-offset-2 ring-blue-500 bg-blue-100 dark:bg-blue-800"
+                                        : ""
                                         }`}
                                       onClick={() => {
                                         setActivePlatform(platform.name);
@@ -741,8 +769,8 @@ const Meeting = () => {
                                 }}
                                 className="px-4 cursor-pointer sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-sm sm:text-base"
                               >
-                                
-                                <BrushCleaning className="w-4 h-4 sm:w-5 sm:h-5"/>
+
+                                <BrushCleaning className="w-4 h-4 sm:w-5 sm:h-5" />
                                 Clear
                               </button>
                             </div>
@@ -760,27 +788,9 @@ const Meeting = () => {
 
                     {/* OnlineMeeting Component - Full width on all devices */}
                     <div className="w-full">
-                      <OnlineMeeting />
+                      <MeetingInstruction needFor={"Online Meeting Conversion"} />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12 mb-8 container mx-auto lg:px-6">
-                  {features.map((feature, index) => (
-                    <div
-                      key={index}
-                      className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in-up"
-                      style={{ animationDelay: `${500 + index * 100}ms` }}
-                    >
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white mb-4 mx-auto">
-                        {feature.icon}
-                      </div>
-                      <h3 className="font-bold text-gray-800 dark:text-white mb-2 text-center">
-                        {feature.title}
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm text-center">
-                        {feature.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    <MeetingFeatures />
                   </div>
                 )}
               </>

@@ -301,14 +301,18 @@ const AllHistory = ({ title, NeedFor, height }) => {
                           >
                             {item.title || item.source || "Unknown"}
                           </Link>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {localDate.split(' ')[0]}
+                          <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
+                              {localDate.split(' ')[1]}, {localDate.split(' ')[0]}
                             </span>
-                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize">
+                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
+                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize whitespace-nowrap truncate">
+                              {item.source}
+                            </span>
+                            {/* <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" /> */}
+                            {/* <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize">
                               {timeAgo(localDate)}
-                            </span>
+                            </span> */}
                           </div>
                         </div>
                       )}

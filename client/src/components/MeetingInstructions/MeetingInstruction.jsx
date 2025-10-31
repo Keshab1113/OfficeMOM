@@ -1,72 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { Zap, CheckCircle, Link, Mic, MessageCircle, FileText, Download, Users, Clock, Sparkles, Rocket, Target, Play, Pause } from "lucide-react";
+import { Zap, CheckCircle, FileText, Clock, Sparkles, Rocket, Play, Pause } from "lucide-react";
+import { GenerateNotesSteps, OnlineMeetingSteps } from "./Steps";
 
-const OnlineMeeting = () => {
+const MeetingInstruction = ({needFor}) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [progress, setProgress] = useState(0);
     const [loopCount, setLoopCount] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [hasCompleted, setHasCompleted] = useState(false);
     const stepRefs = useRef([]);
     const containerRef = useRef(null);
 
-    const steps = [
-        {
-            title: "Paste Meeting Link",
-            description: "Copy and paste your meeting URL from any supported platform",
-            icon: Link,
-            color: "from-blue-500 to-cyan-500",
-            duration: 3500,
-            emoji: "🔗"
-        },
-        {
-            title: "Start Recording",
-            description: "Click start to begin capturing audio and generating live captions",
-            icon: Mic,
-            color: "from-green-500 to-emerald-500",
-            duration: 3200,
-            emoji: "🎙️"
-        },
-        {
-            title: "Join Meeting",
-            description: "Participate in your meeting normally while we handle transcription",
-            icon: Users,
-            color: "from-purple-500 to-violet-500",
-            duration: 3400,
-            emoji: "👥"
-        },
-        {
-            title: "Real-time Transcription",
-            description: "Watch as AI converts speech to text with live captions",
-            icon: MessageCircle,
-            color: "from-orange-500 to-red-500",
-            duration: 3800,
-            emoji: "📝"
-        },
-        {
-            title: "AI Processing",
-            description: "Smart algorithms analyze conversation and extract key insights",
-            icon: Zap,
-            color: "from-yellow-500 to-amber-500",
-            duration: 4200,
-            emoji: "🤖"
-        },
-        {
-            title: "Generate MoM",
-            description: "Get AI-powered meeting minutes with action items automatically",
-            icon: FileText,
-            color: "from-indigo-500 to-blue-500",
-            duration: 3600,
-            emoji: "📋"
-        },
-        {
-            title: "Download & Share",
-            description: "Easily download or share the meeting minutes with your team",
-            icon: Download,
-            color: "from-pink-500 to-rose-500",
-            duration: 3200,
-            emoji: "🚀"
-        }
-    ];
+    const steps = needFor === "Generate Notes Conversion"? GenerateNotesSteps : (needFor === "Online Meeting Conversion" ? OnlineMeetingSteps : []);
 
     // Auto scroll to active step
     useEffect(() => {
@@ -106,7 +51,10 @@ const OnlineMeeting = () => {
 
         const stepTimeout = setTimeout(() => {
             if (currentStep === steps.length - 1) {
+                // Last step completed - stop the demo
                 setLoopCount(prev => prev + 1);
+                setIsPlaying(false);
+                setHasCompleted(true);
                 setTimeout(() => {
                     if (containerRef.current) {
                         containerRef.current.scrollTo({
@@ -115,7 +63,6 @@ const OnlineMeeting = () => {
                         });
                     }
                 }, 100);
-                setCurrentStep(0);
             } else {
                 setCurrentStep(prev => prev + 1);
             }
@@ -129,13 +76,21 @@ const OnlineMeeting = () => {
     }, [currentStep, isPlaying]);
 
     const togglePlayPause = () => {
-        setIsPlaying(!isPlaying);
+        if (hasCompleted && currentStep === steps.length - 1) {
+            // If demo has completed, reset and start from beginning
+            resetDemo();
+            setIsPlaying(true);
+            setHasCompleted(false);
+        } else {
+            setIsPlaying(!isPlaying);
+        }
     };
 
     const resetDemo = () => {
         setCurrentStep(0);
         setProgress(0);
         setIsPlaying(false);
+        setHasCompleted(false);
         if (containerRef.current) {
             containerRef.current.scrollTo({
                 top: 0,
@@ -179,13 +134,13 @@ const OnlineMeeting = () => {
                     </div>
                     <div className="ml-3 sm:ml-4">
                         <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient-text-very-slow">
-                            Smart Meeting Workflow
+                            Meeting Workflow
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mt-1 flex items-center">
                             <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-2 ${
-                                isPlaying ? "bg-green-400 animate-pulse-slow" : "bg-gray-400"
+                                isPlaying ? "bg-green-400 animate-pulse-slow" : hasCompleted ? "bg-blue-400" : "bg-gray-400"
                             }`}></span>
-                            {isPlaying ? "Demo Running" : "Demo Paused"}
+                            {hasCompleted ? "Demo Completed" : isPlaying ? "Demo Running" : "Demo Paused"}
                         </p>
                     </div>
                 </div>
@@ -201,12 +156,19 @@ const OnlineMeeting = () => {
                     <button
                         onClick={togglePlayPause}
                         className={`cursor-pointer flex items-center space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-medium transition-all duration-200 ${
-                            isPlaying 
+                            hasCompleted 
+                                ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                                : isPlaying 
                                 ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30" 
                                 : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30"
                         }`}
                     >
-                        {isPlaying ? (
+                        {hasCompleted ? (
+                            <>
+                                <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span>Restart</span>
+                            </>
+                        ) : isPlaying ? (
                             <>
                                 <Pause className="w-3 h-3 sm:w-4 sm:h-4" />
                                 <span>Pause</span>
@@ -386,4 +348,4 @@ const OnlineMeeting = () => {
     );
 };
 
-export default OnlineMeeting;
+export default MeetingInstruction;

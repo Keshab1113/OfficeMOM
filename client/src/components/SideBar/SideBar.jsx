@@ -469,7 +469,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
       onClick={isCollapsed ? handleMouseEnter : handleMouseLeave}
       className="absolute -right-5 top-1/2 transform -translate-y-1/2 z-50
         w-10 h-10 bg-white/90 dark:bg-indigo-600/30 backdrop-blur-sm
-        rounded-full shadow-2xl border border-white/50 dark:border-indigo-600
+        rounded-full shadow-2xl border border-indigo-600
         flex items-center justify-center cursor-pointer
         hover:bg-white dark:hover:bg-indigo-700/30 transition-all duration-300
         hover:shadow-indigo-500/25 dark:hover:shadow-indigo-400/25
