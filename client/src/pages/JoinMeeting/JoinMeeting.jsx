@@ -32,9 +32,11 @@ const JoinMeeting = () => {
       setStatus("Connecting to server…");
       setStatusType("loading");
 
-      const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, {
-        transports: ["websocket"],
-      });
+     const sock = io(import.meta.env.VITE_BACKEND_URL, {
+  transports: ["websocket"],
+  withCredentials: true,
+});
+
       socketRef.current = sock;
 
       let deviceLabel = navigator.userAgent;

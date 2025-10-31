@@ -183,6 +183,38 @@ const uploadAudio = async (req, res) => {
   }
 };
 
+const uploadAudioToFTPOnly = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: no user ID" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No audio file uploaded" });
+    }
+
+    const buffer = req.file.buffer;
+    const originalName = req.file.originalname;
+
+    // Upload to FTP
+    const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+
+    res.status(200).json({
+      message: "Audio uploaded successfully to FTP",
+      audioUrl: ftpUrl,
+      fileName: originalName,
+    });
+  } catch (err) {
+    console.error("FTP upload error:", err);
+    res.status(500).json({
+      message: "Error uploading audio to FTP",
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   uploadAudio,
+  uploadAudioToFTPOnly,
 };
