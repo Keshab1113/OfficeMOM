@@ -33,9 +33,11 @@ const JoinMeeting = () => {
       setStatus("Connecting to server…");
       setStatusType("loading");
 
-      const sock = io(`${import.meta.env.VITE_BACKEND_URL}`, {
+      const sock = io(import.meta.env.VITE_BACKEND_URL, {
         transports: ["websocket"],
+        withCredentials: true,
       });
+
       socketRef.current = sock;
 
       let deviceLabel = navigator.userAgent;
@@ -327,9 +329,9 @@ const JoinMeeting = () => {
         />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center dark:[mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-[linear-gradient(90deg,#06080D_0%,#0D121C_100%)]"></div>
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll flex">
-          <SideBar
+          {/* <SideBar
             isCollapsed={isCollapsed}
-            setIsCollapsed={setIsCollapsed} />
+            setIsCollapsed={setIsCollapsed} /> */}
           <div className=" min-h-screen flex flex-col justify-center items-center px-4 w-[100%] md:w-[80%]">
             <p className=" text-center dark:bg-gradient-to-b dark:from-neutral-200 dark:to-neutral-500 bg-gradient-to-br from-black to-blue-500 bg-clip-text text-[34px] font-bold text-transparent md:text-5xl">
               Welcome to Office<span className="text-blue-400">MoM</span>

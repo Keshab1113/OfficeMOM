@@ -324,38 +324,31 @@ const LiveMeeting = () => {
         formData.append("source", "Live Transcript Conversion");
 
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+  `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio-ftp`,
+  formData,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+  }
+);
 
-        if (response.data) {
-          const { audioUrl, id, uploadedAt, title, audioId, transcription, language, transcriptAudioId, userId } = response.data;
-          setAudioID(audioId);
-          setUpdatedMeetingId(transcriptAudioId);
-          setUploadedUserId(userId);
-          setHistoryID(id);
-          setFinalTranscript(transcription || "");
-          setDetectLanguage(language);
-          dispatch(
-            addAudioPreview({
-              audioUrl,
-              id,
-              audioId,
-              uploadedAt,
-              title,
-              needToShow: true,
-            })
-          );
-          addToast("success", "Audio processed successfully!");
-        } else {
-          addToast("error", "Upload failed or audioUrl missing");
-        }
+       if (response.data?.audioUrl) {
+  dispatch(
+    addAudioPreview({
+      audioUrl: response.data.audioUrl,
+      id: Date.now(),
+      uploadedAt: new Date().toISOString(),
+      title: file.name,
+      needToShow: true,
+    })
+  );
+  addToast("success", "Audio saved successfully!");
+} else {
+  addToast("error", "FTP upload failed — no audio URL received.");
+}
+
       };
       mediaRecorderRef.current = mr;
     } catch (err) {
