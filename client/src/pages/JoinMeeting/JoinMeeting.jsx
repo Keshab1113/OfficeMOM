@@ -82,15 +82,12 @@ const JoinMeeting = () => {
 
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-              channelCount: 1,
-              sampleRate: 48000,
-              sampleSize: 16,
-            },
-          });
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  },
+});
 
           localStreamRef.current = stream;
 
@@ -131,20 +128,21 @@ for (const track of stream.getAudioTracks()) {
             console.log("Guest signaling state:", pc.signalingState);
           };
 
-          pc.onicecandidate = (ev) => {
-            if (ev.candidate && hostSocketIdRef.current) {
-              console.log("Sending ICE candidate to host");
-              sock.emit("signal", {
-                to: hostSocketIdRef.current,
-                data: { candidate: ev.candidate },
-              });
-            }
-          };
+         // ✅ Handle ICE candidates - ONLY ONE HANDLER
+pc.onicecandidate = (ev) => {
+  if (ev.candidate && hostSocketIdRef.current) {
+    console.log("📤 Sending ICE candidate to host");
+    sock.emit("signal", {
+      to: hostSocketIdRef.current,
+      data: { candidate: ev.candidate },
+    });
+  }
+};
 
-          // ✅ Handle renegotiation automatically
+// ✅ Handle renegotiation automatically
 pc.onnegotiationneeded = async () => {
   try {
-    console.log("Renegotiation triggered, creating new offer");
+    console.log("🔄 Renegotiation triggered, creating new offer");
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     if (hostSocketIdRef.current) {
@@ -154,32 +152,36 @@ pc.onnegotiationneeded = async () => {
       });
     }
   } catch (err) {
-    console.error("Renegotiation error:", err);
+    console.error("❌ Renegotiation error:", err);
   }
 };
 
-          const offer = await pc.createOffer({
-            offerToReceiveAudio: false,
-            offerToReceiveVideo: false,
-          });
+// ✅ Wait for connection state changes
+pc.onconnectionstatechange = () => {
+  console.log("🔗 Guest connection state:", pc.connectionState);
+  if (pc.connectionState === "connected") {
+    console.log("✅ Guest successfully connected to host via WebRTC");
+  } else if (pc.connectionState === "failed") {
+    console.error("❌ Connection failed");
+  }
+};
 
-          const modifiedOffer = {
-            ...offer,
-            sdp: offer.sdp.replace(
-              /useinbandfec=1/g,
-              "useinbandfec=1; stereo=0; maxaveragebitrate=128000"
-            ),
-          };
+// ✅ Create and send offer AFTER all handlers are set
+const offer = await pc.createOffer({
+  offerToReceiveAudio: false,
+  offerToReceiveVideo: false,
+});
+await pc.setLocalDescription(offer);
 
-          await pc.setLocalDescription(modifiedOffer);
+// ✅ Send offer immediately (trickle ICE will send candidates separately)
+console.log("🎤 Sending SDP offer to host...");
+if (hostSocketIdRef.current) {
+  sock.emit("signal", {
+    to: hostSocketIdRef.current,
+    data: { sdp: offer },
+  });
+}
 
-          if (hostSocketIdRef.current) {
-            console.log("Sending SDP offer to host");
-            sock.emit("signal", {
-              to: hostSocketIdRef.current,
-              data: { sdp: pc.localDescription },
-            });
-          }
 
           setStatus("Connected to meeting - Recording in progress...");
           setStatusType("success");
