@@ -17,6 +17,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    allowedHosts: ['d9634343bcc6.ngrok-free.app', '.loca.lt']
+    allowedHosts: ['d9634343bcc6.ngrok-free.app', 'breanna-formless-harlee.ngrok-free.dev']
   }
 })

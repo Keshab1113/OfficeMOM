@@ -71,6 +71,7 @@
 //   };
 // }
 
+// usehostMixer.js 
 export async function createHostMixerStream(localMic) {
   const audioCtx = new AudioContext({ sampleRate: 48000 });
   const destination = audioCtx.createMediaStreamDestination();
