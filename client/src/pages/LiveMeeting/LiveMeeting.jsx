@@ -180,6 +180,31 @@ const LiveMeeting = () => {
         setRequests((prev) => [...prev, { socketId, deviceName, deviceLabel }]);
       });
 
+      sock.on("guest:disconnected", ({ socketId }) => {
+        console.log(`Guest ${socketId} disconnected`);
+        // Update participant count when a guest disconnects
+        setParticipants(prev => Math.max(0, prev - 1));
+        // Remove from peers map
+        if (peersRef.current.has(socketId)) {
+          const pc = peersRef.current.get(socketId);
+          pc.close();
+          peersRef.current.delete(socketId);
+        }
+        // Stop individual recording for this guest
+        if (individualRecordersRef.current.has(socketId)) {
+          const recorder = individualRecordersRef.current.get(socketId);
+          if (recorder.state === "recording") {
+            recorder.stop();
+          }
+          individualRecordersRef.current.delete(socketId);
+        }
+        // Clear audio interval for this guest
+        if (audioIntervalsRef.current.has(socketId)) {
+          clearInterval(audioIntervalsRef.current.get(socketId));
+          audioIntervalsRef.current.delete(socketId);
+        }
+      });
+
       sock.on("signal", async ({ from, data }) => {
         let pc = peersRef.current.get(from);
         if (!pc) {
@@ -646,10 +671,13 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   const approve = (id) => {
     socketRef.current.emit("host:approve", { guestSocketId: id });
     setRequests((r) => r.filter((x) => x.socketId !== id));
+    // Update participant count when a guest is approved
+    setParticipants(prev => prev + 1);
   };
   const reject = (id) => {
     socketRef.current.emit("host:reject", { guestSocketId: id });
     setRequests((r) => r.filter((x) => x.socketId !== id));
+    // Don't update participant count for rejected requests
   };
 
   const handleSaveHeaders = async (headers) => {
