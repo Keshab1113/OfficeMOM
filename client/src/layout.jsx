@@ -4,6 +4,7 @@ import SideBar from "./components/SideBar/SideBar";
 import Header from "./components/Header/Header";
 import ChatBot from "./components/ChatBot/ChatBot";
 import { useState, useEffect } from "react";
+import { useAutoHideHeader } from "./hooks/useAutoHideHeader"; // Create this hook file
 
 function Layout() {
   const location = useLocation();
@@ -11,28 +12,30 @@ function Layout() {
   const [sidebarWidth, setSidebarWidth] = useState("5rem");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Use auto-hide header for specific routes
+  const floatingHeaderRoutes = [
+    "/meeting",
+    "/audio-notes", 
+    "/live-meeting",
+  ];
+  
+  const shouldUseFloatingHeader = floatingHeaderRoutes.some((path) =>
+    location.pathname.startsWith(path)
+  );
+
+  const isHeaderVisible = useAutoHideHeader();
+
   const hiddenRoutes = [
     "/join-meeting/",
-    // "/pricing",
-    // "/contact-us",
-    // "/features",
-    // "/about-us",
-    // "/documentation",
-    // "/privacy-policy",
     "/login",
     "/signup",
     "/forgot-password",
-    // "/momGenerate/",
-    // "/terms-of-service",
   ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
   );
 
   const hiddenRoutes2 = [
-    // "/meeting",
-    // "/audio-notes",
-    // "/live-meeting",
     "/login",
     "/signup",
     "/forgot-password",
@@ -55,9 +58,15 @@ function Layout() {
 
   return (
     <section className="w-full overflow-hidden min-h-screen relative">
-      {!hideHeader && <Header />}
+      {!hideHeader && (
+        <Header 
+          isVisible={!shouldUseFloatingHeader || isHeaderVisible} 
+        />
+      )}
       <div 
-        className={`flex dark:bg-black bg-white p-0 overflow-hidden h-screen ${!hideHeader && "lg:pt-0 pt-16"}`}
+        className={`flex dark:bg-black bg-white p-0 overflow-hidden h-screen ${
+          !hideHeader && !shouldUseFloatingHeader ? "lg:pt-0 pt-16" : ""
+        }`}
       >
         {!hideSidebar && (
           <div className="fixed top-0 left-0 z-40 lg:relative">
@@ -69,10 +78,11 @@ function Layout() {
         )}
         <main 
           style={{
-            // marginLeft: !hideSidebar ? sidebarWidth : "0rem",
             transition: isTransitioning ? "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)" : "none"
           }}
-          className={`w-full ${!hideSidebar ? "lg:block lg:pt-20" : ""}`} 
+          className={`w-full ${(!hideSidebar && !shouldUseFloatingHeader) ? "lg:block lg:pt-20" : "pt-16 lg:pt-0"} ${
+            shouldUseFloatingHeader ? "pt-0" : ""
+          }`} 
           id="scrollableMain"
         >
           <Outlet />

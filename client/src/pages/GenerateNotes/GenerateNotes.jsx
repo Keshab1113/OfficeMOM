@@ -281,13 +281,13 @@ const GenerateNotes = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10">
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll lg:pb-0 pb-10">
           <div className=" min-h-screen">
             {!showModal && <Breadcrumb items={breadcrumbItems} />}
             {!showModal && (
 
               <div className="text-center mb-8 mt-10 px-4">
-                <h1 className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 animate-fade-in-up pb-4">
+                <h1 className="text-3xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 animate-fade-in-up pb-1 lg:pb-3">
                   Generate Notes from Audio/Video Files
                 </h1>
                 <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto animate-fade-in-up animation-delay-300">

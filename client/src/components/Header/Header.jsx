@@ -5,7 +5,7 @@ import { Menu, X, Sun, Moon } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const Header = () => {
+const Header = ({ isVisible = true }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { token } = useSelector((state) => state.auth);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -111,17 +111,9 @@ const Header = () => {
 
   const hiddenRoutes = [
     "/join-meeting/",
-    // "/pricing",
-    // "/contact-us",
-    // "/features",
-    // "/about-us",
-    // "/documentation",
-    // "/privacy-policy",
     "/login",
     "/signup",
     "/forgot-password",
-    // "/momGenerate/",
-    // "/terms-of-service",
   ];
   const hiddenRoutes2 = [
     "/documentation",
@@ -140,8 +132,13 @@ const Header = () => {
 
   return (
     <>
-      <header
-        className={`absolute top-0 z-40 w-full transition-all duration-300 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700`}
+      <motion.header
+        initial={{ y: 0 }}
+        animate={{ y: isVisible ? 0 : -100 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className={`fixed top-0 z-40 w-full transition-all duration-300 bg-white/40 dark:bg-gray-900/40 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700 ${
+          !isVisible ? "pointer-events-none" : ""
+        }`}
       >
         <div className="px-4 sm:px-6 lg:px-8">
           <div
@@ -224,17 +221,17 @@ const Header = () => {
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
 
-              <button
+              {/* <button
                 ref={menuButtonRef}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 hidden rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="p-2 ml-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
               >
                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Mobile Navigation */}
       <AnimatePresence>

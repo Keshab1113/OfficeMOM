@@ -364,7 +364,7 @@ const PricingOptions = () => {
               <SkeletonItem key={index} />
             ))
             : plans && plans.length > 0
-              ? plans.map((plan, index) => {
+              ? plans.map((plan) => {
                 if (!plan?.name) return null;
                 const IconComponent = getPlanIcon(plan.name);
                 const displayPrice =
@@ -433,9 +433,9 @@ const PricingOptions = () => {
 
                     {/* Pricing */}
                     <div className="mb-6">
-                      <div className="flex items-baseline gap-2">
+                      <div className="flex items-baseline gap-0 flex-wrap overflow-hidden min-w-0">
                         <span
-                          className={`text-3xl font-bold ${plan.isHighlighted
+                          className={`text-3xl font-bold truncate ${plan.isHighlighted
                             ? "text-white"
                             : "text-gray-900 dark:text-white"
                             }`}
@@ -443,7 +443,7 @@ const PricingOptions = () => {
                           {formattedPrice.formatted}
                         </span>
                         <span
-                          className={`text-lg ${plan.isHighlighted
+                          className={`text-lg whitespace-nowrap ${plan.isHighlighted
                             ? "text-indigo-100"
                             : "text-gray-500 dark:text-gray-400"
                             }`}
@@ -451,6 +451,7 @@ const PricingOptions = () => {
                           {billingCycle === "yearly" ? "/year" : "/month"}
                         </span>
                       </div>
+
 
                       {plan.price > 0 && billingCycle === "yearly" && (
                         <div className="mt-2 space-y-1">
