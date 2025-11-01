@@ -191,50 +191,73 @@ const LiveMeeting = () => {
           const remoteStream = new MediaStream();
 
           pc.ontrack = (e) => {
-            if (e.streams && e.streams[0]) {
-              e.streams[0].getTracks().forEach((track) => {
-                remoteStream.addTrack(track);
+  console.log("🎵 Track received from guest:", e.track.kind, e.track.id, "enabled:", e.track.enabled, "muted:", e.track.muted);
+  
+  if (e.streams && e.streams[0]) {
+    e.streams[0].getTracks().forEach((track) => {
+      remoteStream.addTrack(track);
 
-                track.onmute = () =>
-                  console.log(`Track ${track.id} was muted!`);
-                track.onunmute = () =>
-                  console.log(`Track ${track.id} was unmuted!`);
-                track.onended = () => console.log(`Track ${track.id} ended`);
-              });
+      track.onmute = () =>
+        console.log(`❌ Track ${track.id} was muted!`);
+      track.onunmute = () => {
+        console.log(`✅ Track ${track.id} was unmuted!`);
+        
+        // Add to mixer when track becomes active
+        const audioTracks = remoteStream.getAudioTracks();
+        console.log(`📊 Remote stream has ${audioTracks.length} audio tracks`);
+        
+        if (audioTracks.length > 0 && audioTracks[0].readyState === 'live') {
+          console.log(`🎧 Adding guest ${from} to mixer`);
+          addRemoteRef.current(remoteStream, from);
+          startIndividualRecording(from, remoteStream.clone());
+        }
+      };
+      track.onended = () => console.log(`⚠️ Track ${track.id} ended`);
+    });
 
-              const monitorGuestAudio = () => {
-                try {
-                  const audioContext = new AudioContext();
-                  const analyser = audioContext.createAnalyser();
-                  const source =
-                    audioContext.createMediaStreamSource(remoteStream);
-                  source.connect(analyser);
+    const monitorGuestAudio = () => {
+      try {
+        const audioTracks = remoteStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          console.log("❌ No audio tracks in remote stream");
+          return;
+        }
 
-                  const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                  analyser.getByteFrequencyData(dataArray);
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(remoteStream);
+        source.connect(analyser);
 
-                  const average =
-                    dataArray.reduce((a, b) => a + b) / dataArray.length;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
 
-                  if (average > 5) {
-                    console.log(
-                      `🎤 GUEST ${from} IS SPEAKING! Audio received.`
-                    );
-                  }
+        const average =
+          dataArray.reduce((a, b) => a + b) / dataArray.length;
 
-                  audioContext.close();
-                } catch (error) {
-                  console.log("Guest audio level check error:", error);
-                }
-              };
+        if (average > 5) {
+          console.log(
+            `🎤 GUEST ${from} IS SPEAKING! Audio level: ${average.toFixed(2)}`
+          );
+        }
 
-              const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
-              audioIntervalsRef.current.set(from, guestAudioInterval);
+        audioContext.close();
+      } catch (error) {
+        console.log("Guest audio level check error:", error);
+      }
+    };
 
-              addRemoteRef.current(remoteStream, from);
-              startIndividualRecording(from, remoteStream.clone());
-            }
-          };
+    const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
+    audioIntervalsRef.current.set(from, guestAudioInterval);
+
+    // Try adding immediately if track is already live
+    const audioTracks = remoteStream.getAudioTracks();
+    if (audioTracks.length > 0 && audioTracks[0].readyState === 'live' && !audioTracks[0].muted) {
+      console.log(`🎧 Immediately adding guest ${from} to mixer (track already live)`);
+      addRemoteRef.current(remoteStream, from);
+      startIndividualRecording(from, remoteStream.clone());
+    }
+  }
+};
 
           peersRef.current.set(from, pc);
 
@@ -260,20 +283,21 @@ const LiveMeeting = () => {
         }
 
         if (data.sdp) {
-          await pc.setRemoteDescription(data.sdp);
+  console.log(`📥 Received SDP from ${from}, type: ${data.sdp.type}`);
+  await pc.setRemoteDescription(data.sdp);
 
-          const answer = await pc.createAnswer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: false,
-          });
+  if (data.sdp.type === 'offer') {
+    console.log(`📤 Creating answer for ${from}`);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
 
-          await pc.setLocalDescription(answer);
-
-          sock.emit("signal", {
-            to: from,
-            data: { sdp: pc.localDescription },
-          });
-        } else if (data.candidate) {
+    sock.emit("signal", {
+      to: from,
+      data: { sdp: pc.localDescription },
+    });
+    console.log(`✅ Answer sent to ${from}`);
+  }
+}else if (data.candidate) {
           try {
             await pc.addIceCandidate(data.candidate);
           } catch (error) {
