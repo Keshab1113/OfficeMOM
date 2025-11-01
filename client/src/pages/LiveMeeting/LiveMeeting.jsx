@@ -256,6 +256,12 @@ const LiveMeeting = () => {
       addRemoteRef.current(remoteStream, from);
       startIndividualRecording(from, remoteStream.clone());
     }
+    // 🔊 Force AudioContext to resume when new guest arrives
+if (mixerRef.current?.audioContext?.state === "suspended") {
+  console.log("Resuming audio context for new guest");
+  mixerRef.current.audioContext.resume();
+}
+
   }
 };
 
@@ -626,14 +632,16 @@ const LiveMeeting = () => {
   };
 
   const toggleMute = () => {
-    if (localMicRef.current) {
-      const audioTracks = localMicRef.current.getAudioTracks();
-      audioTracks.forEach((track) => {
-        track.enabled = !isMuted;
-      });
-      setIsMuted(!isMuted);
-    }
-  };
+  if (!localMicRef.current) return;
+
+  const newMuteState = !isMuted; // toggle first
+  localMicRef.current.getAudioTracks().forEach((track) => {
+    track.enabled = !newMuteState; // true means unmuted
+    console.log(`🎙️ Host mic ${newMuteState ? "muted" : "unmuted"} (track.enabled=${track.enabled})`);
+  });
+  setIsMuted(newMuteState);
+};
+
 
   const approve = (id) => {
     socketRef.current.emit("host:approve", { guestSocketId: id });

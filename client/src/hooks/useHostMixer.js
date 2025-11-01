@@ -93,42 +93,45 @@ export async function createHostMixerStream(localMic) {
   }
 
   // 🎧 Add a remote guest stream into the mix
-  const addRemote = (remoteStream, socketId) => {
+ const addRemote = async (remoteStream, socketId) => {
   if (!remoteStream || connectedStreams.has(socketId)) {
     console.log(`⚠️ Skipping remote add: stream=${!!remoteStream}, already has=${connectedStreams.has(socketId)}`);
     return;
   }
-  
-  // Verify stream has active audio tracks
+
   const audioTracks = remoteStream.getAudioTracks();
-  console.log(`🎧 Attempting to add remote ${socketId}:`);
-  console.log(`   - Audio tracks: ${audioTracks.length}`);
-  
+  console.log(`🎧 Attempting to add remote ${socketId}: (${audioTracks.length} tracks)`);
+
   if (audioTracks.length === 0) {
     console.error(`❌ No audio tracks in remote stream for ${socketId}`);
     return;
   }
-  
+
   audioTracks.forEach((track, idx) => {
     console.log(`   - Track ${idx}: id=${track.id}, enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
   });
-  
+
   try {
-    // Resume audio context if suspended
-    if (audioCtx.state === 'suspended') {
-      console.log('⏯️ Resuming suspended AudioContext');
-      audioCtx.resume();
+    if (audioCtx.state === "suspended") {
+      console.log("⏯️ Resuming suspended AudioContext before adding remote");
+      await audioCtx.resume();
     }
-    
-    // Use a fresh AudioContext MediaStreamSource
+
     const remoteSrc = audioCtx.createMediaStreamSource(remoteStream);
     const remoteGain = audioCtx.createGain();
-    remoteGain.gain.value = 1.5; // Boost guest audio slightly
+    remoteGain.gain.value = 1.3;
 
-    // Connect to destination for mixing
     remoteSrc.connect(remoteGain).connect(destination);
+
+    // Optional preview for debugging (autoplay muted)
+    const debugAudio = document.createElement("audio");
+    debugAudio.srcObject = remoteStream;
+    debugAudio.autoplay = true;
+    debugAudio.muted = true;
+    document.body.appendChild(debugAudio);
+
     connectedStreams.set(socketId, { source: remoteSrc, gain: remoteGain });
-    console.log(`✅ Remote stream from ${socketId} successfully added to mix`);
+    console.log(`✅ Remote ${socketId} added to mix and playing`);
   } catch (error) {
     console.error(`❌ Error adding remote stream for ${socketId}:`, error);
   }

@@ -81,11 +81,12 @@ const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: "*", // allow all origins
     methods: ["GET", "POST"],
-    credentials: true,
+    credentials: true, // optional — can set to false if not needed
   },
 });
+
 
 // 👇 ADD THIS HERE — before io.on("connection")
 io.engine.on("connection_error", (err) => {
