@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { cn } from "../../lib/utils";
+
 import io from "socket.io-client";
 import {
   FaMicrophone,
@@ -11,6 +12,7 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import { useToast } from "../../components/ToastContext";
+
 import SideBar from "../../components/SideBar/SideBar"
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
@@ -83,28 +85,28 @@ const JoinMeeting = () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-              channelCount: 1,
-              sampleRate: 48000,
-              sampleSize: 16,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
             },
           });
+          // ✅ Force mic to start immediately and make sure it's not muted
+stream.getAudioTracks().forEach((track) => {
+  track.enabled = true;
+  console.log(`🎙️ Forcing mic track ${track.id} enabled=${track.enabled}, muted=${track.muted}`);
+});
+
+// 🔊 Warm up local stream playback so audio starts flowing in Chrome
+const audioEl = document.createElement("audio");
+audioEl.srcObject = stream;
+audioEl.autoplay = true;
+audioEl.muted = true; // prevent feedback
+document.body.appendChild(audioEl);
+
 
           localStreamRef.current = stream;
 
           console.log("Guest audio tracks:", stream.getAudioTracks());
-          const audioContext = new AudioContext();
-          const source = audioContext.createMediaStreamSource(stream);
-          const destination = audioContext.createMediaStreamDestination();
-          source.connect(destination);
-
-          const silentSource = audioContext.createOscillator();
-          silentSource.frequency.setValueAtTime(0.1, audioContext.currentTime);
-          silentSource.connect(audioContext.destination);
-          silentSource.start();
-
           const pc = new RTCPeerConnection({
             iceServers: ICE,
             sdpSemantics: "unified-plan",
@@ -112,16 +114,17 @@ const JoinMeeting = () => {
 
           pcRef.current = pc;
 
-          for (const track of destination.stream.getTracks()) {
+          // ✅ Use actual microphone stream directly (not virtual destination)
+          for (const track of stream.getAudioTracks()) {
             console.log(
-              "Adding processed track:",
+              "Adding mic track:",
               track.id,
               "enabled:",
               track.enabled,
               "muted:",
               track.muted
             );
-            pc.addTrack(track, destination.stream);
+            pc.addTrack(track, stream);
           }
 
           pc.onconnectionstatechange = () => {
@@ -140,9 +143,10 @@ const JoinMeeting = () => {
             console.log("Guest signaling state:", pc.signalingState);
           };
 
+          // ✅ Handle ICE candidates - ONLY ONE HANDLER
           pc.onicecandidate = (ev) => {
             if (ev.candidate && hostSocketIdRef.current) {
-              console.log("Sending ICE candidate to host");
+              console.log("📤 Sending ICE candidate to host");
               sock.emit("signal", {
                 to: hostSocketIdRef.current,
                 data: { candidate: ev.candidate },
@@ -150,28 +154,47 @@ const JoinMeeting = () => {
             }
           };
 
-          const offer = await pc.createOffer({
-            offerToReceiveAudio: false,
-            offerToReceiveVideo: false,
-          });
+          // ✅ Handle renegotiation automatically
+          // pc.onnegotiationneeded = async () => {
+          //   try {
+          //     console.log("🔄 Renegotiation triggered, creating new offer");
+          //     const offer = await pc.createOffer();
+          //     await pc.setLocalDescription(offer);
+          //     if (hostSocketIdRef.current) {
+          //       sock.emit("signal", {
+          //         to: hostSocketIdRef.current,
+          //         data: { sdp: pc.localDescription },
+          //       });
+          //     }
+          //   } catch (err) {
+          //     console.error("❌ Renegotiation error:", err);
+          //   }
+          // };
 
-          const modifiedOffer = {
-            ...offer,
-            sdp: offer.sdp.replace(
-              /useinbandfec=1/g,
-              "useinbandfec=1; stereo=0; maxaveragebitrate=128000"
-            ),
+          // ✅ Wait for connection state changes
+          pc.onconnectionstatechange = () => {
+            console.log("🔗 Guest connection state:", pc.connectionState);
+            if (pc.connectionState === "connected") {
+              console.log("✅ Guest successfully connected to host via WebRTC");
+            } else if (pc.connectionState === "failed") {
+              console.error("❌ Connection failed");
+            }
           };
 
-          await pc.setLocalDescription(modifiedOffer);
+          // ✅ Create and send offer AFTER all handlers are set
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
 
-          if (hostSocketIdRef.current) {
-            console.log("Sending SDP offer to host");
-            sock.emit("signal", {
-              to: hostSocketIdRef.current,
-              data: { sdp: pc.localDescription },
-            });
-          }
+          // Wait a bit to avoid ICE mismatch (optional)
+          console.log("🎤 Sending SDP offer to host...");
+if (hostSocketIdRef.current) {
+  sock.emit("signal", {
+    to: hostSocketIdRef.current,
+    data: { sdp: pc.localDescription },
+  });
+}
+
+
 
           setStatus("Connected to meeting - Recording in progress...");
           setStatusType("success");
@@ -272,19 +295,16 @@ const JoinMeeting = () => {
   }, [id, nav]);
 
   const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks();
-      console.log("Toggling mute, current state:", isMuted);
-      console.log("Audio tracks:", audioTracks);
+  if (!localStreamRef.current) return;
+  
+  const newMuteState = !isMuted;
+  localStreamRef.current.getAudioTracks().forEach((track) => {
+    track.enabled = !newMuteState; // disabling sends silence
+    console.log(`🎙️ Mic ${newMuteState ? "muted" : "unmuted"} (track.enabled=${track.enabled})`);
+  });
+  setIsMuted(newMuteState);
+};
 
-      audioTracks.forEach((track) => {
-        console.log(`Track ${track.id} enabled before:`, track.enabled);
-        track.enabled = !track.enabled;
-        console.log(`Track ${track.id} enabled after:`, track.enabled);
-      });
-      setIsMuted(!isMuted);
-    }
-  };
 
   const getStatusIcon = () => {
     switch (statusType) {

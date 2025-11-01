@@ -32,12 +32,13 @@ const session = require("express-session");
 const app = express();
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: (origin, callback) => callback(null, true), // allow all origins
+    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(
@@ -80,11 +81,12 @@ const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: "*", // allow all origins
     methods: ["GET", "POST"],
-    credentials: true,
+    credentials: true, // optional — can set to false if not needed
   },
 });
+
 
 // 👇 ADD THIS HERE — before io.on("connection")
 io.engine.on("connection_error", (err) => {
