@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { cn } from "../../lib/utils";
+console.log("cn:", cn);
 import io from "socket.io-client";
 import {
   FaMicrophone,
@@ -11,6 +12,7 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import { useToast } from "../../components/ToastContext";
+console.log("useToast:", useToast);
 import SideBar from "../../components/SideBar/SideBar"
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
