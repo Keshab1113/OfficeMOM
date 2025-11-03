@@ -92,6 +92,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const location = useLocation();
   const [subscription, setSubscription] = useState(null);
   const [isHovering, setIsHovering] = useState(false);
+  const [isExpandButtonClick, setIsExpandButtonClick] = useState(false);
 
   const hiddenRoutes = ["/meeting", "/audio-notes", "/live-meeting"];
 
@@ -169,20 +170,18 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
     }
   }, []);
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    if (!isDarkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
   const handleMouseEnter = () => {
     setIsHovering(true);
     setIsCollapsed(false);
+  };
+  const handleExpandButton = () => {
+    if (isCollapsed) {
+      setIsExpandButtonClick(true);
+      handleMouseEnter();
+    } else {
+      setIsExpandButtonClick(false);
+      handleMouseLeave();
+    }
   };
 
   const handleMouseLeave = () => {
@@ -222,8 +221,8 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
         ease: "easeOut",
         duration: 0.3
       }}
-      // onMouseEnter={!isMobile ? handleMouseEnter : undefined}
-      // onMouseLeave={!isMobile ? handleMouseLeave : undefined}
+      onMouseEnter={(!isExpandButtonClick && !isMobile) ? handleMouseEnter : undefined}
+      onMouseLeave={(!isExpandButtonClick && !isMobile) ? handleMouseLeave : undefined}
       style={{
         '--sidebar-width': isCollapsed && !isMobile ? '5rem' : isMobile ? '100vw' : '20rem'
       }}
@@ -466,8 +465,8 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   // Toggle Button - Now outside the sidebar
   const ToggleButton = !isMobile && (
     <motion.button
-      onClick={isCollapsed ? handleMouseEnter : handleMouseLeave}
-      className="absolute -right-5 top-1/2 transform -translate-y-1/2 z-50
+      onClick={handleExpandButton}
+      className="absolute -right-5 2xl:top-[7rem] top-[5.5rem] transform -translate-y-1/2 z-50
         w-10 h-10 bg-white/90 dark:bg-indigo-600/30 backdrop-blur-sm
         rounded-full shadow-2xl border border-indigo-600
         flex items-center justify-center cursor-pointer
@@ -494,7 +493,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="fixed z-[60] lg:bottom-25 bottom-32 lg:left-[300px] md:left-[450px] left-auto right-5 lg:right-auto min-w-[250px]"
+          className="fixed z-[60] lg:bottom-25 bottom-32 lg:left-[300px] md:left-[300px] left-auto right-5 md:right-auto min-w-[250px]"
         >
           <div
             className="w-full bg-gradient-to-br from-white via-purple-50/50 to-blue-50 

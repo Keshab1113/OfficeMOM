@@ -115,18 +115,27 @@ const Header = ({ isVisible = true }) => {
     "/signup",
     "/forgot-password",
   ];
-  const hiddenRoutes2 = [
-    "/documentation",
-    "/privacy-policy",
-    "/terms-of-service",
-  ];
+  // const hiddenRoutes2 = [
+  //   "/documentation",
+  //   "/privacy-policy",
+  //   "/terms-of-service",
+  // ];
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
   );
   const needLogo = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
   );
-  const fullWidthHeader = hiddenRoutes2.some((path) =>
+  // const fullWidthHeader = hiddenRoutes2.some((path) =>
+  //   location.pathname.startsWith(path)
+  // );
+  const floatingHeaderRoutes = [
+    "/meeting",
+    "/audio-notes", 
+    "/live-meeting",
+  ];
+  
+  const shouldUseFloatingHeader = floatingHeaderRoutes.some((path) =>
     location.pathname.startsWith(path)
   );
 
@@ -136,9 +145,9 @@ const Header = ({ isVisible = true }) => {
         initial={{ y: 0 }}
         animate={{ y: isVisible ? 0 : -100 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`fixed top-0 z-40 w-full transition-all duration-300 bg-white/40 dark:bg-gray-900/40 backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700 ${
+        className={`fixed top-0 z-40 w-full transition-all duration-300  backdrop-blur-lg shadow-lg border-b border-gray-200 dark:border-gray-700 ${
           !isVisible ? "pointer-events-none" : ""
-        }`}
+        } ${shouldUseFloatingHeader ? "lg:bg-white/40 lg:dark:bg-gray-900/40 bg-white dark:bg-gray-900" : "bg-white dark:bg-gray-900"}`}
       >
         <div className="px-4 sm:px-6 lg:px-8">
           <div

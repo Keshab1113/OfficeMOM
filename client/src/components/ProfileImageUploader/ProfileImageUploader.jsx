@@ -212,7 +212,7 @@ const ProfileImageUploader = () => {
     { icon: Shield, label: "Subscription", value: SubscriptionName, color: "text-blue-500" },
     { icon: Zap, label: "Total Used", value: `${subscription?.total_used_time} min`, color: "text-purple-500" },
     { icon: Clock, label: "Total Times", value: `${subscription?.total_minutes} min`, color: "text-green-500" },
-    { icon: AlarmClock, label: "Total Remaining Time", value: `${subscription?.total_remaining_time} min`, color: "text-orange-500" },
+    { icon: AlarmClock, label: "Remaining Time", value: `${subscription?.total_remaining_time} min`, color: "text-orange-500" },
   ];
 
 return (

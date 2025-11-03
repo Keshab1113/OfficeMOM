@@ -403,7 +403,7 @@ const Meeting = () => {
             {/* Enhanced Hero Section */}
             {!isMeetingActive && !showModal && (
               <div className="text-center mb-8 mt-10 px-4">
-                <h1 className="text-3xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 animate-fade-in-up pb-1 lg:pb-3">
+                <h1 className="text-3xl md:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 animate-fade-in-up pb-1 lg:pb-3">
                   Smart Meeting Assistant
                 </h1>
                 <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto animate-fade-in-up animation-delay-300">

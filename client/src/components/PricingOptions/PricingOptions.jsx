@@ -5,23 +5,16 @@ import { useEffect, useState } from "react";
 import { X, Check, Star, Zap, Shield, Users, Brain, Globe } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "../ToastContext";
 import PlanComparison from "./PlanComparison";
-import CheckoutModal from "./CheckoutModal";
 import SkeletonItem from "./SkeletonItem";
 
 const PricingOptions = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("card");
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [currency, setCurrency] = useState("local"); // 'USD' or 'local'
   const { token } = useSelector((state) => state.auth);
   const nav = useNavigate();
-  const { addToast } = useToast();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [error, setError] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [location, setLocation] = useState(null);
@@ -140,61 +133,7 @@ const PricingOptions = () => {
       nav("/meeting");
       return;
     }
-    setSelectedPlan(plan);
-    setIsModalOpen(true);
-  };
-
-  const handleCheckout = async () => {
-    setLoadingCheckout(true);
-    if (!paymentMethod) {
-      addToast("error", "Please select a payment method");
-      setLoadingCheckout(false);
-      return;
-    }
-
-    try {
-      const finalPrice =
-        billingCycle === "yearly"
-          ? selectedPlan.yearlyPrice
-          : selectedPlan.price;
-
-      // Get the correct priceID based on billing cycle
-      const priceID =
-        billingCycle === "yearly"
-          ? selectedPlan.yearly_priceID
-          : selectedPlan.priceID;
-
-      const requestData = {
-        plan: selectedPlan.name,
-        paymentMethods: [paymentMethod],
-        billingCycle,
-        price: finalPrice,
-      };
-
-      if (priceID) {
-        requestData.priceID = priceID;
-      }
-
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL
-        }/api/stripe/create-checkout-session`,
-        requestData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (res.data.url) {
-        setLoadingCheckout(false);
-        window.location.href = res.data.url;
-      }
-    } catch (err) {
-      setLoadingCheckout(false);
-      console.error("Checkout error:", err);
-      addToast("error", "Failed to process checkout. Please try again.");
-    }
+    nav("/checkout", { state: { selectedPlan: plan, billingCycle: billingCycle } });
   };
 
   const calculateYearlySavings = (monthlyPrice) => {
@@ -507,9 +446,11 @@ const PricingOptions = () => {
               ))}
         </div>
 
+        <h1 className=" mt-10 text-gray-600 dark:text-gray-200 text-center">Note: All Payments will be charged in USD. All other currencies are for reference only.</h1>
+
         {/* Trust Indicators */}
-        <div className="mt-20 text-center">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
+        <div className="mt-6 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 md:gap-8 gap-2 max-w-2xl mx-auto">
             {[
               { icon: Shield, text: "Secure & Encrypted" },
               { icon: Zap, text: "Instant Setup" },
@@ -530,23 +471,6 @@ const PricingOptions = () => {
           </div>
         </div>
       </div>
-
-      {/* Payment Modal */}
-      {isModalOpen && selectedPlan && (
-        <CheckoutModal
-          selectedPlan={selectedPlan}
-          setIsModalOpen={setIsModalOpen}
-          paymentMethod={paymentMethod}
-          setPaymentMethod={setPaymentMethod}
-          loadingCheckout={loadingCheckout}
-          handleCheckout={handleCheckout}
-          billingCycle={billingCycle}
-          currency={currency}
-          exchangeRate={exchangeRate}
-          localCurrency={localCurrency}
-        />
-      )}
-
       <PlanComparison
         plans={plans}
         billingCycle={billingCycle}

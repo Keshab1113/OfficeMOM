@@ -1,7 +1,7 @@
- 
+
 const dotenv = require("dotenv");
 dotenv.config();
- 
+
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -26,10 +26,16 @@ const userSubscriptionRoutes = require("./routes/userSubscriptionRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
 const session = require("express-session");
+const stripeController = require("./controllers/stripeController.js");
 
- 
+
 
 const app = express();
+app.post(
+  "/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  stripeController.handleStripeWebhook
+);
 app.use(
   cors({
     origin: (origin, callback) => callback(null, true), // allow all origins
@@ -74,7 +80,7 @@ app.use("/api/location", locationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use('/api/bot-meetings', botMeetingRoutes);
 app.use('/api/bot', botRoutes);
- 
+
 app.use('/api/subscription', userSubscriptionRoutes);
 
 const server = http.createServer(app);
@@ -104,7 +110,7 @@ const liveStreams = new Map();
 async function openAssemblyAIWS(roomId) {
   // STEP 1: Get temporary token from AssemblyAI
   // Multi-language detection enabled
-const AAI_URL = `wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&format_text=true`;
+  const AAI_URL = `wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&format_text=true`;
 
 
   const ws = new WebSocket(AAI_URL, {
@@ -122,37 +128,37 @@ const AAI_URL = `wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&format_t
   });
 
   ws.on("message", (message) => {
-  try {
-    const msg = JSON.parse(message.toString());
+    try {
+      const msg = JSON.parse(message.toString());
 
-    // Extract transcript text
-    let transcriptText = "";
+      // Extract transcript text
+      let transcriptText = "";
 
-    // Handle all transcript types including multi-language
-if (msg.type === "PartialTranscript") {
-  transcriptText = msg.words?.map(w => w.text).join(" ") || msg.transcript || "";
-} else if (msg.type === "FinalTranscript" || msg.type === "Turn") {
-  // Turn events contain finalized transcripts; includes language info
-  transcriptText = msg.transcript || msg.utterance || "";
-  if (msg.language) {
-    transcriptText = `[${msg.language}] ${transcriptText}`; // optional: show detected language
-  }
-}
+      // Handle all transcript types including multi-language
+      if (msg.type === "PartialTranscript") {
+        transcriptText = msg.words?.map(w => w.text).join(" ") || msg.transcript || "";
+      } else if (msg.type === "FinalTranscript" || msg.type === "Turn") {
+        // Turn events contain finalized transcripts; includes language info
+        transcriptText = msg.transcript || msg.utterance || "";
+        if (msg.language) {
+          transcriptText = `[${msg.language}] ${transcriptText}`; // optional: show detected language
+        }
+      }
 
 
-    if (transcriptText) {
-  console.log("🗣️ Transcript:", transcriptText); // clean log
-  io.to(roomId).emit("caption", {
-    text: transcriptText,
-    isFinal: msg.type === "FinalTranscript" || msg.end_of_turn === true
+      if (transcriptText) {
+        console.log("🗣️ Transcript:", transcriptText); // clean log
+        io.to(roomId).emit("caption", {
+          text: transcriptText,
+          isFinal: msg.type === "FinalTranscript" || msg.end_of_turn === true
+        });
+      }
+
+
+    } catch (err) {
+      console.error("❌ AssemblyAI parse error:", err);
+    }
   });
-}
-
-
-  } catch (err) {
-    console.error("❌ AssemblyAI parse error:", err);
-  }
-});
 
 
   ws.on("error", (err) => {
@@ -181,7 +187,7 @@ function closeAssemblyAIWS(roomId) {
 
 io.on("connection", (socket) => {
 
-   console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
+  console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
   console.log(`📡 Connected from: ${socket.handshake.headers.origin || "Unknown Origin"}`);
 
   // --- Host joins room ---
