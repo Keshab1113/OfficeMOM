@@ -244,12 +244,13 @@ const JoinMeeting = () => {
     });
 
     sock.on("room:ended", () => {
-      setStatus("Meeting ended by host.");
-      setStatusType("info");
-      setTimeout(() => {
-        addToast("success", "Meeting ended by host.");
-        nav("/");
-      }, 2000);
+      console.log("Received room:ended event");
+      handleMeetingEnd();
+    });
+
+    sock.on("host:end-meeting", () => {
+      console.log("Received host:end-meeting event");
+      handleMeetingEnd();
     });
 
     sock.on("connect_error", (error) => {
@@ -262,6 +263,41 @@ const JoinMeeting = () => {
       setStatus("Connected to server");
       setStatusType("success");
     });
+  };
+
+  const handleMeetingEnd = () => {
+    console.log("Handling meeting end");
+    setStatus("Meeting ended by host.");
+    setStatusType("info");
+    
+    // Clean up resources immediately
+    try {
+      // Stop all audio tracks
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          track.stop();
+          track.enabled = false;
+        });
+      }
+      
+      // Close WebRTC connection
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      
+      // Emit guest disconnected event before disconnecting
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit("guest:disconnect");
+        socketRef.current.disconnect();
+      }
+    } catch (error) {
+      console.log("Error in cleanup:", error);
+    }
+    
+    // Navigate immediately without delay
+    addToast("success", "Meeting ended by host.");
+    nav("/");
   };
 
   useEffect(() => {

@@ -26,6 +26,7 @@
     "framer-motion": "^12.23.12",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.540.0",
+    "luxon": "^3.7.2",
     "motion": "^12.23.12",
     "openai": "^5.12.2",
     "qrcode.react": "^4.2.0",

@@ -3,7 +3,7 @@
 const axios = require("axios");
 const db = require("../config/db.js");
 const { semanticChunkTranscript } = require("../utils/semanticChunker");
-
+const { DateTime } = require("luxon");
 // =====================
 // Helper: Delay function
 // =====================
@@ -841,7 +841,26 @@ const processTranscript = async (req, res) => {
     try {
       console.log("💾 STEP 6: Saving final MoM to history...");
 
-      const formattedDate = req.body.date || new Date().toISOString().slice(0, 19).replace("T", " ");
+      // Convert local time to UTC before saving to database
+      // Convert local time to UTC before saving to database
+let formattedDate;
+
+if (req.body.date) {
+  // Treat incoming date as already UTC
+  const utcDate = DateTime.fromFormat(req.body.date, "yyyy-LL-dd HH:mm:ss", { zone: "utc" });
+  if (utcDate.isValid) {
+    formattedDate = utcDate.toFormat("yyyy-LL-dd HH:mm:ss");
+    console.log(`🕒 Using provided UTC date: "${formattedDate}"`);
+  } else {
+    formattedDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
+    console.warn(`⚠️ Invalid format, fallback to current UTC: "${formattedDate}"`);
+  }
+} else {
+  formattedDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
+  console.log(`🕒 No date provided, defaulting to current UTC: "${formattedDate}"`);
+}
+
+
 
       // Use the provided history_id directly to update the existing record
       if (history_id) {

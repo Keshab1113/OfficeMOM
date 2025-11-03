@@ -29,6 +29,7 @@ import {
 import Trancript from "../../components/LittleComponent/Trancript";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
+import { DateTime } from "luxon";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 const breadcrumbItems = [
@@ -173,6 +174,8 @@ const LiveMeeting = () => {
       });
 
       sock.on("room:count", ({ count }) => {
+        // Only update count when it's the actual connected participants, not pending requests
+        // The count should only include approved guests, not pending requests
         setParticipants(count);
       });
 
@@ -515,6 +518,19 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
 
   const endMeeting = async () => {
     try {
+      // Stop all individual recordings first
+      individualRecordersRef.current.forEach((recorder, socketId) => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+          console.log(`Stopped individual recorder for ${socketId}`);
+        }
+      });
+      
+      // Stop main media recorder
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
         {},
@@ -524,6 +540,13 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
           },
         }
       );
+      
+      // Emit room:ended event to all connected guests
+      if (socketRef.current) {
+        socketRef.current.emit("host:end-meeting", { roomId: meetingId });
+        // Also emit to room to ensure all guests receive it
+        socketRef.current.emit("room:ended", { roomId: meetingId });
+      }
       addToast("success", "Meeting ended successfully.");
     } catch (err) {
       console.error("Error ending meeting:", err);
@@ -596,17 +619,15 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
 
-    // 🕒 Get user's local time and convert to UTC
-    const localDate = new Date();
-    const utcDate = localDate.toISOString().slice(0, 19).replace("T", " "); // e.g. 2025-10-21 09:12:34
+   const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
 
-    const historyData = {
-      source: "Live Transcript Conversion",
-      date: utcDate, // send UTC time to backend
-      data: data,
-      language: detectLanguage,
-      audio_id: audioID,
-    };
+const historyData = {
+  source: "Live Transcript Conversion",
+  date: formattedUTCDate, // send UTC time to backend
+  data: data,
+  language: detectLanguage,
+  audio_id: audioID,
+};
     
     setShowModal2(false);
     setShowModal(false);
@@ -671,8 +692,8 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   const approve = (id) => {
     socketRef.current.emit("host:approve", { guestSocketId: id });
     setRequests((r) => r.filter((x) => x.socketId !== id));
-    // Update participant count when a guest is approved
-    setParticipants(prev => prev + 1);
+    // Participant count will be updated via room:count event from server
+    // Don't manually increment here to avoid double counting
   };
   const reject = (id) => {
     socketRef.current.emit("host:reject", { guestSocketId: id });
@@ -923,6 +944,11 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
                                 </button>
                                 <div className="mt-2 text-xs text-gray-400">
                                   {participants} participant(s) connected
+                                  {requests.length > 0 && (
+                                    <div className="text-orange-500">
+                                      {requests.length} pending approval
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

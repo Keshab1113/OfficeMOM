@@ -18,6 +18,7 @@ import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import OnlineMeeting from "../../components/MeetingInstructions/MeetingInstruction";
 import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
 import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
+import { DateTime } from "luxon";
 
 const breadcrumbItems = [{ label: "Generate Notes" }];
 
@@ -240,13 +241,12 @@ const GenerateNotes = () => {
   const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
 
-    // 🕒 Get user's local time and convert to UTC
-    const localDate = new Date();
-    const utcDate = localDate.toISOString().slice(0, 19).replace("T", " "); // e.g. 2025-10-21 09:12:34
+    // 🕒 Get user's local time
+   const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
 
     const historyData = {
       source: "Generate Notes Conversion",
-      date: utcDate, // send UTC time to backend
+      date: formattedUTCDate, // send local time to backend
       data: data,
       language: detectLanguage,
       audio_id: audioID,
