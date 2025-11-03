@@ -64,9 +64,7 @@ function Layout() {
         />
       )}
       <div 
-        className={`flex dark:bg-black bg-white p-0 overflow-hidden h-screen ${
-          !hideHeader && !shouldUseFloatingHeader ? "lg:pt-0 pt-16" : ""
-        }`}
+        className={`flex dark:bg-black bg-white p-0 overflow-hidden h-screen`}
       >
         {!hideSidebar && (
           <div className="fixed top-0 left-0 z-40 lg:relative">
@@ -80,9 +78,7 @@ function Layout() {
           style={{
             transition: isTransitioning ? "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)" : "none"
           }}
-          className={`w-full ${(!hideSidebar && !shouldUseFloatingHeader) ? "lg:block lg:pt-20" : "pt-16 lg:pt-0"} ${
-            shouldUseFloatingHeader ? "pt-0" : ""
-          }`} 
+          className={`w-full ${(hideHeader && !shouldUseFloatingHeader) ? "lg:block pt-0" : ((!hideHeader && !shouldUseFloatingHeader) ? "pt-16 lg:pt-20":"pt-16 lg:pt-0")}`} 
           id="scrollableMain"
         >
           <Outlet />
