@@ -26,7 +26,7 @@ const userSubscriptionRoutes = require("./routes/userSubscriptionRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const passport = require("./config/passport");
 const session = require("express-session");
-
+const audioBackup = require('./services/audioBackup');
  
 
 const app = express();
@@ -179,123 +179,7 @@ function closeAssemblyAIWS(roomId) {
   }
 }
 
-// io.on("connection", (socket) => {
-
-//    console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
-//   console.log(`📡 Connected from: ${socket.handshake.headers.origin || "Unknown Origin"}`);
-
-//   // --- Host joins room ---
-//   socket.on("host:join-room", ({ roomId }) => {
-//     if (rooms.has(roomId)) {
-//       const existingRoom = rooms.get(roomId);
-//       if (existingRoom.hostSocketId !== socket.id) {
-//         const previousHost = io.sockets.sockets.get(existingRoom.hostSocketId);
-//         if (previousHost) {
-//           previousHost.emit("host:replaced");
-//           previousHost.leave(roomId);
-//         }
-//       }
-//     }
-
-//     rooms.set(roomId, {
-//       hostSocketId: socket.id,
-//       peers: rooms.get(roomId)?.peers || new Map(),
-//     });
-
-//     socket.join(roomId);
-//     socket.data.roomId = roomId;
-//     io.to(socket.id).emit("room:count", {
-//       count: rooms.get(roomId).peers.size,
-//     });
-//   });
-
-//   socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
-//     const room = rooms.get(roomId);
-//     if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
-
-//     socket.join(roomId);
-//     socket.data.roomId = roomId;
-//     room.peers.set(socket.id, { deviceName, deviceLabel });
-
-//     socket.emit("host:socket-id", { hostId: room.hostSocketId });
-//     io.to(room.hostSocketId).emit("host:join-request", {
-//       socketId: socket.id,
-//       deviceName,
-//       deviceLabel,
-//     });
-//     io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
-//   });
-
-//   socket.on("host:approve", ({ guestSocketId }) => {
-//     const guest = io.sockets.sockets.get(guestSocketId);
-//     if (guest) guest.emit("guest:approved");
-//   });
-
-//   socket.on("host:reject", ({ guestSocketId }) => {
-//     const guest = io.sockets.sockets.get(guestSocketId);
-//     if (guest) {
-//       guest.emit("guest:denied", { reason: "Rejected by host" });
-//       guest.leave();
-//     }
-//   });
-
-//   socket.on("signal", ({ to, data }) => {
-//     io.to(to).emit("signal", { from: socket.id, data });
-//   });
-
-//   socket.on("audio-chunk", async (chunkData) => {
-//     const roomId = socket.data.roomId;
-//     if (!roomId) return;
-
-//     let state = liveStreams.get(roomId);
-//     if (!state) {
-//       state = await openAssemblyAIWS(roomId);
-//     }
-
-//     const buffer = Buffer.isBuffer(chunkData)
-//       ? chunkData
-//       : Buffer.from(chunkData);
-
-//     const base64 = buffer.toString("base64");
-//     const payload = Buffer.from(chunkData);
-
-//     if (state.open) {
-//       // console.log(
-//       //   `🎤 [${roomId}] Sending audio chunk to AssemblyAI (${buffer.length} bytes)`
-//       // );
-//       state.ws.send(payload);
-//     } else {
-//       console.log(
-//         `⏳ [${roomId}] Queueing audio chunk (connection not open yet)`
-//       );
-//       state.queue.push(payload);
-//     }
-//   });
-
-//   socket.on("disconnecting", () => {
-//     for (const roomId of socket.rooms) {
-//       if (roomId === socket.id) continue;
-//       const room = rooms.get(roomId);
-//       if (!room) continue;
-
-//       if (room.peers.has(socket.id)) {
-//         room.peers.delete(socket.id);
-//         io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
-//       }
-
-//       if (room.hostSocketId === socket.id) {
-//         io.to(roomId).emit("room:ended");
-//         rooms.delete(roomId);
-//         closeAssemblyAIWS(roomId);
-//       }
-//     }
-//   });
-
-//   socket.on("disconnect", () => {
-//     console.log(`Client disconnected: ${socket.id}`);
-//   });
-// });
-
+ 
 
 io.on("connection", (socket) => {
   console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
@@ -316,17 +200,26 @@ io.on("connection", (socket) => {
 
     rooms.set(roomId, {
       hostSocketId: socket.id,
-      approvedPeers: rooms.get(roomId)?.approvedPeers || new Map(), // Only approved guests
-      pendingRequests: rooms.get(roomId)?.pendingRequests || new Map(), // Pending approval
+      approvedPeers: rooms.get(roomId)?.approvedPeers || new Map(),
+      pendingRequests: rooms.get(roomId)?.pendingRequests || new Map(),
     });
 
     socket.join(roomId);
     socket.data.roomId = roomId;
-    
-    // Send count of only approved peers
+
+    // 🔥 NEW: Initialize backup
+    audioBackup.initMeeting(roomId, socket.id);
+    audioBackup.addParticipant(roomId, socket.id, 'Host');
+
     io.to(socket.id).emit("room:count", {
       count: rooms.get(roomId).approvedPeers.size,
     });
+
+    // 🔥 NEW: Send meeting status
+    const status = audioBackup.getMeetingStatus(roomId);
+    if (status) {
+      socket.emit("meeting:status", status);
+    }
   });
 
   // --- Guest requests to join ---
@@ -334,25 +227,19 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomId);
     if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
 
-    // Don't join the room yet - wait for approval
     socket.data.roomId = roomId;
     socket.data.deviceName = deviceName;
     socket.data.deviceLabel = deviceLabel;
     
-    // Add to pending requests, NOT to approved peers
     room.pendingRequests.set(socket.id, { deviceName, deviceLabel });
 
-    // Send host socket ID to guest
     socket.emit("host:socket-id", { hostId: room.hostSocketId });
     
-    // Notify host of join request
     io.to(room.hostSocketId).emit("host:join-request", {
       socketId: socket.id,
       deviceName,
       deviceLabel,
     });
-    
-    // Don't send updated count yet - guest not approved
   });
 
   // --- Host approves guest ---
@@ -364,19 +251,18 @@ io.on("connection", (socket) => {
     const guest = io.sockets.sockets.get(guestSocketId);
     if (!guest) return;
 
-    // Move from pending to approved
     const guestInfo = room.pendingRequests.get(guestSocketId);
     if (guestInfo) {
       room.pendingRequests.delete(guestSocketId);
       room.approvedPeers.set(guestSocketId, guestInfo);
       
-      // Now join the room
       guest.join(roomId);
       
-      // Notify guest they're approved
+      // 🔥 NEW: Add guest to backup
+      audioBackup.addParticipant(roomId, guestSocketId, guestInfo.deviceName || 'Guest');
+      
       guest.emit("guest:approved");
       
-      // Update participant count for host (only approved guests)
       io.to(room.hostSocketId).emit("room:count", { 
         count: room.approvedPeers.size 
       });
@@ -391,9 +277,7 @@ io.on("connection", (socket) => {
 
     const guest = io.sockets.sockets.get(guestSocketId);
     if (guest) {
-      // Remove from pending requests
       room.pendingRequests.delete(guestSocketId);
-      
       guest.emit("guest:denied", { reason: "Rejected by host" });
       guest.disconnect();
     }
@@ -418,12 +302,50 @@ io.on("connection", (socket) => {
       ? chunkData
       : Buffer.from(chunkData);
 
-    const payload = Buffer.from(chunkData);
-
     if (state.open) {
-      state.ws.send(payload);
+      state.ws.send(buffer);
     } else {
-      state.queue.push(payload);
+      state.queue.push(buffer);
+    }
+  });
+
+  // 🔥 NEW: Backup audio chunks
+  socket.on("audio-chunk-backup", (chunkData) => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    const buffer = Buffer.isBuffer(chunkData)
+      ? chunkData
+      : Buffer.from(chunkData);
+
+    audioBackup.storeChunk(roomId, socket.id, buffer);
+  });
+
+  // 🔥 NEW: Start backup recording
+  socket.on("start-backup-recording", ({ roomId }) => {
+    audioBackup.startRecording(roomId);
+    console.log(`🎙️ Started backup recording for ${roomId}`);
+  });
+
+  // 🔥 NEW: Stop backup recording
+  socket.on("stop-backup-recording", async ({ roomId, token }) => {
+    try {
+      const backupUrl = await audioBackup.stopRecording(
+        roomId,
+        process.env.BACKEND_URL || 'http://localhost:3000',
+        token
+      );
+
+      const room = rooms.get(roomId);
+      if (room?.hostSocketId && backupUrl) {
+        io.to(room.hostSocketId).emit("backup-recording-saved", {
+          backupUrl,
+          roomId,
+        });
+        console.log(`✅ Backup saved and sent to host: ${backupUrl}`);
+      }
+    } catch (error) {
+      console.error('❌ Error stopping backup:', error);
     }
   });
 
@@ -435,22 +357,21 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomId);
     if (!room) return;
 
-    // Remove from approved peers
+    // 🔥 NEW: Remove from backup
+    audioBackup.removeParticipant(roomId, socket.id);
+
     if (room.approvedPeers.has(socket.id)) {
       room.approvedPeers.delete(socket.id);
       
-      // Notify host about guest disconnection
       io.to(room.hostSocketId).emit("guest:disconnected", { 
         socketId: socket.id 
       });
       
-      // Update participant count
       io.to(room.hostSocketId).emit("room:count", { 
         count: room.approvedPeers.size 
       });
     }
     
-    // Also remove from pending if they were waiting
     room.pendingRequests.delete(socket.id);
   });
 
@@ -461,7 +382,6 @@ io.on("connection", (socket) => {
 
     console.log(`🛑 Host ending meeting: ${roomId}`);
     
-    // Notify all approved guests
     room.approvedPeers.forEach((_, guestSocketId) => {
       const guest = io.sockets.sockets.get(guestSocketId);
       if (guest) {
@@ -471,7 +391,6 @@ io.on("connection", (socket) => {
       }
     });
     
-    // Notify all pending guests
     room.pendingRequests.forEach((_, guestSocketId) => {
       const guest = io.sockets.sockets.get(guestSocketId);
       if (guest) {
@@ -480,7 +399,9 @@ io.on("connection", (socket) => {
       }
     });
     
-    // Clean up room
+    // 🔥 NEW: Cleanup backup
+    audioBackup.cleanup(roomId);
+    
     rooms.delete(roomId);
     closeAssemblyAIWS(roomId);
   });
@@ -492,7 +413,9 @@ io.on("connection", (socket) => {
       const room = rooms.get(roomId);
       if (!room) continue;
 
-      // If guest disconnects
+      // 🔥 NEW: Remove from backup
+      audioBackup.removeParticipant(roomId, socket.id);
+
       if (room.approvedPeers.has(socket.id)) {
         room.approvedPeers.delete(socket.id);
         io.to(room.hostSocketId).emit("guest:disconnected", { 
@@ -503,18 +426,27 @@ io.on("connection", (socket) => {
         });
       }
       
-      // Remove from pending requests
       room.pendingRequests.delete(socket.id);
 
-      // If host disconnects
       if (room.hostSocketId === socket.id) {
-        // Notify all approved guests
+        // 🔥 NEW: Auto-save backup on disconnect
+        audioBackup.stopRecording(
+          roomId,
+          process.env.BACKEND_URL || 'http://localhost:3000',
+          null
+        ).then((url) => {
+          if (url) {
+            console.log(`💾 Auto-saved backup on disconnect: ${url}`);
+          }
+        });
+
+        audioBackup.cleanup(roomId);
+
         room.approvedPeers.forEach((_, guestId) => {
           io.to(guestId).emit("room:ended");
           io.to(guestId).emit("host:end-meeting");
         });
         
-        // Notify all pending guests
         room.pendingRequests.forEach((_, guestId) => {
           io.to(guestId).emit("guest:denied", { 
             reason: "Host disconnected" 
@@ -530,6 +462,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
-}); 
+});
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

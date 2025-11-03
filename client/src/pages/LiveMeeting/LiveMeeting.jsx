@@ -78,6 +78,35 @@ const LiveMeeting = () => {
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
 
+  // 🔥 NEW: Listen for backup events
+useEffect(() => {
+  if (!socketRef.current) return;
+
+  const handleBackupSaved = ({ backupUrl, roomId }) => {
+    console.log('✅ Backup saved:', backupUrl);
+    localStorage.setItem(`backup_${roomId}`, backupUrl);
+    addToast('success', 'Backup saved successfully!');
+  };
+
+  const handleMeetingStatus = (status) => {
+    console.log('📊 Meeting status:', status);
+    
+    if (status.isRecording) {
+      setIsRecording(true);
+      setRecordingTime(Math.floor(status.duration / 1000));
+      addToast('info', 'Recording resumed after reconnection');
+    }
+  };
+
+  socketRef.current.on('backup-recording-saved', handleBackupSaved);
+  socketRef.current.on('meeting:status', handleMeetingStatus);
+
+  return () => {
+    socketRef.current?.off('backup-recording-saved', handleBackupSaved);
+    socketRef.current?.off('meeting:status', handleMeetingStatus);
+  };
+}, [socketRef.current, addToast]);
+
   useEffect(() => {
     if (isRecording) {
       timerRef.current = setInterval(() => {
@@ -461,60 +490,179 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
     }
   };
 
+  // const startRecording = async () => {
+  //   setRecordingTime(0);
+  //   const someId = lastPreview?.id;
+  //   dispatch(updateNeedToShow({ id: someId, needToShow: false }));
+  //   const { data } = await axios.post(
+  //     `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+  //     {},
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     }
+  //   );
+  //   await setMeetingId(data.roomId);
+  //   setIsRecording(true);
+  //   if (!mediaRecorderRef.current) return;
+  //   recordedChunksRef.current = [];
+  //   individualRecordersRef.current.clear();
+  //   individualChunksRef.current.clear();
+  //   mediaRecorderRef.current.start(1000);
+  //   if (localMicRef.current) {
+  //     startIndividualRecording("host", localMicRef.current);
+  //   }
+
+  //   peersRef.current.forEach((pc, socketId) => {
+  //     const remoteStream = new MediaStream();
+  //     pc.getReceivers().forEach((receiver) => {
+  //       if (receiver.track) {
+  //         remoteStream.addTrack(receiver.track);
+  //       }
+  //     });
+
+  //     if (remoteStream.getAudioTracks().length > 0) {
+  //       startIndividualRecording(socketId, remoteStream);
+  //     }
+  //   });
+  // };
+
   const startRecording = async () => {
-    setRecordingTime(0);
-    const someId = lastPreview?.id;
-    dispatch(updateNeedToShow({ id: someId, needToShow: false }));
-    const { data } = await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    await setMeetingId(data.roomId);
-    setIsRecording(true);
-    if (!mediaRecorderRef.current) return;
-    recordedChunksRef.current = [];
-    individualRecordersRef.current.clear();
-    individualChunksRef.current.clear();
-    mediaRecorderRef.current.start(1000);
-    if (localMicRef.current) {
-      startIndividualRecording("host", localMicRef.current);
+  setRecordingTime(0);
+  const someId = lastPreview?.id;
+  dispatch(updateNeedToShow({ id: someId, needToShow: false }));
+  const { data } = await axios.post(
+    `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
+  );
+  
+  await setMeetingId(data.roomId);
+  setIsRecording(true);
 
-    peersRef.current.forEach((pc, socketId) => {
-      const remoteStream = new MediaStream();
-      pc.getReceivers().forEach((receiver) => {
-        if (receiver.track) {
-          remoteStream.addTrack(receiver.track);
-        }
-      });
+  // 🔥 NEW: Tell backend to start backup recording
+  socketRef.current.emit("start-backup-recording", { 
+    roomId: data.roomId 
+  });
 
-      if (remoteStream.getAudioTracks().length > 0) {
-        startIndividualRecording(socketId, remoteStream);
+  // Your existing code continues...
+  if (!mediaRecorderRef.current) return;
+  recordedChunksRef.current = [];
+  individualRecordersRef.current.clear();
+  individualChunksRef.current.clear();
+  mediaRecorderRef.current.start(1000);
+  
+  if (localMicRef.current) {
+    startIndividualRecording("host", localMicRef.current);
+  }
+
+  peersRef.current.forEach((pc, socketId) => {
+    const remoteStream = new MediaStream();
+    pc.getReceivers().forEach((receiver) => {
+      if (receiver.track) {
+        remoteStream.addTrack(receiver.track);
       }
     });
-  };
 
-  const stopRecording = () => {
-    setIsRecording(false);
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-
-      individualRecordersRef.current.forEach((recorder, socketId) => {
-        if (recorder.state === "recording") {
-          recorder.stop();
-          console.log(`Stopped recorder for ${socketId}`);
-        }
-      });
+    if (remoteStream.getAudioTracks().length > 0) {
+      startIndividualRecording(socketId, remoteStream);
     }
-    setRecordedBlob(true);
-    endMeeting();
-    setHistortTitle(`recording_${Date.now()}.mp3`);
-  };
+  });
+
+  // 🔥 NEW: Start sending mixed audio chunks to backend
+  startBackupStream(data.roomId);
+};
+
+// 🔥 NEW FUNCTION: Send mixed audio to backend as backup
+const startBackupStream = (roomId) => {
+  if (!mixerRef.current?.mixedStream) {
+    console.warn('⚠️ No mixed stream available for backup');
+    return;
+  }
+
+  try {
+    const backupRecorder = new MediaRecorder(mixerRef.current.mixedStream, {
+      mimeType: 'audio/webm;codecs=opus',
+    });
+
+    backupRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0 && socketRef.current?.connected) {
+        // Send to backend backup
+        socketRef.current.emit('audio-chunk-backup', e.data);
+      }
+    };
+
+    backupRecorder.onerror = (err) => {
+      console.error('❌ Backup recorder error:', err);
+    };
+
+    backupRecorder.start(2000); // Send chunks every 2 seconds
+    
+    // Store reference
+    if (!mediaRecorderRef.current.backupRecorder) {
+      mediaRecorderRef.current.backupRecorder = backupRecorder;
+    }
+
+    console.log('✅ Backup stream started');
+  } catch (error) {
+    console.error('❌ Error starting backup stream:', error);
+  }
+};
+
+const stopRecording = () => {
+  setIsRecording(false);
+  
+  if (mediaRecorderRef.current?.state === "recording") {
+    mediaRecorderRef.current.stop();
+
+    // 🔥 NEW: Stop backup recorder
+    if (mediaRecorderRef.current.backupRecorder?.state === "recording") {
+      mediaRecorderRef.current.backupRecorder.stop();
+    }
+
+    individualRecordersRef.current.forEach((recorder, socketId) => {
+      if (recorder.state === "recording") {
+        recorder.stop();
+        console.log(`Stopped recorder for ${socketId}`);
+      }
+    });
+  }
+
+  // 🔥 NEW: Tell backend to save backup
+  if (socketRef.current && meetingId) {
+    socketRef.current.emit("stop-backup-recording", { 
+      roomId: meetingId,
+      token 
+    });
+  }
+
+  setRecordedBlob(true);
+  endMeeting();
+  setHistortTitle(`recording_${Date.now()}.mp3`);
+};
+
+
+  // const stopRecording = () => {
+  //   setIsRecording(false);
+  //   if (mediaRecorderRef.current?.state === "recording") {
+  //     mediaRecorderRef.current.stop();
+
+  //     individualRecordersRef.current.forEach((recorder, socketId) => {
+  //       if (recorder.state === "recording") {
+  //         recorder.stop();
+  //         console.log(`Stopped recorder for ${socketId}`);
+  //       }
+  //     });
+  //   }
+  //   setRecordedBlob(true);
+  //   endMeeting();
+  //   setHistortTitle(`recording_${Date.now()}.mp3`);
+  // };
 
   // const endMeeting = async () => {
   //   try {
@@ -707,6 +855,35 @@ const historyData = {
       addToast("error", "Failed to add history");
     }
   };
+
+  // 🔥 NEW: Check for backup after page load (recovery)
+useEffect(() => {
+  const checkForBackup = async () => {
+    if (!meetingId) return;
+    
+    const backupUrl = localStorage.getItem(`backup_${meetingId}`);
+    
+    if (backupUrl && !recordingBlobRef.current) {
+      console.log('🔄 Found backup, attempting restore...');
+      addToast('info', 'Restoring recording from backup...');
+      
+      try {
+        const response = await fetch(backupUrl);
+        const blob = await response.blob();
+        recordingBlobRef.current = blob;
+        setRecordedBlob(true);
+        
+        localStorage.removeItem(`backup_${meetingId}`);
+        addToast('success', 'Recording restored from backup!');
+      } catch (error) {
+        console.error('❌ Failed to restore backup:', error);
+        addToast('error', 'Failed to restore backup');
+      }
+    }
+  };
+
+  checkForBackup();
+}, [meetingId, addToast]);
 
   useEffect(() => {
     const updateBarCount = () => {
