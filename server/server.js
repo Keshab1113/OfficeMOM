@@ -179,9 +179,126 @@ function closeAssemblyAIWS(roomId) {
   }
 }
 
-io.on("connection", (socket) => {
+// io.on("connection", (socket) => {
 
-   console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
+//    console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
+//   console.log(`📡 Connected from: ${socket.handshake.headers.origin || "Unknown Origin"}`);
+
+//   // --- Host joins room ---
+//   socket.on("host:join-room", ({ roomId }) => {
+//     if (rooms.has(roomId)) {
+//       const existingRoom = rooms.get(roomId);
+//       if (existingRoom.hostSocketId !== socket.id) {
+//         const previousHost = io.sockets.sockets.get(existingRoom.hostSocketId);
+//         if (previousHost) {
+//           previousHost.emit("host:replaced");
+//           previousHost.leave(roomId);
+//         }
+//       }
+//     }
+
+//     rooms.set(roomId, {
+//       hostSocketId: socket.id,
+//       peers: rooms.get(roomId)?.peers || new Map(),
+//     });
+
+//     socket.join(roomId);
+//     socket.data.roomId = roomId;
+//     io.to(socket.id).emit("room:count", {
+//       count: rooms.get(roomId).peers.size,
+//     });
+//   });
+
+//   socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
+//     const room = rooms.get(roomId);
+//     if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+
+//     socket.join(roomId);
+//     socket.data.roomId = roomId;
+//     room.peers.set(socket.id, { deviceName, deviceLabel });
+
+//     socket.emit("host:socket-id", { hostId: room.hostSocketId });
+//     io.to(room.hostSocketId).emit("host:join-request", {
+//       socketId: socket.id,
+//       deviceName,
+//       deviceLabel,
+//     });
+//     io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+//   });
+
+//   socket.on("host:approve", ({ guestSocketId }) => {
+//     const guest = io.sockets.sockets.get(guestSocketId);
+//     if (guest) guest.emit("guest:approved");
+//   });
+
+//   socket.on("host:reject", ({ guestSocketId }) => {
+//     const guest = io.sockets.sockets.get(guestSocketId);
+//     if (guest) {
+//       guest.emit("guest:denied", { reason: "Rejected by host" });
+//       guest.leave();
+//     }
+//   });
+
+//   socket.on("signal", ({ to, data }) => {
+//     io.to(to).emit("signal", { from: socket.id, data });
+//   });
+
+//   socket.on("audio-chunk", async (chunkData) => {
+//     const roomId = socket.data.roomId;
+//     if (!roomId) return;
+
+//     let state = liveStreams.get(roomId);
+//     if (!state) {
+//       state = await openAssemblyAIWS(roomId);
+//     }
+
+//     const buffer = Buffer.isBuffer(chunkData)
+//       ? chunkData
+//       : Buffer.from(chunkData);
+
+//     const base64 = buffer.toString("base64");
+//     const payload = Buffer.from(chunkData);
+
+//     if (state.open) {
+//       // console.log(
+//       //   `🎤 [${roomId}] Sending audio chunk to AssemblyAI (${buffer.length} bytes)`
+//       // );
+//       state.ws.send(payload);
+//     } else {
+//       console.log(
+//         `⏳ [${roomId}] Queueing audio chunk (connection not open yet)`
+//       );
+//       state.queue.push(payload);
+//     }
+//   });
+
+//   socket.on("disconnecting", () => {
+//     for (const roomId of socket.rooms) {
+//       if (roomId === socket.id) continue;
+//       const room = rooms.get(roomId);
+//       if (!room) continue;
+
+//       if (room.peers.has(socket.id)) {
+//         room.peers.delete(socket.id);
+//         io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+//       }
+
+//       if (room.hostSocketId === socket.id) {
+//         io.to(roomId).emit("room:ended");
+//         rooms.delete(roomId);
+//         closeAssemblyAIWS(roomId);
+//       }
+//     }
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log(`Client disconnected: ${socket.id}`);
+//   });
+// });
+
+
+io.on("connection", (socket) => {
+  console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
   console.log(`📡 Connected from: ${socket.handshake.headers.origin || "Unknown Origin"}`);
 
   // --- Host joins room ---
@@ -199,50 +316,95 @@ io.on("connection", (socket) => {
 
     rooms.set(roomId, {
       hostSocketId: socket.id,
-      peers: rooms.get(roomId)?.peers || new Map(),
+      approvedPeers: rooms.get(roomId)?.approvedPeers || new Map(), // Only approved guests
+      pendingRequests: rooms.get(roomId)?.pendingRequests || new Map(), // Pending approval
     });
 
     socket.join(roomId);
     socket.data.roomId = roomId;
+    
+    // Send count of only approved peers
     io.to(socket.id).emit("room:count", {
-      count: rooms.get(roomId).peers.size,
+      count: rooms.get(roomId).approvedPeers.size,
     });
   });
 
+  // --- Guest requests to join ---
   socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
     const room = rooms.get(roomId);
     if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
 
-    socket.join(roomId);
+    // Don't join the room yet - wait for approval
     socket.data.roomId = roomId;
-    room.peers.set(socket.id, { deviceName, deviceLabel });
+    socket.data.deviceName = deviceName;
+    socket.data.deviceLabel = deviceLabel;
+    
+    // Add to pending requests, NOT to approved peers
+    room.pendingRequests.set(socket.id, { deviceName, deviceLabel });
 
+    // Send host socket ID to guest
     socket.emit("host:socket-id", { hostId: room.hostSocketId });
+    
+    // Notify host of join request
     io.to(room.hostSocketId).emit("host:join-request", {
       socketId: socket.id,
       deviceName,
       deviceLabel,
     });
-    io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+    
+    // Don't send updated count yet - guest not approved
   });
 
+  // --- Host approves guest ---
   socket.on("host:approve", ({ guestSocketId }) => {
-    const guest = io.sockets.sockets.get(guestSocketId);
-    if (guest) guest.emit("guest:approved");
-  });
+    const roomId = socket.data.roomId;
+    const room = rooms.get(roomId);
+    if (!room) return;
 
-  socket.on("host:reject", ({ guestSocketId }) => {
     const guest = io.sockets.sockets.get(guestSocketId);
-    if (guest) {
-      guest.emit("guest:denied", { reason: "Rejected by host" });
-      guest.leave();
+    if (!guest) return;
+
+    // Move from pending to approved
+    const guestInfo = room.pendingRequests.get(guestSocketId);
+    if (guestInfo) {
+      room.pendingRequests.delete(guestSocketId);
+      room.approvedPeers.set(guestSocketId, guestInfo);
+      
+      // Now join the room
+      guest.join(roomId);
+      
+      // Notify guest they're approved
+      guest.emit("guest:approved");
+      
+      // Update participant count for host (only approved guests)
+      io.to(room.hostSocketId).emit("room:count", { 
+        count: room.approvedPeers.size 
+      });
     }
   });
 
+  // --- Host rejects guest ---
+  socket.on("host:reject", ({ guestSocketId }) => {
+    const roomId = socket.data.roomId;
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const guest = io.sockets.sockets.get(guestSocketId);
+    if (guest) {
+      // Remove from pending requests
+      room.pendingRequests.delete(guestSocketId);
+      
+      guest.emit("guest:denied", { reason: "Rejected by host" });
+      guest.disconnect();
+    }
+  });
+
+  // --- Signal for WebRTC ---
   socket.on("signal", ({ to, data }) => {
     io.to(to).emit("signal", { from: socket.id, data });
   });
 
+  // --- Audio chunk streaming ---
   socket.on("audio-chunk", async (chunkData) => {
     const roomId = socket.data.roomId;
     if (!roomId) return;
@@ -256,35 +418,109 @@ io.on("connection", (socket) => {
       ? chunkData
       : Buffer.from(chunkData);
 
-    const base64 = buffer.toString("base64");
     const payload = Buffer.from(chunkData);
 
     if (state.open) {
-      // console.log(
-      //   `🎤 [${roomId}] Sending audio chunk to AssemblyAI (${buffer.length} bytes)`
-      // );
       state.ws.send(payload);
     } else {
-      console.log(
-        `⏳ [${roomId}] Queueing audio chunk (connection not open yet)`
-      );
       state.queue.push(payload);
     }
   });
 
+  // --- Guest explicitly disconnects ---
+  socket.on("guest:disconnect", () => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    // Remove from approved peers
+    if (room.approvedPeers.has(socket.id)) {
+      room.approvedPeers.delete(socket.id);
+      
+      // Notify host about guest disconnection
+      io.to(room.hostSocketId).emit("guest:disconnected", { 
+        socketId: socket.id 
+      });
+      
+      // Update participant count
+      io.to(room.hostSocketId).emit("room:count", { 
+        count: room.approvedPeers.size 
+      });
+    }
+    
+    // Also remove from pending if they were waiting
+    room.pendingRequests.delete(socket.id);
+  });
+
+  // --- Host ends meeting ---
+  socket.on("host:end-meeting", ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room || room.hostSocketId !== socket.id) return;
+
+    console.log(`🛑 Host ending meeting: ${roomId}`);
+    
+    // Notify all approved guests
+    room.approvedPeers.forEach((_, guestSocketId) => {
+      const guest = io.sockets.sockets.get(guestSocketId);
+      if (guest) {
+        guest.emit("room:ended");
+        guest.emit("host:end-meeting");
+        guest.leave(roomId);
+      }
+    });
+    
+    // Notify all pending guests
+    room.pendingRequests.forEach((_, guestSocketId) => {
+      const guest = io.sockets.sockets.get(guestSocketId);
+      if (guest) {
+        guest.emit("guest:denied", { reason: "Meeting ended by host" });
+        guest.disconnect();
+      }
+    });
+    
+    // Clean up room
+    rooms.delete(roomId);
+    closeAssemblyAIWS(roomId);
+  });
+
+  // --- Handle disconnection ---
   socket.on("disconnecting", () => {
     for (const roomId of socket.rooms) {
       if (roomId === socket.id) continue;
       const room = rooms.get(roomId);
       if (!room) continue;
 
-      if (room.peers.has(socket.id)) {
-        room.peers.delete(socket.id);
-        io.to(room.hostSocketId).emit("room:count", { count: room.peers.size });
+      // If guest disconnects
+      if (room.approvedPeers.has(socket.id)) {
+        room.approvedPeers.delete(socket.id);
+        io.to(room.hostSocketId).emit("guest:disconnected", { 
+          socketId: socket.id 
+        });
+        io.to(room.hostSocketId).emit("room:count", { 
+          count: room.approvedPeers.size 
+        });
       }
+      
+      // Remove from pending requests
+      room.pendingRequests.delete(socket.id);
 
+      // If host disconnects
       if (room.hostSocketId === socket.id) {
-        io.to(roomId).emit("room:ended");
+        // Notify all approved guests
+        room.approvedPeers.forEach((_, guestId) => {
+          io.to(guestId).emit("room:ended");
+          io.to(guestId).emit("host:end-meeting");
+        });
+        
+        // Notify all pending guests
+        room.pendingRequests.forEach((_, guestId) => {
+          io.to(guestId).emit("guest:denied", { 
+            reason: "Host disconnected" 
+          });
+        });
+        
         rooms.delete(roomId);
         closeAssemblyAIWS(roomId);
       }
@@ -294,7 +530,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
-});
-
+}); 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

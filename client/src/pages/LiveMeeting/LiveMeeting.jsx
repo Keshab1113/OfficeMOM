@@ -516,43 +516,102 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
     setHistortTitle(`recording_${Date.now()}.mp3`);
   };
 
-  const endMeeting = async () => {
-    try {
-      // Stop all individual recordings first
-      individualRecordersRef.current.forEach((recorder, socketId) => {
-        if (recorder.state === "recording") {
-          recorder.stop();
-          console.log(`Stopped individual recorder for ${socketId}`);
-        }
-      });
+  // const endMeeting = async () => {
+  //   try {
+  //     // Stop all individual recordings first
+  //     individualRecordersRef.current.forEach((recorder, socketId) => {
+  //       if (recorder.state === "recording") {
+  //         recorder.stop();
+  //         console.log(`Stopped individual recorder for ${socketId}`);
+  //       }
+  //     });
       
-      // Stop main media recorder
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.stop();
+  //     // Stop main media recorder
+  //     if (mediaRecorderRef.current?.state === "recording") {
+  //       mediaRecorderRef.current.stop();
+  //     }
+      
+  //     await axios.post(
+  //       `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
+  //       {},
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+      
+  //     // Emit room:ended event to all connected guests
+  //     if (socketRef.current) {
+  //       socketRef.current.emit("host:end-meeting", { roomId: meetingId });
+  //       // Also emit to room to ensure all guests receive it
+  //       socketRef.current.emit("room:ended", { roomId: meetingId });
+  //     }
+  //     addToast("success", "Meeting ended successfully.");
+  //   } catch (err) {
+  //     console.error("Error ending meeting:", err);
+  //     addToast("error", "Error ending meeting.");
+  //   }
+  // };
+
+  // Updated endMeeting function in LiveMeeting.jsx
+
+const endMeeting = async () => {
+  try {
+    console.log("🛑 Ending meeting:", meetingId);
+    
+    // Stop all individual recordings first
+    individualRecordersRef.current.forEach((recorder, socketId) => {
+      if (recorder.state === "recording") {
+        recorder.stop();
+        console.log(`Stopped individual recorder for ${socketId}`);
       }
-      
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      // Emit room:ended event to all connected guests
-      if (socketRef.current) {
-        socketRef.current.emit("host:end-meeting", { roomId: meetingId });
-        // Also emit to room to ensure all guests receive it
-        socketRef.current.emit("room:ended", { roomId: meetingId });
-      }
-      addToast("success", "Meeting ended successfully.");
-    } catch (err) {
-      console.error("Error ending meeting:", err);
-      addToast("error", "Error ending meeting.");
+    });
+    
+    // Stop main media recorder
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
     }
-  };
+    
+    // Emit host:end-meeting event BEFORE making API call
+    // This ensures guests get disconnected immediately
+    if (socketRef.current && socketRef.current.connected) {
+      console.log("📤 Emitting host:end-meeting to room:", meetingId);
+      socketRef.current.emit("host:end-meeting", { roomId: meetingId });
+    }
+    
+    // Then make API call to mark meeting as ended in database
+    await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    // Close all WebRTC peer connections
+    peersRef.current.forEach((pc) => {
+      pc.close();
+    });
+    peersRef.current.clear();
+    
+    // Clear audio monitoring intervals
+    audioIntervalsRef.current.forEach((interval) => {
+      clearInterval(interval);
+    });
+    audioIntervalsRef.current.clear();
+    
+    // Reset participant count
+    setParticipants(0);
+    
+    addToast("success", "Meeting ended successfully.");
+  } catch (err) {
+    console.error("Error ending meeting:", err);
+    addToast("error", "Error ending meeting.");
+  }
+};
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);

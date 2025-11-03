@@ -244,14 +244,14 @@ const JoinMeeting = () => {
     });
 
     sock.on("room:ended", () => {
-      console.log("Received room:ended event");
-      handleMeetingEnd();
-    });
+  console.log("📨 Received room:ended event");
+  handleMeetingEnd();
+});
 
-    sock.on("host:end-meeting", () => {
-      console.log("Received host:end-meeting event");
-      handleMeetingEnd();
-    });
+sock.on("host:end-meeting", () => {
+  console.log("📨 Received host:end-meeting event");
+  handleMeetingEnd();
+});
 
     sock.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
@@ -265,40 +265,41 @@ const JoinMeeting = () => {
     });
   };
 
-  const handleMeetingEnd = () => {
-    console.log("Handling meeting end");
-    setStatus("Meeting ended by host.");
-    setStatusType("info");
-    
-    // Clean up resources immediately
-    try {
-      // Stop all audio tracks
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          track.stop();
-          track.enabled = false;
-        });
-      }
-      
-      // Close WebRTC connection
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
-      }
-      
-      // Emit guest disconnected event before disconnecting
-      if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit("guest:disconnect");
-        socketRef.current.disconnect();
-      }
-    } catch (error) {
-      console.log("Error in cleanup:", error);
+ const handleMeetingEnd = () => {
+  console.log("🛑 Handling meeting end");
+  setStatus("Meeting ended by host.");
+  setStatusType("info");
+  
+  // Clean up resources immediately
+  try {
+    // Stop all audio tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        track.enabled = false;
+      });
+      localStreamRef.current = null;
     }
     
-    // Navigate immediately without delay
-    addToast("success", "Meeting ended by host.");
-    nav("/");
-  };
+    // Close WebRTC connection
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    
+    // Disconnect socket (don't emit guest:disconnect since host already knows)
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+  } catch (error) {
+    console.log("Error in cleanup:", error);
+  }
+  
+  // Navigate immediately
+  addToast("info", "Meeting ended by host.");
+  nav("/");
+};
 
   useEffect(() => {
     return () => {
@@ -466,18 +467,23 @@ const JoinMeeting = () => {
                       </div>
 
                       <div className="text-center">
-                        <button
-                          onClick={() => {
-                            // Emit guest disconnected event before leaving
-                            if (socketRef.current && socketRef.current.connected) {
-                              socketRef.current.emit("guest:disconnect");
-                            }
-                            nav("/");
-                          }}
-                          className="px-4 py-2 cursor-pointer bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                        >
-                          Leave Meeting
-                        </button>
+                       <button
+  onClick={() => {
+    // Emit guest disconnected event before leaving
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("guest:disconnect");
+      // Give a brief moment for the event to be sent
+      setTimeout(() => {
+        nav("/");
+      }, 100);
+    } else {
+      nav("/");
+    }
+  }}
+  className="px-4 py-2 cursor-pointer bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+>
+  Leave Meeting
+</button>
                       </div>
                     </>
                   )}
