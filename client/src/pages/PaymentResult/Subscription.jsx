@@ -211,8 +211,8 @@ const Subscription = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10">
-          <div className="min-h-screen lg:px-20 md:px-10 px-4 py-10 lg:py-10 flex flex-col">
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10 ">
+          <div className="min-h-screen lg:px-0 md:px-4 px-4 py-10 lg:py-10 flex flex-col container mx-auto">
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -319,7 +319,7 @@ const Subscription = () => {
                             </span>
                             {subscription.plan_name === "Free" ? (
                               <span className="font-semibold text-gray-900 dark:text-white">
-                                N/A
+                                Life Time
                               </span>) : (
                               <span className="font-semibold text-gray-900 dark:text-white">
                                 {new Date(
@@ -366,9 +366,9 @@ const Subscription = () => {
                       </div>
                     </div>
 
-                    
-                      <div className="flex gap-3">
-                        {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
+
+                    <div className="flex md:flex-row flex-col gap-3">
+                      {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
                         <button
                           onClick={cancelSubscription}
                           className="px-4 cursor-pointer py-2 border border-red-300 text-red-600 dark:text-red-400 
@@ -376,16 +376,16 @@ const Subscription = () => {
                         >
                           Cancel Subscription
                         </button>
-                        )}
-                        <button
-                          onClick={() => nav("/pricing")}
-                          className="px-4 cursor-pointer py-2 border border-green-300 text-green-600 dark:text-green-400 
+                      )}
+                      <button
+                        onClick={() => nav("/pricing")}
+                        className="px-4 cursor-pointer py-2 border border-green-300 text-green-600 dark:text-green-400 
                         hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                        >
-                          Upgrade Subscription
-                        </button>
-                      </div>
-                    
+                      >
+                        Upgrade Subscription
+                      </button>
+                    </div>
+
                   </div>
 
                   {/* Billing History */}

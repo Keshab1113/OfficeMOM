@@ -26,6 +26,7 @@ import OAuthSuccess from "./pages/OAuthSuccess";
 import Subscription from './pages/PaymentResult/Subscription';
 import BotMaster from "./pages/BotMaster/BotMaster";
 import SupportedLanguages from "./pages/SupportedLanguages/SupportedLanguages";
+import CheckoutPage from "./pages/CheckoutPage/CheckoutPage";
 
 function App() {
   return (
@@ -57,7 +58,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route path="/join-meeting/:id" element={<JoinMeeting />} />
           <Route
             path="/audio-notes"
@@ -87,19 +88,24 @@ function App() {
             path="/subscription"
             element={
               <ProtectedRoute>
-                <Subscription/>
+                <Subscription />
               </ProtectedRoute>
             }
           />
+          <Route path="/checkout" element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          } />
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/contact-us" element={<ContactPage />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/features" element={<DemoVideo />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-of-service" element={<TermsOfService/>} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/documentation" element={<Documentation />} />
-          <Route path="/supported-language" element={<SupportedLanguages/>} />
+          <Route path="/supported-language" element={<SupportedLanguages />} />
           <Route
             path="/success"
             element={
