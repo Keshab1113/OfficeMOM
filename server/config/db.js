@@ -9,6 +9,8 @@ const pool = mysql.createPool({
   password: "S9867867878$#@4email", // better to move this into .env
   database: process.env.DB_NAME,
   connectionLimit: 10,
+   dateStrings: true,
+  timezone: 'Z',
 });
 
 module.exports = pool.promise();
