@@ -545,10 +545,13 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   await setMeetingId(data.roomId);
   setIsRecording(true);
 
-  // 🔥 NEW: Tell backend to start backup recording
+  // 🔥 IMPORTANT: Tell backend to start FIRST
   socketRef.current.emit("start-backup-recording", { 
     roomId: data.roomId 
   });
+
+  // ⏱️ Wait 100ms for backend to initialize
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   // Your existing code continues...
   if (!mediaRecorderRef.current) return;
@@ -603,6 +606,7 @@ const startBackupStream = (roomId) => {
 
     backupRecorder.start(2000); // Send chunks every 2 seconds
     
+    console.log('audio chunks sent to backend for backup');
     // Store reference
     if (!mediaRecorderRef.current.backupRecorder) {
       mediaRecorderRef.current.backupRecorder = backupRecorder;
