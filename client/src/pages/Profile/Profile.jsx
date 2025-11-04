@@ -35,7 +35,7 @@ const Profile = () => {
         </div>
 
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
-          <div className="min-h-screen lg:px-20 md:px-10 px-4 py-20 lg:py-28 flex flex-col md:gap-12 gap-8">
+          <div className="min-h-screen lg:px-4 md:px-4 px-4 py-20 lg:py-28 flex flex-col md:gap-12 gap-8 container mx-auto">
             <Breadcrumb items={breadcrumbItems} />
 
             {/* Main Content Grid */}
