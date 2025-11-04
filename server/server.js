@@ -318,6 +318,7 @@ io.on("connection", (socket) => {
       ? chunkData
       : Buffer.from(chunkData);
 
+    console.log(`🎯 BACKUP: Received audio chunk from ${socket.id} in room ${roomId}, size: ${buffer.length} bytes`);
     audioBackup.storeChunk(roomId, socket.id, buffer);
   });
 
