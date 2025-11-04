@@ -1,6 +1,7 @@
  
 
 import axios from 'axios';
+import { DateTime } from "luxon";
 
 export const processTranscriptWithDeepSeek = async (
   transcript,
@@ -13,8 +14,8 @@ export const processTranscriptWithDeepSeek = async (
 ) => {
   try {
 
-     // 🕒 Get user's local time and convert to UTC
-    const utcDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+     // 🕒 Get user's local time
+    const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
 
     const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/process`, {
       transcript,
@@ -24,7 +25,7 @@ export const processTranscriptWithDeepSeek = async (
       transcript_audio_id: transcriptAudioId,
       language, 
       history_id: historyId,
-       date: utcDate, // 👈 ADD THIS LINE
+       date: formattedUTCDate, // send local time to backend
     });
     return response.data;
   } catch (error) {

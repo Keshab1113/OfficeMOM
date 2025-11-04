@@ -1,4 +1,5 @@
 const db = require("../config/db.js");
+const { DateTime } = require("luxon");
 
 const addHistory = async (req, res) => {
   try {
@@ -52,7 +53,15 @@ const getHistory = async (req, res) => {
       "SELECT id, source, date, created_at, data, title, isMoMGenerated, uploadedAt, audioUrl, language FROM history WHERE user_id = ? ORDER BY created_at DESC",
       [userId]
     );
-    res.status(200).json(rows);
+const fixed = rows.map(r => ({
+  ...r,
+  date: r.date ? DateTime.fromSQL(r.date, { zone: "utc" }).toISO() : null,
+  created_at: r.created_at ? DateTime.fromSQL(r.created_at, { zone: "utc" }).toISO() : null,
+  uploadedAt: r.uploadedAt ? DateTime.fromSQL(r.uploadedAt, { zone: "utc" }).toISO() : null,
+}));
+
+res.status(200).json(fixed);
+     
   } catch (err) {
     console.error("Get history error:", err);
     res.status(500).json({ message: "Server error" });

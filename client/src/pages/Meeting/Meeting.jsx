@@ -18,6 +18,7 @@ import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
 import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
+import { DateTime } from "luxon";
 
 const meetingPlatforms = [
   {
@@ -301,22 +302,16 @@ const Meeting = () => {
 
   const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    const dateCreated = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    // 🕒 Get user's local time
+    const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
 
-    const historyData = {
-      source: "Online Meeting Conversion",
-      date: dateCreated,
-      data: data,
-      language: detectLanguage,
-      audio_id: audioID,
-    };
+const historyData = {
+  source: "Online Meeting Conversion",
+  date: formattedUTCDate, // send UTC time to backend
+  data: data,
+  language: detectLanguage,
+  audio_id: audioID,
+};
     setShowModal2(false);
     setShowModal(false);
   };

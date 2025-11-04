@@ -29,6 +29,7 @@ import {
 import Trancript from "../../components/LittleComponent/Trancript";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
+import { DateTime } from "luxon";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 const breadcrumbItems = [
@@ -76,6 +77,35 @@ const LiveMeeting = () => {
   const dispatch = useDispatch();
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
+
+  // 🔥 NEW: Listen for backup events
+useEffect(() => {
+  if (!socketRef.current) return;
+
+  const handleBackupSaved = ({ backupUrl, roomId }) => {
+    console.log('✅ Backup saved:', backupUrl);
+    localStorage.setItem(`backup_${roomId}`, backupUrl);
+    addToast('success', 'Backup saved successfully!');
+  };
+
+  const handleMeetingStatus = (status) => {
+    console.log('📊 Meeting status:', status);
+    
+    if (status.isRecording) {
+      setIsRecording(true);
+      setRecordingTime(Math.floor(status.duration / 1000));
+      addToast('info', 'Recording resumed after reconnection');
+    }
+  };
+
+  socketRef.current.on('backup-recording-saved', handleBackupSaved);
+  socketRef.current.on('meeting:status', handleMeetingStatus);
+
+  return () => {
+    socketRef.current?.off('backup-recording-saved', handleBackupSaved);
+    socketRef.current?.off('meeting:status', handleMeetingStatus);
+  };
+}, [socketRef.current, addToast]);
 
   useEffect(() => {
     if (isRecording) {
@@ -173,6 +203,8 @@ const LiveMeeting = () => {
       });
 
       sock.on("room:count", ({ count }) => {
+        // Only update count when it's the actual connected participants, not pending requests
+        // The count should only include approved guests, not pending requests
         setParticipants(count);
       });
 
@@ -458,12 +490,247 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
     }
   };
 
+  // const startRecording = async () => {
+  //   setRecordingTime(0);
+  //   const someId = lastPreview?.id;
+  //   dispatch(updateNeedToShow({ id: someId, needToShow: false }));
+  //   const { data } = await axios.post(
+  //     `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+  //     {},
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     }
+  //   );
+  //   await setMeetingId(data.roomId);
+  //   setIsRecording(true);
+  //   if (!mediaRecorderRef.current) return;
+  //   recordedChunksRef.current = [];
+  //   individualRecordersRef.current.clear();
+  //   individualChunksRef.current.clear();
+  //   mediaRecorderRef.current.start(1000);
+  //   if (localMicRef.current) {
+  //     startIndividualRecording("host", localMicRef.current);
+  //   }
+
+  //   peersRef.current.forEach((pc, socketId) => {
+  //     const remoteStream = new MediaStream();
+  //     pc.getReceivers().forEach((receiver) => {
+  //       if (receiver.track) {
+  //         remoteStream.addTrack(receiver.track);
+  //       }
+  //     });
+
+  //     if (remoteStream.getAudioTracks().length > 0) {
+  //       startIndividualRecording(socketId, remoteStream);
+  //     }
+  //   });
+  // };
+
   const startRecording = async () => {
-    setRecordingTime(0);
-    const someId = lastPreview?.id;
-    dispatch(updateNeedToShow({ id: someId, needToShow: false }));
-    const { data } = await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+  setRecordingTime(0);
+  const someId = lastPreview?.id;
+  dispatch(updateNeedToShow({ id: someId, needToShow: false }));
+  const { data } = await axios.post(
+    `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  
+  await setMeetingId(data.roomId);
+  setIsRecording(true);
+
+  // 🔥 NEW: Tell backend to start backup recording
+  socketRef.current.emit("start-backup-recording", { 
+    roomId: data.roomId 
+  });
+
+  // Your existing code continues...
+  if (!mediaRecorderRef.current) return;
+  recordedChunksRef.current = [];
+  individualRecordersRef.current.clear();
+  individualChunksRef.current.clear();
+  mediaRecorderRef.current.start(1000);
+  
+  if (localMicRef.current) {
+    startIndividualRecording("host", localMicRef.current);
+  }
+
+  peersRef.current.forEach((pc, socketId) => {
+    const remoteStream = new MediaStream();
+    pc.getReceivers().forEach((receiver) => {
+      if (receiver.track) {
+        remoteStream.addTrack(receiver.track);
+      }
+    });
+
+    if (remoteStream.getAudioTracks().length > 0) {
+      startIndividualRecording(socketId, remoteStream);
+    }
+  });
+
+  // 🔥 NEW: Start sending mixed audio chunks to backend
+  startBackupStream(data.roomId);
+};
+
+// 🔥 NEW FUNCTION: Send mixed audio to backend as backup
+const startBackupStream = (roomId) => {
+  if (!mixerRef.current?.mixedStream) {
+    console.warn('⚠️ No mixed stream available for backup');
+    return;
+  }
+
+  try {
+    const backupRecorder = new MediaRecorder(mixerRef.current.mixedStream, {
+      mimeType: 'audio/webm;codecs=opus',
+    });
+
+    backupRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0 && socketRef.current?.connected) {
+        // Send to backend backup
+        socketRef.current.emit('audio-chunk-backup', e.data);
+      }
+    };
+
+    backupRecorder.onerror = (err) => {
+      console.error('❌ Backup recorder error:', err);
+    };
+
+    backupRecorder.start(2000); // Send chunks every 2 seconds
+    
+    // Store reference
+    if (!mediaRecorderRef.current.backupRecorder) {
+      mediaRecorderRef.current.backupRecorder = backupRecorder;
+    }
+
+    console.log('✅ Backup stream started');
+  } catch (error) {
+    console.error('❌ Error starting backup stream:', error);
+  }
+};
+
+const stopRecording = () => {
+  setIsRecording(false);
+  
+  if (mediaRecorderRef.current?.state === "recording") {
+    mediaRecorderRef.current.stop();
+
+    // 🔥 NEW: Stop backup recorder
+    if (mediaRecorderRef.current.backupRecorder?.state === "recording") {
+      mediaRecorderRef.current.backupRecorder.stop();
+    }
+
+    individualRecordersRef.current.forEach((recorder, socketId) => {
+      if (recorder.state === "recording") {
+        recorder.stop();
+        console.log(`Stopped recorder for ${socketId}`);
+      }
+    });
+  }
+
+  // 🔥 NEW: Tell backend to save backup
+  if (socketRef.current && meetingId) {
+    socketRef.current.emit("stop-backup-recording", { 
+      roomId: meetingId,
+      token 
+    });
+  }
+
+  setRecordedBlob(true);
+  endMeeting();
+  setHistortTitle(`recording_${Date.now()}.mp3`);
+};
+
+
+  // const stopRecording = () => {
+  //   setIsRecording(false);
+  //   if (mediaRecorderRef.current?.state === "recording") {
+  //     mediaRecorderRef.current.stop();
+
+  //     individualRecordersRef.current.forEach((recorder, socketId) => {
+  //       if (recorder.state === "recording") {
+  //         recorder.stop();
+  //         console.log(`Stopped recorder for ${socketId}`);
+  //       }
+  //     });
+  //   }
+  //   setRecordedBlob(true);
+  //   endMeeting();
+  //   setHistortTitle(`recording_${Date.now()}.mp3`);
+  // };
+
+  // const endMeeting = async () => {
+  //   try {
+  //     // Stop all individual recordings first
+  //     individualRecordersRef.current.forEach((recorder, socketId) => {
+  //       if (recorder.state === "recording") {
+  //         recorder.stop();
+  //         console.log(`Stopped individual recorder for ${socketId}`);
+  //       }
+  //     });
+      
+  //     // Stop main media recorder
+  //     if (mediaRecorderRef.current?.state === "recording") {
+  //       mediaRecorderRef.current.stop();
+  //     }
+      
+  //     await axios.post(
+  //       `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
+  //       {},
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+      
+  //     // Emit room:ended event to all connected guests
+  //     if (socketRef.current) {
+  //       socketRef.current.emit("host:end-meeting", { roomId: meetingId });
+  //       // Also emit to room to ensure all guests receive it
+  //       socketRef.current.emit("room:ended", { roomId: meetingId });
+  //     }
+  //     addToast("success", "Meeting ended successfully.");
+  //   } catch (err) {
+  //     console.error("Error ending meeting:", err);
+  //     addToast("error", "Error ending meeting.");
+  //   }
+  // };
+
+  // Updated endMeeting function in LiveMeeting.jsx
+
+const endMeeting = async () => {
+  try {
+    console.log("🛑 Ending meeting:", meetingId);
+    
+    // Stop all individual recordings first
+    individualRecordersRef.current.forEach((recorder, socketId) => {
+      if (recorder.state === "recording") {
+        recorder.stop();
+        console.log(`Stopped individual recorder for ${socketId}`);
+      }
+    });
+    
+    // Stop main media recorder
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    
+    // Emit host:end-meeting event BEFORE making API call
+    // This ensures guests get disconnected immediately
+    if (socketRef.current && socketRef.current.connected) {
+      console.log("📤 Emitting host:end-meeting to room:", meetingId);
+      socketRef.current.emit("host:end-meeting", { roomId: meetingId });
+    }
+    
+    // Then make API call to mark meeting as ended in database
+    await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
       {},
       {
         headers: {
@@ -471,65 +738,28 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
         },
       }
     );
-    await setMeetingId(data.roomId);
-    setIsRecording(true);
-    if (!mediaRecorderRef.current) return;
-    recordedChunksRef.current = [];
-    individualRecordersRef.current.clear();
-    individualChunksRef.current.clear();
-    mediaRecorderRef.current.start(1000);
-    if (localMicRef.current) {
-      startIndividualRecording("host", localMicRef.current);
-    }
-
-    peersRef.current.forEach((pc, socketId) => {
-      const remoteStream = new MediaStream();
-      pc.getReceivers().forEach((receiver) => {
-        if (receiver.track) {
-          remoteStream.addTrack(receiver.track);
-        }
-      });
-
-      if (remoteStream.getAudioTracks().length > 0) {
-        startIndividualRecording(socketId, remoteStream);
-      }
+    
+    // Close all WebRTC peer connections
+    peersRef.current.forEach((pc) => {
+      pc.close();
     });
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-
-      individualRecordersRef.current.forEach((recorder, socketId) => {
-        if (recorder.state === "recording") {
-          recorder.stop();
-          console.log(`Stopped recorder for ${socketId}`);
-        }
-      });
-    }
-    setRecordedBlob(true);
-    endMeeting();
-    setHistortTitle(`recording_${Date.now()}.mp3`);
-  };
-
-  const endMeeting = async () => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      addToast("success", "Meeting ended successfully.");
-    } catch (err) {
-      console.error("Error ending meeting:", err);
-      addToast("error", "Error ending meeting.");
-    }
-  };
+    peersRef.current.clear();
+    
+    // Clear audio monitoring intervals
+    audioIntervalsRef.current.forEach((interval) => {
+      clearInterval(interval);
+    });
+    audioIntervalsRef.current.clear();
+    
+    // Reset participant count
+    setParticipants(0);
+    
+    addToast("success", "Meeting ended successfully.");
+  } catch (err) {
+    console.error("Error ending meeting:", err);
+    addToast("error", "Error ending meeting.");
+  }
+};
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -596,17 +826,15 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
 
-    // 🕒 Get user's local time and convert to UTC
-    const localDate = new Date();
-    const utcDate = localDate.toISOString().slice(0, 19).replace("T", " "); // e.g. 2025-10-21 09:12:34
+   const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
 
-    const historyData = {
-      source: "Live Transcript Conversion",
-      date: utcDate, // send UTC time to backend
-      data: data,
-      language: detectLanguage,
-      audio_id: audioID,
-    };
+const historyData = {
+  source: "Live Transcript Conversion",
+  date: formattedUTCDate, // send UTC time to backend
+  data: data,
+  language: detectLanguage,
+  audio_id: audioID,
+};
     
     setShowModal2(false);
     setShowModal(false);
@@ -627,6 +855,35 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
       addToast("error", "Failed to add history");
     }
   };
+
+  // 🔥 NEW: Check for backup after page load (recovery)
+useEffect(() => {
+  const checkForBackup = async () => {
+    if (!meetingId) return;
+    
+    const backupUrl = localStorage.getItem(`backup_${meetingId}`);
+    
+    if (backupUrl && !recordingBlobRef.current) {
+      console.log('🔄 Found backup, attempting restore...');
+      addToast('info', 'Restoring recording from backup...');
+      
+      try {
+        const response = await fetch(backupUrl);
+        const blob = await response.blob();
+        recordingBlobRef.current = blob;
+        setRecordedBlob(true);
+        
+        localStorage.removeItem(`backup_${meetingId}`);
+        addToast('success', 'Recording restored from backup!');
+      } catch (error) {
+        console.error('❌ Failed to restore backup:', error);
+        addToast('error', 'Failed to restore backup');
+      }
+    }
+  };
+
+  checkForBackup();
+}, [meetingId, addToast]);
 
   useEffect(() => {
     const updateBarCount = () => {
@@ -671,8 +928,8 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   const approve = (id) => {
     socketRef.current.emit("host:approve", { guestSocketId: id });
     setRequests((r) => r.filter((x) => x.socketId !== id));
-    // Update participant count when a guest is approved
-    setParticipants(prev => prev + 1);
+    // Participant count will be updated via room:count event from server
+    // Don't manually increment here to avoid double counting
   };
   const reject = (id) => {
     socketRef.current.emit("host:reject", { guestSocketId: id });
@@ -923,6 +1180,11 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
                                 </button>
                                 <div className="mt-2 text-xs text-gray-400">
                                   {participants} participant(s) connected
+                                  {requests.length > 0 && (
+                                    <div className="text-orange-500">
+                                      {requests.length} pending approval
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

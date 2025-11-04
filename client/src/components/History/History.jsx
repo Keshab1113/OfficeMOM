@@ -7,6 +7,8 @@ import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Plus } from 
 import { Link, useNavigate } from "react-router-dom";
 import { removeAudioPreview } from "../../redux/audioSlice";
 import { useToast } from "../ToastContext";
+import { DateTime } from "luxon";
+
 
 // Enhanced Skeleton component with shimmer effect
 const SkeletonItem = () => (
@@ -221,19 +223,24 @@ const AllHistory = ({ title, NeedFor, height }) => {
         <div className="relative flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-200 dark:scrollbar-track-gray-800">
           <div className="space-y-3 pr-2">
             {allData.map((item, index) => {
-              const HDate = new Date(item.date || item.uploadedAt);
-              const localDate =
-                HDate.getFullYear() +
-                "-" +
-                String(HDate.getMonth() + 1).padStart(2, "0") +
-                "-" +
-                String(HDate.getDate()).padStart(2, "0") +
-                " " +
-                String(HDate.getHours()).padStart(2, "0") +
-                ":" +
-                String(HDate.getMinutes()).padStart(2, "0") +
-                ":" +
-                String(HDate.getSeconds()).padStart(2, "0");
+              // Convert UTC date to user's local time
+// Convert UTC date to user's local timezone using Luxon
+// Convert UTC or SQL date to user's local timezone dynamically using Luxon
+// Convert UTC or SQL date to user's *local* timezone using Luxon
+const utcDate = item.date || item.uploadedAt;
+
+// Try ISO first, fallback to SQL; always interpret as UTC then convert to local
+const parsed = DateTime.fromISO(utcDate, { zone: "utc" });
+const localDate = parsed.isValid
+  ? parsed.setZone(DateTime.local().zoneName)
+  : DateTime.fromSQL(utcDate, { zone: "utc" }).setZone(DateTime.local().zoneName);
+
+// Show full date and time
+const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
+
+
+
+
               const isHovered = hoveredItemId === `${item.id}-${index}`;
               const isEditing = editingId === item.id;
 
@@ -303,7 +310,7 @@ const AllHistory = ({ title, NeedFor, height }) => {
                           </Link>
                           <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
                             <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
-                              {localDate.split(' ')[1]}, {localDate.split(' ')[0]}
+                               {formattedDate}
                             </span>
                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
                             <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize whitespace-nowrap truncate">
