@@ -77,6 +77,7 @@ const Success = () => {
       );
     }
   };
+  console.log("paymentDetails: ",paymentDetails);
 
   if (loading) {
     return (

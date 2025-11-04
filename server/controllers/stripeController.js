@@ -293,8 +293,6 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
-// 🔹 WEBHOOK HANDLER - This should be in your webhook endpoint
-// 🔹 WEBHOOK HANDLER - This should be in your webhook endpoint
 exports.handleStripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
@@ -303,6 +301,26 @@ exports.handleStripeWebhook = async (req, res) => {
     // Verify webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
     console.log(`✅ Webhook received: ${event.type}`);
+
+    // Log important event data for debugging
+    if (event.type === 'checkout.session.completed') {
+      console.log('🔍 Session data:', {
+        id: event.data.object.id,
+        subscription: event.data.object.subscription,
+        payment_status: event.data.object.payment_status,
+        metadata: event.data.object.metadata
+      });
+    }
+
+    if (event.type === 'invoice.payment_succeeded') {
+      console.log('🔍 Invoice data:', {
+        id: event.data.object.id,
+        subscription: event.data.object.subscription,
+        number: event.data.object.number,
+        invoice_pdf: event.data.object.invoice_pdf
+      });
+    }
+
   } catch (err) {
     console.error(`❌ Webhook signature verification failed:`, err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -364,7 +382,32 @@ async function handleCheckoutSessionCompleted(session, connection) {
     );
 
     const subscriptionData = subscriptionResponse.data;
-    console.log(`✅ Subscription data retrieved: ${subscriptionData.status}`);
+    console.log(`✅ Subscription data retrieved:`, {
+      status: subscriptionData.status,
+      current_period_start: subscriptionData.current_period_start,
+      current_period_end: subscriptionData.current_period_end,
+      has_period_start: !!subscriptionData.current_period_start,
+      has_period_end: !!subscriptionData.current_period_end
+    });
+
+    // 🔹 FIX: Ensure all values are properly converted to null if undefined
+    const paymentStatus = safeValue(session.payment_status);
+    const subscriptionId = safeValue(session.subscription);
+    const subscriptionStatus = safeValue(subscriptionData.status);
+    const currentPeriodStart = subscriptionData.current_period_start
+      ? safeValue(subscriptionData.current_period_start)
+      : null;
+    const currentPeriodEnd = subscriptionData.current_period_end
+      ? safeValue(subscriptionData.current_period_end)
+      : null;
+
+    console.log(`📊 Final update values:`, {
+      paymentStatus,
+      subscriptionId,
+      subscriptionStatus,
+      currentPeriodStart,
+      currentPeriodEnd
+    });
 
     // Update payment record with subscription details
     const [updateResult] = await connection.execute(
@@ -377,16 +420,25 @@ async function handleCheckoutSessionCompleted(session, connection) {
            updated_at = CURRENT_TIMESTAMP
        WHERE stripe_session_id = ?`,
       [
-        session.payment_status,
-        session.subscription,
-        subscriptionData.status,
-        subscriptionData.current_period_start,
-        subscriptionData.current_period_end,
+        paymentStatus,
+        subscriptionId,
+        subscriptionStatus,
+        currentPeriodStart,
+        currentPeriodEnd,
         session.id
       ]
     );
 
     console.log(`✅ Database updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`);
+
+    // Check if update actually worked
+    const [updatedRecord] = await connection.execute(
+      `SELECT stripe_subscription_id, subscription_status, current_period_start, current_period_end 
+       FROM stripe_payments WHERE stripe_session_id = ?`,
+      [session.id]
+    );
+
+    console.log(`📋 Updated record:`, updatedRecord[0]);
 
     // Update user subscription details if we have user_id
     if (session.metadata && session.metadata.user_id) {
@@ -404,30 +456,69 @@ async function handleCheckoutSessionCompleted(session, connection) {
 async function handleInvoicePaymentSucceeded(invoice, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
 
+  console.log(`🔄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`);
+
   if (invoice.subscription) {
-    // Update invoice details in payment record
-    await connection.execute(
-      `UPDATE stripe_payments 
-       SET stripe_invoice_id = ?,
-           invoice_number = ?,
-           invoice_pdf = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE stripe_subscription_id = ? 
-       AND payment_status = 'paid'
-       ORDER BY created_at DESC 
-       LIMIT 1`,
-      [
-        invoice.id,
-        invoice.number,
-        invoice.invoice_pdf,
-        invoice.subscription
-      ]
-    );
+    try {
+      // 🔹 FIX: Ensure all values are properly converted
+      const invoiceId = safeValue(invoice.id);
+      const invoiceNumber = safeValue(invoice.number);
+      const invoicePdf = safeValue(invoice.invoice_pdf);
+      const subscriptionId = safeValue(invoice.subscription);
+
+      console.log(`📊 Invoice update values:`, {
+        invoiceId,
+        invoiceNumber,
+        invoicePdf,
+        subscriptionId
+      });
+
+      // Update the most recent payment record for this subscription
+      const [updateResult] = await connection.execute(
+        `UPDATE stripe_payments 
+         SET stripe_invoice_id = ?,
+             invoice_number = ?,
+             invoice_pdf = ?,
+             payment_status = 'paid',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE stripe_subscription_id = ?
+         ORDER BY created_at DESC 
+         LIMIT 1`,
+        [
+          invoiceId,
+          invoiceNumber,
+          invoicePdf,
+          subscriptionId
+        ]
+      );
+
+      console.log(`✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateResult.affectedRows}`);
+
+      // Verify the update
+      const [updatedRecord] = await connection.execute(
+        `SELECT stripe_invoice_id, invoice_number, invoice_pdf 
+         FROM stripe_payments WHERE stripe_subscription_id = ?`,
+        [subscriptionId]
+      );
+
+      console.log(`📋 Updated invoice record:`, updatedRecord[0]);
+
+    } catch (error) {
+      console.error('❌ Error updating invoice:', error);
+    }
+  } else {
+    console.warn('⚠️ Invoice has no subscription:', invoice.id);
   }
 }
 
 async function handleSubscriptionUpdated(subscription, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
+
+  // 🔹 FIX: Ensure all values are properly converted
+  const subscriptionStatus = safeValue(subscription.status);
+  const currentPeriodStart = safeValue(subscription.current_period_start);
+  const currentPeriodEnd = safeValue(subscription.current_period_end);
+  const subscriptionId = safeValue(subscription.id);
 
   await connection.execute(
     `UPDATE stripe_payments 
@@ -437,30 +528,38 @@ async function handleSubscriptionUpdated(subscription, connection) {
          updated_at = CURRENT_TIMESTAMP
      WHERE stripe_subscription_id = ?`,
     [
-      subscription.status,
-      subscription.current_period_start,
-      subscription.current_period_end,
-      subscription.id
+      subscriptionStatus,
+      currentPeriodStart,
+      currentPeriodEnd,
+      subscriptionId
     ]
   );
+  console.log(`✅ Subscription updated: ${subscriptionId}, status: ${subscriptionStatus}`);
 
   // If subscription was canceled, update user subscription details
   if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
-    await downgradeToFreePlan(subscription.metadata.user_id, connection);
+    if (subscription.metadata && subscription.metadata.user_id) {
+      await downgradeToFreePlan(subscription.metadata.user_id, connection);
+    }
   }
 }
 
 async function handleSubscriptionDeleted(subscription, connection) {
+  const subscriptionId = safeValue(subscription.id);
+
   await connection.execute(
     `UPDATE stripe_payments 
      SET subscription_status = 'canceled',
          updated_at = CURRENT_TIMESTAMP
      WHERE stripe_subscription_id = ?`,
-    [subscription.id]
+    [subscriptionId]
   );
+  console.log(`✅ Subscription deleted: ${subscriptionId}`);
 
   // Downgrade user to free plan
-  await downgradeToFreePlan(subscription.metadata.user_id, connection);
+  if (subscription.metadata && subscription.metadata.user_id) {
+    await downgradeToFreePlan(subscription.metadata.user_id, connection);
+  }
 }
 
 // 🔹 HELPER FUNCTIONS
@@ -600,12 +699,7 @@ exports.handlePaymentSuccess = async (req, res) => {
     res.json({
       success: true,
       message: "Payment being processed",
-      payment: {
-        id: payment.id,
-        plan_name: payment.plan_name,
-        payment_status: payment.payment_status,
-        subscription_status: payment.subscription_status,
-      },
+      payment: payment,
     });
   } catch (error) {
     console.error("Payment success error:", error);
