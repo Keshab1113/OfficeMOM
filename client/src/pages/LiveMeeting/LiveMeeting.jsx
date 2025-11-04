@@ -579,8 +579,8 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
 
   // 🔥 NEW: Start sending mixed audio chunks to backend
   startBackupStream(data.roomId);
-};
-
+}; 
+// check
 // 🔥 NEW FUNCTION: Send mixed audio to backend as backup
 const startBackupStream = (roomId) => {
   if (!mixerRef.current?.mixedStream) {
