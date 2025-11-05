@@ -16,44 +16,65 @@ const execPromise = promisify(exec);
  */
 async function getAudioDuration(audioBuffer) {
   let tempFilePath = null;
-
+  let isEstimated = false;
+  
   try {
+    // Create a temporary file with appropriate extension
     const tempDir = os.tmpdir();
-    const tempFileName = `temp_audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+    const tempFileName = `temp_audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.tmp`;
     tempFilePath = path.join(tempDir, tempFileName);
-
+    
+    // Write buffer to temporary file
     await fs.writeFile(tempFilePath, audioBuffer);
-
+    
+    // Try Method 1: Using get-audio-duration library
     try {
       const { getAudioDurationInSeconds } = require("get-audio-duration");
       const durationInSeconds = await getAudioDurationInSeconds(tempFilePath);
       const durationInMinutes = Math.ceil(durationInSeconds / 60);
-      console.log("✅ Duration obtained via library:", durationInMinutes, "minutes");
+      console.log("✅ Duration obtained via library");
       return durationInMinutes;
     } catch (libError) {
       console.log("📊 Library method unavailable, trying direct ffprobe...");
-      const ffprobePath = require("@ffprobe-installer/ffprobe").path;
-      const command = `"${ffprobePath}" -v error -show_entries format=duration -of json "${tempFilePath}"`;
-
-      const { stdout } = await execPromise(command);
-      const parsed = JSON.parse(stdout);
-      const durationInSeconds = parseFloat(parsed.format?.duration || 0);
-
-      if (!durationInSeconds || isNaN(durationInSeconds)) {
-        throw new Error("Invalid duration from ffprobe");
+      
+      // Method 2: Use ffprobe directly (more reliable)
+      try {
+        const ffprobePath = require("@ffprobe-installer/ffprobe").path;
+        const command = `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempFilePath}"`;
+        
+        const { stdout } = await execPromise(command);
+        const durationInSeconds = parseFloat(stdout.trim());
+        
+        if (isNaN(durationInSeconds) || durationInSeconds <= 0) {
+          throw new Error("Invalid duration from ffprobe");
+        }
+        
+        const durationInMinutes = Math.ceil(durationInSeconds / 60);
+        console.log("✅ Duration obtained via ffprobe");
+        return durationInMinutes;
+      } catch (ffprobeError) {
+        console.log("⚠️ ffprobe failed, using size-based estimation");
+        throw ffprobeError; // Let it fall through to estimation
       }
-
-      const durationInMinutes = Math.ceil(durationInSeconds / 60);
-      console.log("✅ Duration obtained via ffprobe:", durationInMinutes, "minutes");
-      return durationInMinutes;
     }
+    
   } catch (error) {
-    // ⚠️ Fallback — approximate (very last resort)
+    // Fallback: Estimate based on file size (rough approximation)
+    // Average bitrate for typical audio: ~128 kbps
     const fileSizeInMB = audioBuffer.length / (1024 * 1024);
-    const estimatedMinutes = Math.ceil((fileSizeInMB * 8 * 60) / 128);
+    const estimatedMinutes = Math.ceil((fileSizeInMB * 8 * 60) / 128); // Rough estimate
+    
     console.log(`📏 Estimated duration: ${estimatedMinutes} minutes (based on ${fileSizeInMB.toFixed(2)} MB file size)`);
-    return estimatedMinutes > 0 ? estimatedMinutes : 1;
+    
+    // Return object when estimation is used
+    return {
+      minutes: estimatedMinutes > 0 ? estimatedMinutes : 1,
+      estimated: true,
+      fileSize: fileSizeInMB
+    };
+    
   } finally {
+    // Clean up: Delete temporary file
     if (tempFilePath) {
       try {
         await fs.unlink(tempFilePath);
@@ -63,7 +84,6 @@ async function getAudioDuration(audioBuffer) {
     }
   }
 }
-
 
 /**
  * Alternative: Get duration directly from URL (for already uploaded files)

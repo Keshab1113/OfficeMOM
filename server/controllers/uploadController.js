@@ -119,14 +119,22 @@ const uploadAudio = async (req, res) => {
     console.log(`Processing audio - Source: ${actualSource}, File: ${originalName}`);
 
     // ⏱️ STEP 1: Check audio duration and user minutes
-    const durationResult = await getAudioDuration(buffer);
-    const audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
-    const isEstimated = typeof durationResult === 'object' ? durationResult.estimated : false;
+    // ⏱️ STEP 1: Get meeting duration from frontend or fallback to auto calculation
+let audioDurationMinutes;
+let isEstimated = false;
 
-    console.log(`✅ Audio duration: ${audioDurationMinutes} minutes${isEstimated ? ' (estimated)' : ''}`);
+if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
+  audioDurationMinutes = parseInt(req.body.meetingDuration);
+  console.log(`✅ Using frontend meeting duration: ${audioDurationMinutes} minutes`);
+} else {
+  const durationResult = await getAudioDuration(buffer);
+  audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
+  isEstimated = typeof durationResult === 'object' ? durationResult.estimated : false;
+  console.log(`ℹ️ Using computed audio duration: ${audioDurationMinutes} minutes${isEstimated ? ' (estimated)' : ''}`);
+}
 
-    // ⏱️ STEP 2: Check if user has sufficient minutes
-    const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
+// ⏱️ STEP 2: Check if user has sufficient minutes
+const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
 
     if (!minutesCheck.hasMinutes) {
       return res.status(402).json({
