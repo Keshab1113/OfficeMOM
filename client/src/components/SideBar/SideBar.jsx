@@ -32,7 +32,7 @@ const navItems = [
   {
     heading: "Generate Notes from Files",
     icon: MdAudiotrack,
-    url: "/audio-notes",
+    url: "/generate-notes",
     description: "Audio & Video files",
   },
   {
@@ -94,7 +94,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isExpandButtonClick, setIsExpandButtonClick] = useState(false);
 
-  const hiddenRoutes = ["/meeting", "/audio-notes", "/live-meeting"];
+  const hiddenRoutes = ["/meeting", "/generate-notes", "/live-meeting"];
 
   const hideSidebar = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)

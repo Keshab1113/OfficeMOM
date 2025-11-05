@@ -131,7 +131,7 @@ const Header = ({ isVisible = true }) => {
   // );
   const floatingHeaderRoutes = [
     "/meeting",
-    "/audio-notes", 
+    "/generate-notes", 
     "/live-meeting",
   ];
   

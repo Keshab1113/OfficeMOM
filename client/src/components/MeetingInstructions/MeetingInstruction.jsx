@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Zap, CheckCircle, FileText, Clock, Sparkles, Rocket, Play, Pause } from "lucide-react";
-import { GenerateNotesSteps, OnlineMeetingSteps } from "./Steps";
+import { GenerateNotesSteps, LiveNotesSteps, OnlineMeetingSteps } from "./Steps";
 
 const MeetingInstruction = ({needFor}) => {
     const [currentStep, setCurrentStep] = useState(0);
@@ -11,7 +11,7 @@ const MeetingInstruction = ({needFor}) => {
     const stepRefs = useRef([]);
     const containerRef = useRef(null);
 
-    const steps = needFor === "Generate Notes Conversion"? GenerateNotesSteps : (needFor === "Online Meeting Conversion" ? OnlineMeetingSteps : []);
+    const steps = needFor === "Generate Notes Conversion"? GenerateNotesSteps : (needFor === "Online Meeting Conversion" ? OnlineMeetingSteps : LiveNotesSteps);
 
     // Auto scroll to active step
     useEffect(() => {

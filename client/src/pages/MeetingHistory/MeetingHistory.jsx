@@ -75,19 +75,25 @@ const MeetingHistory = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll ">
-          <div className=" min-h-screen flex justify-center items-center md:py-4 py-10 px-4">
-            {error ? (
-              <NoPage />
-            ) : (
-              <RealTablePreview
-                showFullData={showFullData || []}
-                onSaveTable={(data, downloadOptions) => {
-                  HandleSaveTable(data, downloadOptions);
-                }}
-                detectLanguage={detectLanguage}
-              />
-            )}
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
+          <div className="min-h-screen lg:px-4 md:px-4 px-4 py-20 lg:py-28 flex flex-col md:gap-12 gap-8 container mx-auto">
+            <div className="dark:bg-gray-800/70 bg-gray-100 md:p-8 p-4 rounded-2xl border dark:border-gray-700 border-white shadow-xl">
+              <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Meeting Summary
+              </h1>
+              {error ? (
+                <NoPage />
+              ) : (
+                <RealTablePreview
+                  showFullData={showFullData || []}
+                  onSaveTable={(data, downloadOptions) => {
+                    HandleSaveTable(data, downloadOptions);
+                  }}
+                  detectLanguage={detectLanguage}
+                />
+              )}
+            </div>
+
           </div>
           <Footer />
         </div>

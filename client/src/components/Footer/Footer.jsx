@@ -32,7 +32,7 @@ const Footer = () => {
 
   const hiddenRoutes2 = [
     "/meeting",
-    "/audio-notes",
+    "/generate-notes",
     "/live-meeting",
     "/login",
     "/signup",

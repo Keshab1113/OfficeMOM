@@ -15,7 +15,7 @@ function Layout() {
   // Use auto-hide header for specific routes
   const floatingHeaderRoutes = [
     "/meeting",
-    "/audio-notes", 
+    "/generate-notes", 
     "/live-meeting",
   ];
   

@@ -185,7 +185,7 @@ export default function MultipleAudioPlayer({
   }
 
   return (
-    <div className="my-8">
+    <div className="mt-8 mb-0 ">
       <div className="relative bg-white/90 dark:bg-gray-900/30 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl p-6 shadow-xl dark:shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <h4 className="text-lg font-semibold text-gray-800 dark:text-white">

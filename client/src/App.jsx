@@ -4,12 +4,10 @@ import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Signup from "./pages/Signup/Signup";
 import Layout from "./layout";
-import Meeting from "./pages/Meeting/Meeting";
 import LiveMeeting from "./pages/LiveMeeting/LiveMeeting";
 import Profile from "./pages/Profile/Profile";
 import ProtectedRoute from "../ProtectedRoute";
 import NoPage from "./pages/NoPage/NoPage";
-import GenerateNotes from "./pages/GenerateNotes/GenerateNotes";
 import MeetingHistory from "./pages/MeetingHistory/MeetingHistory";
 import JoinMeeting from "./pages/JoinMeeting/JoinMeeting";
 import AboutUs from "./pages/AboutUs/AboutUs";
@@ -30,6 +28,7 @@ import CheckoutPage from "./pages/CheckoutPage/CheckoutPage";
 import MeetingHome from "./pages/Meeting/MeetingHome";
 import MeetingRoom from "./pages/Meeting/MeetingRoom";
 import MeetingResult from "./pages/Meeting/MeetingResult";
+import GenerateNotesHome from "./pages/GenerateNotes/GenerateNotesHome";
 
 function App() {
   return (
@@ -38,18 +37,10 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route
-            path="/meetings"
-            element={
-              <ProtectedRoute>
-                <Meeting/>
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/meeting"
             element={
               <ProtectedRoute>
-                <MeetingHome/>
+                <MeetingHome />
               </ProtectedRoute>
             }
           />
@@ -57,7 +48,7 @@ function App() {
             path="/meeting/:meetingId"
             element={
               <ProtectedRoute>
-                <MeetingRoom/>
+                <MeetingRoom />
               </ProtectedRoute>
             }
           />
@@ -65,15 +56,24 @@ function App() {
             path="/meeting/:meetingId/result"
             element={
               <ProtectedRoute>
-                <MeetingResult/>
+                <MeetingResult />
               </ProtectedRoute>
             }
           />
+          
           <Route
             path="/live-meeting"
             element={
               <ProtectedRoute>
                 <LiveMeeting />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/live-meeting/:meetingId/result"
+            element={
+              <ProtectedRoute>
+                <MeetingResult />
               </ProtectedRoute>
             }
           />
@@ -87,14 +87,9 @@ function App() {
           />
 
           <Route path="/join-meeting/:id" element={<JoinMeeting />} />
-          <Route
-            path="/audio-notes"
-            element={
-              <ProtectedRoute>
-                <GenerateNotes />
-              </ProtectedRoute>
-            }
-          />
+          
+          <Route path="/generate-notes" element={<ProtectedRoute><GenerateNotesHome /></ProtectedRoute>} />
+          <Route path="/generate-notes/:audioId/result" element={<ProtectedRoute><MeetingResult /></ProtectedRoute>} />
           <Route
             path="/profile"
             element={

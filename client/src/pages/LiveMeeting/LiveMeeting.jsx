@@ -31,6 +31,9 @@ import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import { DateTime } from "luxon";
 import RechargeModal from './../../components/RechargeModal/RechargeModal';
+import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
+import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
+import { useNavigate } from "react-router-dom";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 const breadcrumbItems = [
@@ -76,10 +79,11 @@ const LiveMeeting = () => {
   const previousBlobRef = useRef(null);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [rechargeInfo, setRechargeInfo] = useState(null);
-
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
+  const { email, fullName, token } = useSelector((state) => state.auth);
 
   // 🔥 NEW: Listen for backup events
   useEffect(() => {
@@ -493,44 +497,6 @@ const LiveMeeting = () => {
     }
   };
 
-  // const startRecording = async () => {
-  //   setRecordingTime(0);
-  //   const someId = lastPreview?.id;
-  //   dispatch(updateNeedToShow({ id: someId, needToShow: false }));
-  //   const { data } = await axios.post(
-  //     `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
-  //     {},
-  //     {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //     }
-  //   );
-  //   await setMeetingId(data.roomId);
-  //   setIsRecording(true);
-  //   if (!mediaRecorderRef.current) return;
-  //   recordedChunksRef.current = [];
-  //   individualRecordersRef.current.clear();
-  //   individualChunksRef.current.clear();
-  //   mediaRecorderRef.current.start(1000);
-  //   if (localMicRef.current) {
-  //     startIndividualRecording("host", localMicRef.current);
-  //   }
-
-  //   peersRef.current.forEach((pc, socketId) => {
-  //     const remoteStream = new MediaStream();
-  //     pc.getReceivers().forEach((receiver) => {
-  //       if (receiver.track) {
-  //         remoteStream.addTrack(receiver.track);
-  //       }
-  //     });
-
-  //     if (remoteStream.getAudioTracks().length > 0) {
-  //       startIndividualRecording(socketId, remoteStream);
-  //     }
-  //   });
-  // };
-
   const startRecording = async () => {
     setRecordingTime(0);
     const someId = lastPreview?.id;
@@ -662,63 +628,6 @@ const LiveMeeting = () => {
   };
 
 
-  // const stopRecording = () => {
-  //   setIsRecording(false);
-  //   if (mediaRecorderRef.current?.state === "recording") {
-  //     mediaRecorderRef.current.stop();
-
-  //     individualRecordersRef.current.forEach((recorder, socketId) => {
-  //       if (recorder.state === "recording") {
-  //         recorder.stop();
-  //         console.log(`Stopped recorder for ${socketId}`);
-  //       }
-  //     });
-  //   }
-  //   setRecordedBlob(true);
-  //   endMeeting();
-  //   setHistortTitle(`recording_${Date.now()}.mp3`);
-  // };
-
-  // const endMeeting = async () => {
-  //   try {
-  //     // Stop all individual recordings first
-  //     individualRecordersRef.current.forEach((recorder, socketId) => {
-  //       if (recorder.state === "recording") {
-  //         recorder.stop();
-  //         console.log(`Stopped individual recorder for ${socketId}`);
-  //       }
-  //     });
-
-  //     // Stop main media recorder
-  //     if (mediaRecorderRef.current?.state === "recording") {
-  //       mediaRecorderRef.current.stop();
-  //     }
-
-  //     await axios.post(
-  //       `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
-  //       {},
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       }
-  //     );
-
-  //     // Emit room:ended event to all connected guests
-  //     if (socketRef.current) {
-  //       socketRef.current.emit("host:end-meeting", { roomId: meetingId });
-  //       // Also emit to room to ensure all guests receive it
-  //       socketRef.current.emit("room:ended", { roomId: meetingId });
-  //     }
-  //     addToast("success", "Meeting ended successfully.");
-  //   } catch (err) {
-  //     console.error("Error ending meeting:", err);
-  //     addToast("error", "Error ending meeting.");
-  //   }
-  // };
-
-  // Updated endMeeting function in LiveMeeting.jsx
-
   const endMeeting = async () => {
     try {
       console.log("🛑 Ending meeting:", meetingId);
@@ -788,180 +697,110 @@ const LiveMeeting = () => {
     return `${window.location.origin}/join-meeting/${meetingId}`;
   };
 
-  // const handleStartMakingNotes = async () => {
-  //   if (!recordingBlobRef.current) {
-  //     addToast("error", "Please record some audio first");
-  //     return;
-  //   }
-  //   setIsProcessing(true);
-  //   try {
-  //     const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
-  //       type: "audio/mpeg",
-  //     });
-
-  //     const formData = new FormData();
-  //     formData.append("audio", file);
-  //     formData.append("source", "Live Transcript Conversion");
-
-  //     const response = await axios.post(
-  //       `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-  //       formData,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "multipart/form-data",
-  //         },
-  //       }
-  //     );
-
-  //     if (response.data) {
-  //       const { audioUrl, id, uploadedAt, title, audioId, transcription, language, transcriptAudioId, userId } = response.data;
-  //       setAudioID(audioId);
-  //       setUpdatedMeetingId(transcriptAudioId);
-  //       setUploadedUserId(userId);
-  //       setHistoryID(id);
-  //       setFinalTranscript(transcription || "");
-  //       setDetectLanguage(language);
-  //       setShowModal(true);
-  //       setRecordedBlob(false);
-  //       addToast("success", "Audio processed successfully!");
-  //     } else {
-  //       addToast("error", "Upload failed or audioUrl missing");
-  //     }
-  //   } catch (error) {
-  //     addToast("error", "Failed to process file. Please try again.");
-  //     console.error("Error processing notes:", error);
-  //   } finally {
-  //     setIsProcessing(false);
-  //   }
-  // };
-
-const handleStartMakingNotes = async () => {
-  if (!recordingBlobRef.current) {
-    addToast("error", "Please record some audio first");
-    return;
-  }
-  setIsProcessing(true);
-  try {
-    const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
-      type: "audio/mpeg",
-    });
-
-    const formData = new FormData();
-    formData.append("audio", file);
-    formData.append("source", "Live Transcript Conversion");
-
-    const response = await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    if (response.data) {
-      const {
-        audioUrl,
-        id,
-        uploadedAt,
-        title,
-        audioId,
-        transcription,
-        language,
-        transcriptAudioId,
-        userId,
-        usedMinutes,
-        remainingMinutes,
-        message,
-      } = response.data;
-
-      setAudioID(audioId);
-      setUpdatedMeetingId(transcriptAudioId);
-      setUploadedUserId(userId);
-      setHistoryID(id);
-      setFinalTranscript(transcription || "");
-      setDetectLanguage(language);
-      setShowModal(true);
-      setRecordedBlob(false);
-
-      // ✅ Show success message with minutes info if present
-      const successMessage = usedMinutes
-        ? `${message || "Audio processed successfully!"} (${usedMinutes} minutes used, ${remainingMinutes} remaining)`
-        : message || "Audio processed successfully!";
-
-      addToast("success", successMessage);
-    } else {
-      addToast("error", "Upload failed or audioUrl missing");
+  const handleStartMakingNotes = async () => {
+    if (!recordingBlobRef.current) {
+      addToast("error", "Please record some audio first");
+      return;
     }
-  } catch (error) {
-    console.error("Error processing notes:", error);
-
-    // 🚨 Handle insufficient minutes error (402)
-    if (error.response?.status === 402) {
-      const errorData = error.response.data;
-
-      addToast(
-        "error",
-        `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} remaining. Please recharge to continue.`,
-        10000
-      );
-
-      // Optional: trigger your recharge modal or UI flow
-      if (setShowRechargeModal) {
-        setShowRechargeModal(true);
-        setRechargeInfo({
-          required: errorData.requiredMinutes,
-          remaining: errorData.remainingMinutes,
-          deficit: errorData.requiredMinutes - errorData.remainingMinutes,
-        });
-      }
-    } else {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to process file. Please try again.";
-      addToast("error", errorMessage);
-    }
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
-
-  const { email, fullName, token } = useSelector((state) => state.auth);
-
-  const HandleSaveTable = async (data, downloadOptions) => {
-    saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
-
-    const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
-
-    const historyData = {
-      source: "Live Transcript Conversion",
-      date: formattedUTCDate, // send UTC time to backend
-      data: data,
-      language: detectLanguage,
-      audio_id: audioID,
-    };
-
-    setShowModal2(false);
-    setShowModal(false);
-  };
-
-  const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
+    setIsProcessing(true);
     try {
-      await axios.patch(
-        `${import.meta.env.VITE_BACKEND_URL
-        }/api/live-meeting/audio-files/${updatedMeetingId}`,
-        historyData,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
+        type: "audio/mpeg",
+      });
+
+      const formData = new FormData();
+      formData.append("audio", file);
+      formData.append("source", "Live Transcript Conversion");
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
-      dispatch(removeAudioPreview(updatedMeetingId));
-    } catch (err) {
-      console.error("Add history error:", err);
-      addToast("error", "Failed to add history");
+
+      if (response.data) {
+        const {
+          audioUrl,
+          id,
+          uploadedAt,
+          title,
+          audioId,
+          transcription,
+          language,
+          transcriptAudioId,
+          userId,
+          usedMinutes,
+          remainingMinutes,
+          message,
+        } = response.data;
+
+        setAudioID(audioId);
+        setUpdatedMeetingId(transcriptAudioId);
+        setUploadedUserId(userId);
+        setHistoryID(id);
+        setFinalTranscript(transcription || "");
+        setDetectLanguage(language);
+        setShowModal(true);
+        setRecordedBlob(false);
+
+        // ✅ Show success message with minutes info if present
+        const successMessage = usedMinutes
+          ? `${message || "Audio processed successfully!"} (${usedMinutes} minutes used, ${remainingMinutes} remaining)`
+          : message || "Audio processed successfully!";
+
+        addToast("success", successMessage);
+
+        navigate(`/live-meeting/${meetingId}/result`, {
+        state: {
+          audioData: response.data,
+          detectLanguage: language,
+          finalTranscript: transcription,
+          audioID: audioId,
+          updatedMeetingId: transcriptAudioId,
+          uploadedUserId: userId,
+          historyID: id,
+          transcription: transcription,
+        },
+      });
+      } else {
+        addToast("error", "Upload failed or audioUrl missing");
+      }
+    } catch (error) {
+      console.error("Error processing notes:", error);
+
+      // 🚨 Handle insufficient minutes error (402)
+      if (error.response?.status === 402) {
+        const errorData = error.response.data;
+
+        addToast(
+          "error",
+          `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} remaining. Please recharge to continue.`,
+          10000
+        );
+
+        // Optional: trigger your recharge modal or UI flow
+        if (setShowRechargeModal) {
+          setShowRechargeModal(true);
+          setRechargeInfo({
+            required: errorData.requiredMinutes,
+            remaining: errorData.remainingMinutes,
+            deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+          });
+        }
+      } else {
+        const errorMessage =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to process file. Please try again.";
+        addToast("error", errorMessage);
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1044,34 +883,6 @@ const handleStartMakingNotes = async () => {
     socketRef.current.emit("host:reject", { guestSocketId: id });
     setRequests((r) => r.filter((x) => x.socketId !== id));
     // Don't update participant count for rejected requests
-  };
-
-  const handleSaveHeaders = async (headers) => {
-    setIsSending(true);
-    try {
-      const tableData = await processTranscriptWithDeepSeek(
-        finalTranscript,
-        headers,
-        audioID,
-        uploadedUserId,
-        updatedMeetingId,
-        detectLanguage,
-        historyID
-      );
-      console.log("Table data received:", tableData); // Debug log
-      if (!Array.isArray(tableData.final_mom)) {
-        addToast("error", "Could not process meeting notes");
-        return;
-      }
-      setShowFullData(tableData.final_mom);
-      setIsSending(false);
-      setShowModal2(true);
-    } catch (error) {
-      console.error("Error converting transcript:", error);
-      addToast("error", "Failed to convert transcript");
-      setShowModal2(false);
-      setShowModal(false);
-    }
   };
   const handleDelete = async (audioId) => {
     try {
@@ -1166,37 +977,24 @@ const handleStartMakingNotes = async () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10">
-          <div className=" min-h-screen">
-            {!showModal && (
-              <Breadcrumb items={breadcrumbItems} />
-            )}
-            <Heading
-              heading="Start New Meeting"
-              subHeading="Using your device microphone."
-            />
-            {showModal ? (
-              <section className=" p-4 md:p-0 md:px-10 lg:px-0 lg:pl-10 lg:pr-6 lg:max-w-full max-w-screen">
-                {showModal2 ? (
-                  <RealTablePreview
-                    showFullData={showFullData}
-                    detectLanguage={detectLanguage}
-                    onSaveTable={(data, downloadOptions) => {
-                      HandleSaveTable(data, downloadOptions);
-                    }}
-                  />
-                ) : (
-                  <TablePreview
-                    onSaveHeaders={(headers) => handleSaveHeaders(headers)}
-                    isSending={isSending}
-                  />
-                )}
-              </section>
-            ) : (
-              <div className="h-full w-full flex lg:flex-row flex-col pb-10">
-                <section className="h-full pb-10 lg:w-[65%] w-screen md:px-10 px-4">
-                  <Timing />
-                  <div className="flex flex-col justify-center items-start w-full mt-8">
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll lg:pb-0 pb-10">
+          <Breadcrumb items={breadcrumbItems} />
+          <div className="min-h-screen container mx-auto px-4">
+            <div className="text-center mb-8 mt-10 px-4">
+              <h1 className="text-3xl md:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 pb-1 lg:pb-3">
+                Start Live Meeting
+              </h1>
+              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                Using your device microphone.
+              </p>
+            </div>
+            <div className="h-full w-full flex flex-col gap-6 lg:gap-10 pb-10">
+              <div className="w-full">
+                <Timing />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 w-full ">
+                <div className="lg:col-span-2 w-full bg-gray-100 dark:bg-slate-800/80 border-white/20 backdrop-blur-sm lg:p-10 p-4 rounded-2xl shadow-lg">
+                  <div className="flex flex-col justify-center items-start w-full">
                     <div className="flex gap-2 justify-start items-center w-full dark:bg-gray-900/30 bg-white py-4 px-4 rounded-md">
                       <MdRecordVoiceOver className=" text-blue-500 text-2xl" />
                       <h1 className="text-gray-600 dark:text-gray-300 text-lg font-bold">
@@ -1359,22 +1157,27 @@ const handleStartMakingNotes = async () => {
                     onContinue={continueNextProcess}
                     isPreviewProcessing={isPreviewProcessing}
                   />
-                </section>
-                <section className="lg:w-[35%] w-screen lg:pr-6 px-4 md:px-10 lg:px-0 flex flex-col gap-8">
-                  {/* <Trancript/> */}
-                  <AllHistory NeedFor="Live Transcript Conversion" />
-                </section>
+                </div>
+                <div className="lg:col-span-1 w-full">
+                  <div className="h-80 sm:h-96 lg:h-[27rem] w-full">
+                    <AllHistory NeedFor="Live Transcript Conversion" height="100%" />
+                  </div>
+                </div>
               </div>
-            )}
+              <div className="w-full">
+                <MeetingInstruction needFor={"Live Meeting Conversion"} />
+              </div>
+              <MeetingFeatures />
+            </div>
           </div>
-          <JoinRequestModal
-            reqs={requests}
-            onApprove={approve}
-            onReject={reject}
-          />
+
           <Footer />
         </div>
-
+        <JoinRequestModal
+          reqs={requests}
+          onApprove={approve}
+          onReject={reject}
+        />
         <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
