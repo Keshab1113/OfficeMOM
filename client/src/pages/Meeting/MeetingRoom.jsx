@@ -8,6 +8,7 @@ import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import { Helmet } from "react-helmet";
 import axios from "axios";
 import { io } from "socket.io-client";
+import RechargeModal from './../../components/RechargeModal/RechargeModal';
 
 const breadcrumbItems = [{ label: "Online Meeting" }];
 
@@ -31,6 +32,9 @@ export default function MeetingRoom() {
     const [isScreenShared, setIsScreenShared] = useState(false);
     const [showScreenSharePrompt, setShowScreenSharePrompt] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
+const [showRechargeModal, setShowRechargeModal] = useState(false);
+const [rechargeInfo, setRechargeInfo] = useState(null);
+
 
 
     const wsRef = useRef(null);
@@ -204,74 +208,118 @@ export default function MeetingRoom() {
         setTimerActive(false);
     };
 
-    // ✅ End meeting and upload
-    const endMeeting = async () => {
-        if (showEndingModal) return;
-        setTimerActive(false);
-        setShowEndingModal(true);
-        setIsRecording(false);
-        stopAllMedia();
+ 
 
-        try {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-                await new Promise((resolve) => {
-                    mediaRecorderRef.current.onstop = resolve;
-                    mediaRecorderRef.current.stop();
-                });
-            }
+const endMeeting = async () => {
+  if (showEndingModal) return;
+  setTimerActive(false);
+  setShowEndingModal(true);
+  setIsRecording(false);
+  stopAllMedia();
 
-            const finalTranscript = transcript.join(" ");
-            if (recordedChunksRef.current.length > 0) {
-                const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
-                const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
-                    type: "audio/webm",
-                });
+  try {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      await new Promise((resolve) => {
+        mediaRecorderRef.current.onstop = resolve;
+        mediaRecorderRef.current.stop();
+      });
+    }
 
-                const formData = new FormData();
-                formData.append("audio", file);
-                formData.append("source", "Online Meeting Conversion");
+    const finalTranscript = transcript.join(" ");
+    if (recordedChunksRef.current.length > 0) {
+      const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
+      const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
+        type: "audio/webm",
+      });
 
-                try {
-                    const response = await axios.post(
-                        `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-                        formData,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                                "Content-Type": "multipart/form-data",
-                            },
-                        }
-                    );
+      const formData = new FormData();
+      const meetingDurationInMinutes = Math.ceil(meetingTime / 60);
+formData.append("audio", file);
+formData.append("source", "Online Meeting Conversion");
+formData.append("meetingDuration", meetingDurationInMinutes);
 
-                    navigate(`/meeting/${meetingId}/result`, {
-                        state: {
-                            finalTranscript: response.data.transcription || finalTranscript,
-                            detectLanguage: response.data.language || "en",
-                            audioID: response.data.audioId,
-                            updatedMeetingId: response.data.transcriptAudioId,
-                            uploadedUserId: response.data.userId,
-                            historyID: response.data.id,
-                            transcription: response.data.transcription || finalTranscript,
-                        },
-                    });
-                } catch (err) {
-                    console.error("Upload failed:", err);
-                    navigate(`/meeting/${meetingId}/result`, {
-                        state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
-                    });
-                }
-            } else {
-                navigate(`/meeting/${meetingId}/result`, {
-                    state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
-                });
-            }
-        } catch (error) {
-            console.error("Error ending meeting:", error);
-            addToast("error", "Failed to process meeting recording");
-        } finally {
-            setShowEndingModal(false);
+
+
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        const data = response.data;
+
+        // ✅ Navigate to result page after successful upload
+        navigate(`/meeting/${meetingId}/result`, {
+          state: {
+            finalTranscript: data.transcription || finalTranscript,
+            detectLanguage: data.language || "en",
+            audioID: data.audioId,
+            updatedMeetingId: data.transcriptAudioId,
+            uploadedUserId: data.userId,
+            historyID: data.id,
+            transcription: data.transcription || finalTranscript,
+          },
+        });
+
+        // ✅ Show success toast with minutes info
+        const successMessage = data.minutesUsed
+          ? `${data.message || "Meeting processed successfully!"} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
+          : data.message || "Meeting processed successfully!";
+
+        addToast("success", successMessage);
+
+      } catch (err) {
+        console.error("Upload failed:", err);
+
+        // 🚨 Handle insufficient minutes error (402)
+        if (err.response?.status === 402) {
+          const errorData = err.response.data;
+
+          addToast(
+            "error",
+            `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge to continue.`,
+            10000
+          );
+
+          // Optional: trigger your recharge modal or UI flow
+          if (setShowRechargeModal) {
+            setShowRechargeModal(true);
+            setRechargeInfo({
+              required: errorData.requiredMinutes,
+              remaining: errorData.remainingMinutes,
+              deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+            });
+          }
+
+          // Stop here (don’t navigate)
+          return;
         }
-    };
+
+        // ❌ Other errors
+        navigate(`/meeting/${meetingId}/result`, {
+          state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+        });
+        addToast("error", err.response?.data?.message || err.message || "Failed to process meeting audio");
+      }
+    } else {
+      navigate(`/meeting/${meetingId}/result`, {
+        state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+      });
+    }
+  } catch (error) {
+    console.error("Error ending meeting:", error);
+    addToast("error", "Failed to process meeting recording");
+  } finally {
+    setShowEndingModal(false);
+  }
+};
+
 
     const formatTime = (totalSeconds) => {
         const minutes = Math.floor(totalSeconds / 60);
@@ -552,6 +600,17 @@ export default function MeetingRoom() {
                     <Footer />
                 </div>
             </section>
+            {showRechargeModal && (
+                    <RechargeModal
+                      isOpen={showRechargeModal}
+                      onClose={() => setShowRechargeModal(false)}
+                      requiredMinutes={rechargeInfo?.required || 0}
+                      remainingMinutes={rechargeInfo?.remaining || 0}
+                      onRecharge={() => {
+                        window.location.href = '/pricing'; // Update with your actual pricing page route
+                      }}
+                    />
+                  )}
         </>
     );
 }

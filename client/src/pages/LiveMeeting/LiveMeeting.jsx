@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
 import Timing from "../../components/Timing/Timing";
-import { cn } from "../../lib/utils";
 import { useToast } from "../../components/ToastContext";
-import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import { MdRecordVoiceOver } from "react-icons/md";
 import Footer from "../../components/Footer/Footer";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import AllHistory from "../../components/History/History";
-import RealTablePreview from "../../components/TablePreview/RealTablePreview";
 import Heading from "../../components/LittleComponent/Heading";
 import { Mic, Loader2, FileText, Copy } from "lucide-react";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
@@ -26,10 +23,7 @@ import {
   removeAudioPreview,
   updateNeedToShow,
 } from "../../redux/audioSlice";
-import Trancript from "../../components/LittleComponent/Trancript";
-import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
-import { DateTime } from "luxon";
 import RechargeModal from './../../components/RechargeModal/RechargeModal';
 import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
 import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
@@ -44,26 +38,15 @@ const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const mediaRecorderRef = useRef(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showModal2, setShowModal2] = useState(false);
-  const [showFullData, setShowFullData] = useState(null);
-  const [historyTitle, setHistortTitle] = useState(null);
-  const [finalTranscript, setFinalTranscript] = useState(null);
   const [recordedBlob, setRecordedBlob] = useState(false);
   const [barCount, setBarCount] = useState(32);
   const { addToast } = useToast();
   const [meetingId, setMeetingId] = useState(null);
-  const [updatedMeetingId, setUpdatedMeetingId] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [participants, setParticipants] = useState(0);
-  const [detectLanguage, setDetectLanguage] = useState("");
-  const [audioID, setAudioID] = useState(null);
   const [requests, setRequests] = useState([]);
-  const [uploadedUserId, setUploadedUserId] = useState(null);
-  const [historyID, setHistoryID] = useState(null);
   const timerRef = useRef(null);
   const localMicRef = useRef(null);
   const socketRef = useRef(null);
@@ -83,7 +66,7 @@ const LiveMeeting = () => {
   const dispatch = useDispatch();
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
-  const { email, fullName, token } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
 
   // 🔥 NEW: Listen for backup events
   useEffect(() => {
@@ -624,7 +607,6 @@ const LiveMeeting = () => {
 
     setRecordedBlob(true);
     endMeeting();
-    setHistortTitle(`recording_${Date.now()}.mp3`);
   };
 
 
@@ -739,13 +721,6 @@ const LiveMeeting = () => {
           message,
         } = response.data;
 
-        setAudioID(audioId);
-        setUpdatedMeetingId(transcriptAudioId);
-        setUploadedUserId(userId);
-        setHistoryID(id);
-        setFinalTranscript(transcription || "");
-        setDetectLanguage(language);
-        setShowModal(true);
         setRecordedBlob(false);
 
         // ✅ Show success message with minutes info if present
@@ -756,17 +731,17 @@ const LiveMeeting = () => {
         addToast("success", successMessage);
 
         navigate(`/live-meeting/${meetingId}/result`, {
-        state: {
-          audioData: response.data,
-          detectLanguage: language,
-          finalTranscript: transcription,
-          audioID: audioId,
-          updatedMeetingId: transcriptAudioId,
-          uploadedUserId: userId,
-          historyID: id,
-          transcription: transcription,
-        },
-      });
+          state: {
+            audioData: response.data,
+            detectLanguage: language,
+            finalTranscript: transcription,
+            audioID: audioId,
+            updatedMeetingId: transcriptAudioId,
+            uploadedUserId: userId,
+            historyID: id,
+            transcription: transcription,
+          },
+        });
       } else {
         addToast("error", "Upload failed or audioUrl missing");
       }
@@ -930,15 +905,20 @@ const LiveMeeting = () => {
 
       if (response.data) {
         const { audioUrl, id, uploadedAt, title, audioId, transcription, language, transcriptAudioId, userId } = response.data;
-        setAudioID(audioId);
-        setUpdatedMeetingId(transcriptAudioId);
-        setUploadedUserId(userId);
-        setHistoryID(id);
-        setFinalTranscript(transcription || "");
-        setDetectLanguage(language);
-        setShowModal(true);
         setRecordedBlob(false);
         addToast("success", "Audio processed successfully!");
+        navigate(`/live-meeting/${meetingId}/result`, {
+          state: {
+            audioData: response.data,
+            detectLanguage: language,
+            finalTranscript: transcription,
+            audioID: audioId,
+            updatedMeetingId: transcriptAudioId,
+            uploadedUserId: userId,
+            historyID: id,
+            transcription: transcription,
+          },
+        });
       } else {
         addToast("error", "Upload failed or audioUrl missing");
       }
