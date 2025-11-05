@@ -325,14 +325,25 @@ io.on("connection", (socket) => {
       ? chunkData
       : Buffer.from(chunkData);
 
+    console.log(`🎯 BACKUP: Received audio chunk from ${socket.id} in room ${roomId}, size: ${buffer.length} bytes`);
     audioBackup.storeChunk(roomId, socket.id, buffer);
   });
 
   // 🔥 NEW: Start backup recording
-  socket.on("start-backup-recording", ({ roomId }) => {
+  // 🔥 NEW: Start backup recording (with safety check)
+socket.on("start-backup-recording", ({ roomId }) => {
+  // Ensure meeting exists first
+  if (!audioBackup.getMeetingStatus(roomId)) {
+    // Meeting not initialized yet, wait a bit
+    setTimeout(() => {
+      audioBackup.startRecording(roomId);
+      console.log(`🎙️ Started backup recording for ${roomId} (delayed)`);
+    }, 200);
+  } else {
     audioBackup.startRecording(roomId);
     console.log(`🎙️ Started backup recording for ${roomId}`);
-  });
+  }
+}); 
 
   // 🔥 NEW: Stop backup recording
   socket.on("stop-backup-recording", async ({ roomId, token }) => {

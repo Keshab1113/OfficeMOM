@@ -31,11 +31,17 @@ class AudioBackupService {
 
   storeChunk(roomId, socketId, chunkBuffer) {
     const meeting = this.activeMeetings.get(roomId);
-    if (!meeting || !meeting.isRecording) return;
+    if (!meeting || !meeting.isRecording) {
+      console.log(`❌ BACKUP: Cannot store chunk - meeting ${roomId} not found or not recording`);
+      return;
+    }
 
     const participant = meeting.participants.get(socketId);
     if (participant) {
       participant.audioChunks.push(chunkBuffer);
+      console.log(`✅ BACKUP: Stored chunk for ${participant.name} (${socketId}) in room ${roomId}, total chunks: ${participant.audioChunks.length}`);
+    } else {
+      console.log(`❌ BACKUP: Participant ${socketId} not found in room ${roomId}`);
     }
   }
 
@@ -44,7 +50,9 @@ class AudioBackupService {
     if (meeting) {
       meeting.isRecording = true;
       meeting.recordingStartTime = Date.now();
-      console.log(`🎙️ Backup recording started: ${roomId}`);
+      console.log(`🎙️ BACKUP: Recording started for room ${roomId}, participants: ${meeting.participants.size}`);
+    } else {
+      console.log(`❌ BACKUP: Cannot start recording - meeting ${roomId} not found`);
     }
   }
 

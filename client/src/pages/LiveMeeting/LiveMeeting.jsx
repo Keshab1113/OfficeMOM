@@ -30,11 +30,12 @@ import Trancript from "../../components/LittleComponent/Trancript";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import { DateTime } from "luxon";
+import RechargeModal from './../../components/RechargeModal/RechargeModal';
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 const breadcrumbItems = [
-    { label: "Live Meeting" }
-  ];
+  { label: "Live Meeting" }
+];
 
 const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -73,39 +74,41 @@ const LiveMeeting = () => {
   const mixerRef = useRef(null);
   const recordingBlobRef = useRef(null);
   const previousBlobRef = useRef(null);
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [rechargeInfo, setRechargeInfo] = useState(null);
 
   const dispatch = useDispatch();
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
 
   // 🔥 NEW: Listen for backup events
-useEffect(() => {
-  if (!socketRef.current) return;
+  useEffect(() => {
+    if (!socketRef.current) return;
 
-  const handleBackupSaved = ({ backupUrl, roomId }) => {
-    console.log('✅ Backup saved:', backupUrl);
-    localStorage.setItem(`backup_${roomId}`, backupUrl);
-    addToast('success', 'Backup saved successfully!');
-  };
+    const handleBackupSaved = ({ backupUrl, roomId }) => {
+      console.log('✅ Backup saved:', backupUrl);
+      localStorage.setItem(`backup_${roomId}`, backupUrl);
+      addToast('success', 'Backup saved successfully!');
+    };
 
-  const handleMeetingStatus = (status) => {
-    console.log('📊 Meeting status:', status);
-    
-    if (status.isRecording) {
-      setIsRecording(true);
-      setRecordingTime(Math.floor(status.duration / 1000));
-      addToast('info', 'Recording resumed after reconnection');
-    }
-  };
+    const handleMeetingStatus = (status) => {
+      console.log('📊 Meeting status:', status);
 
-  socketRef.current.on('backup-recording-saved', handleBackupSaved);
-  socketRef.current.on('meeting:status', handleMeetingStatus);
+      if (status.isRecording) {
+        setIsRecording(true);
+        setRecordingTime(Math.floor(status.duration / 1000));
+        addToast('info', 'Recording resumed after reconnection');
+      }
+    };
 
-  return () => {
-    socketRef.current?.off('backup-recording-saved', handleBackupSaved);
-    socketRef.current?.off('meeting:status', handleMeetingStatus);
-  };
-}, [socketRef.current, addToast]);
+    socketRef.current.on('backup-recording-saved', handleBackupSaved);
+    socketRef.current.on('meeting:status', handleMeetingStatus);
+
+    return () => {
+      socketRef.current?.off('backup-recording-saved', handleBackupSaved);
+      socketRef.current?.off('meeting:status', handleMeetingStatus);
+    };
+  }, [socketRef.current, addToast]);
 
   useEffect(() => {
     if (isRecording) {
@@ -248,79 +251,79 @@ useEffect(() => {
           const remoteStream = new MediaStream();
 
           pc.ontrack = (e) => {
-  console.log("🎵 Track received from guest:", e.track.kind, e.track.id, "enabled:", e.track.enabled, "muted:", e.track.muted);
-  
-  if (e.streams && e.streams[0]) {
-    e.streams[0].getTracks().forEach((track) => {
-      remoteStream.addTrack(track);
+            console.log("🎵 Track received from guest:", e.track.kind, e.track.id, "enabled:", e.track.enabled, "muted:", e.track.muted);
 
-      track.onmute = () =>
-        console.log(`❌ Track ${track.id} was muted!`);
-      track.onunmute = () => {
-        console.log(`✅ Track ${track.id} was unmuted!`);
-        
-        // Add to mixer when track becomes active
-        const audioTracks = remoteStream.getAudioTracks();
-        console.log(`📊 Remote stream has ${audioTracks.length} audio tracks`);
-        
-        if (audioTracks.length > 0 && audioTracks[0].readyState === 'live') {
-          console.log(`🎧 Adding guest ${from} to mixer`);
-          addRemoteRef.current(remoteStream, from);
-          startIndividualRecording(from, remoteStream.clone());
-        }
-      };
-      track.onended = () => console.log(`⚠️ Track ${track.id} ended`);
-    });
+            if (e.streams && e.streams[0]) {
+              e.streams[0].getTracks().forEach((track) => {
+                remoteStream.addTrack(track);
 
-    const monitorGuestAudio = () => {
-      try {
-        const audioTracks = remoteStream.getAudioTracks();
-        if (audioTracks.length === 0) {
-          console.log("❌ No audio tracks in remote stream");
-          return;
-        }
+                track.onmute = () =>
+                  console.log(`❌ Track ${track.id} was muted!`);
+                track.onunmute = () => {
+                  console.log(`✅ Track ${track.id} was unmuted!`);
 
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        const source = audioContext.createMediaStreamSource(remoteStream);
-        source.connect(analyser);
+                  // Add to mixer when track becomes active
+                  const audioTracks = remoteStream.getAudioTracks();
+                  console.log(`📊 Remote stream has ${audioTracks.length} audio tracks`);
 
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(dataArray);
+                  if (audioTracks.length > 0 && audioTracks[0].readyState === 'live') {
+                    console.log(`🎧 Adding guest ${from} to mixer`);
+                    addRemoteRef.current(remoteStream, from);
+                    startIndividualRecording(from, remoteStream.clone());
+                  }
+                };
+                track.onended = () => console.log(`⚠️ Track ${track.id} ended`);
+              });
 
-        const average =
-          dataArray.reduce((a, b) => a + b) / dataArray.length;
+              const monitorGuestAudio = () => {
+                try {
+                  const audioTracks = remoteStream.getAudioTracks();
+                  if (audioTracks.length === 0) {
+                    console.log("❌ No audio tracks in remote stream");
+                    return;
+                  }
 
-        if (average > 5) {
-          console.log(
-            `🎤 GUEST ${from} IS SPEAKING! Audio level: ${average.toFixed(2)}`
-          );
-        }
+                  const audioContext = new AudioContext();
+                  const analyser = audioContext.createAnalyser();
+                  const source = audioContext.createMediaStreamSource(remoteStream);
+                  source.connect(analyser);
 
-        audioContext.close();
-      } catch (error) {
-        console.log("Guest audio level check error:", error);
-      }
-    };
+                  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                  analyser.getByteFrequencyData(dataArray);
 
-    const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
-    audioIntervalsRef.current.set(from, guestAudioInterval);
+                  const average =
+                    dataArray.reduce((a, b) => a + b) / dataArray.length;
 
-    // Try adding immediately if track is already live
-    const audioTracks = remoteStream.getAudioTracks();
-    if (audioTracks.length > 0 && audioTracks[0].readyState === 'live' && !audioTracks[0].muted) {
-      console.log(`🎧 Immediately adding guest ${from} to mixer (track already live)`);
-      addRemoteRef.current(remoteStream, from);
-      startIndividualRecording(from, remoteStream.clone());
-    }
-    // 🔊 Force AudioContext to resume when new guest arrives
-if (mixerRef.current?.audioContext?.state === "suspended") {
-  console.log("Resuming audio context for new guest");
-  mixerRef.current.audioContext.resume();
-}
+                  if (average > 5) {
+                    console.log(
+                      `🎤 GUEST ${from} IS SPEAKING! Audio level: ${average.toFixed(2)}`
+                    );
+                  }
 
-  }
-};
+                  audioContext.close();
+                } catch (error) {
+                  console.log("Guest audio level check error:", error);
+                }
+              };
+
+              const guestAudioInterval = setInterval(monitorGuestAudio, 2000);
+              audioIntervalsRef.current.set(from, guestAudioInterval);
+
+              // Try adding immediately if track is already live
+              const audioTracks = remoteStream.getAudioTracks();
+              if (audioTracks.length > 0 && audioTracks[0].readyState === 'live' && !audioTracks[0].muted) {
+                console.log(`🎧 Immediately adding guest ${from} to mixer (track already live)`);
+                addRemoteRef.current(remoteStream, from);
+                startIndividualRecording(from, remoteStream.clone());
+              }
+              // 🔊 Force AudioContext to resume when new guest arrives
+              if (mixerRef.current?.audioContext?.state === "suspended") {
+                console.log("Resuming audio context for new guest");
+                mixerRef.current.audioContext.resume();
+              }
+
+            }
+          };
 
           peersRef.current.set(from, pc);
 
@@ -346,21 +349,21 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
         }
 
         if (data.sdp) {
-  console.log(`📥 Received SDP from ${from}, type: ${data.sdp.type}`);
-  await pc.setRemoteDescription(data.sdp);
+          console.log(`📥 Received SDP from ${from}, type: ${data.sdp.type}`);
+          await pc.setRemoteDescription(data.sdp);
 
-  if (data.sdp.type === 'offer') {
-    console.log(`📤 Creating answer for ${from}`);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+          if (data.sdp.type === 'offer') {
+            console.log(`📤 Creating answer for ${from}`);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
 
-    sock.emit("signal", {
-      to: from,
-      data: { sdp: pc.localDescription },
-    });
-    console.log(`✅ Answer sent to ${from}`);
-  }
-}else if (data.candidate) {
+            sock.emit("signal", {
+              to: from,
+              data: { sdp: pc.localDescription },
+            });
+            console.log(`✅ Answer sent to ${from}`);
+          }
+        } else if (data.candidate) {
           try {
             await pc.addIceCandidate(data.candidate);
           } catch (error) {
@@ -411,30 +414,30 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
         formData.append("source", "Live Transcript Conversion");
 
         const response = await axios.post(
-  `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio-ftp`,
-  formData,
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "multipart/form-data",
-    },
-  }
-);
+          `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio-ftp`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
 
-       if (response.data?.audioUrl) {
-  dispatch(
-    addAudioPreview({
-      audioUrl: response.data.audioUrl,
-      id: Date.now(),
-      uploadedAt: new Date().toISOString(),
-      title: file.name,
-      needToShow: true,
-    })
-  );
-  addToast("success", "Audio saved successfully!");
-} else {
-  addToast("error", "FTP upload failed — no audio URL received.");
-}
+        if (response.data?.audioUrl) {
+          dispatch(
+            addAudioPreview({
+              audioUrl: response.data.audioUrl,
+              id: Date.now(),
+              uploadedAt: new Date().toISOString(),
+              title: file.name,
+              needToShow: true,
+            })
+          );
+          addToast("success", "Audio saved successfully!");
+        } else {
+          addToast("error", "FTP upload failed — no audio URL received.");
+        }
 
       };
       mediaRecorderRef.current = mr;
@@ -529,122 +532,134 @@ if (mixerRef.current?.audioContext?.state === "suspended") {
   // };
 
   const startRecording = async () => {
-  setRecordingTime(0);
-  const someId = lastPreview?.id;
-  dispatch(updateNeedToShow({ id: someId, needToShow: false }));
-  const { data } = await axios.post(
-    `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    setRecordingTime(0);
+    const someId = lastPreview?.id;
+    dispatch(updateNeedToShow({ id: someId, needToShow: false }));
+    const { data } = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    await setMeetingId(data.roomId);
+    setIsRecording(true);
+
+    // 🔥 CRITICAL: Ensure host:join-room happens first
+    if (socketRef.current) {
+      socketRef.current.emit("host:join-room", { roomId: data.roomId });
+
+      // Wait for initialization
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Now start backup recording
+      socketRef.current.emit("start-backup-recording", {
+        roomId: data.roomId
+      });
     }
-  );
-  
-  await setMeetingId(data.roomId);
-  setIsRecording(true);
 
-  // 🔥 NEW: Tell backend to start backup recording
-  socketRef.current.emit("start-backup-recording", { 
-    roomId: data.roomId 
-  });
+    // ⏱️ Wait 100ms for backend to initialize
+    // await new Promise(resolve => setTimeout(resolve, 100));
 
-  // Your existing code continues...
-  if (!mediaRecorderRef.current) return;
-  recordedChunksRef.current = [];
-  individualRecordersRef.current.clear();
-  individualChunksRef.current.clear();
-  mediaRecorderRef.current.start(1000);
-  
-  if (localMicRef.current) {
-    startIndividualRecording("host", localMicRef.current);
-  }
+    // Your existing code continues...
+    if (!mediaRecorderRef.current) return;
+    recordedChunksRef.current = [];
+    individualRecordersRef.current.clear();
+    individualChunksRef.current.clear();
+    mediaRecorderRef.current.start(1000);
 
-  peersRef.current.forEach((pc, socketId) => {
-    const remoteStream = new MediaStream();
-    pc.getReceivers().forEach((receiver) => {
-      if (receiver.track) {
-        remoteStream.addTrack(receiver.track);
+    if (localMicRef.current) {
+      startIndividualRecording("host", localMicRef.current);
+    }
+
+    peersRef.current.forEach((pc, socketId) => {
+      const remoteStream = new MediaStream();
+      pc.getReceivers().forEach((receiver) => {
+        if (receiver.track) {
+          remoteStream.addTrack(receiver.track);
+        }
+      });
+
+      if (remoteStream.getAudioTracks().length > 0) {
+        startIndividualRecording(socketId, remoteStream);
       }
     });
 
-    if (remoteStream.getAudioTracks().length > 0) {
-      startIndividualRecording(socketId, remoteStream);
+    // 🔥 NEW: Start sending mixed audio chunks to backend
+    startBackupStream(data.roomId);
+  };
+
+  // 🔥 NEW FUNCTION: Send mixed audio to backend as backup
+  const startBackupStream = (roomId) => {
+    if (!mixerRef.current?.mixedStream) {
+      console.warn('⚠️ No mixed stream available for backup');
+      return;
     }
-  });
 
-  // 🔥 NEW: Start sending mixed audio chunks to backend
-  startBackupStream(data.roomId);
-};
+    try {
+      const backupRecorder = new MediaRecorder(mixerRef.current.mixedStream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
 
-// 🔥 NEW FUNCTION: Send mixed audio to backend as backup
-const startBackupStream = (roomId) => {
-  if (!mixerRef.current?.mixedStream) {
-    console.warn('⚠️ No mixed stream available for backup');
-    return;
-  }
+      backupRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0 && socketRef.current?.connected) {
+          // Send to backend backup
+          socketRef.current.emit('audio-chunk-backup', e.data);
+        }
+      };
 
-  try {
-    const backupRecorder = new MediaRecorder(mixerRef.current.mixedStream, {
-      mimeType: 'audio/webm;codecs=opus',
-    });
+      backupRecorder.onerror = (err) => {
+        console.error('❌ Backup recorder error:', err);
+      };
 
-    backupRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0 && socketRef.current?.connected) {
-        // Send to backend backup
-        socketRef.current.emit('audio-chunk-backup', e.data);
+      backupRecorder.start(2000); // Send chunks every 2 seconds
+
+      console.log('audio chunks sent to backend for backup');
+      // Store reference
+      if (!mediaRecorderRef.current.backupRecorder) {
+        mediaRecorderRef.current.backupRecorder = backupRecorder;
       }
-    };
 
-    backupRecorder.onerror = (err) => {
-      console.error('❌ Backup recorder error:', err);
-    };
-
-    backupRecorder.start(2000); // Send chunks every 2 seconds
-    
-    // Store reference
-    if (!mediaRecorderRef.current.backupRecorder) {
-      mediaRecorderRef.current.backupRecorder = backupRecorder;
+      console.log('✅ Backup stream started');
+    } catch (error) {
+      console.error('❌ Error starting backup stream:', error);
     }
+  };
 
-    console.log('✅ Backup stream started');
-  } catch (error) {
-    console.error('❌ Error starting backup stream:', error);
-  }
-};
+  const stopRecording = () => {
+    setIsRecording(false);
 
-const stopRecording = () => {
-  setIsRecording(false);
-  
-  if (mediaRecorderRef.current?.state === "recording") {
-    mediaRecorderRef.current.stop();
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
 
-    // 🔥 NEW: Stop backup recorder
-    if (mediaRecorderRef.current.backupRecorder?.state === "recording") {
-      mediaRecorderRef.current.backupRecorder.stop();
-    }
-
-    individualRecordersRef.current.forEach((recorder, socketId) => {
-      if (recorder.state === "recording") {
-        recorder.stop();
-        console.log(`Stopped recorder for ${socketId}`);
+      // 🔥 NEW: Stop backup recorder
+      if (mediaRecorderRef.current.backupRecorder?.state === "recording") {
+        mediaRecorderRef.current.backupRecorder.stop();
       }
-    });
-  }
 
-  // 🔥 NEW: Tell backend to save backup
-  if (socketRef.current && meetingId) {
-    socketRef.current.emit("stop-backup-recording", { 
-      roomId: meetingId,
-      token 
-    });
-  }
+      individualRecordersRef.current.forEach((recorder, socketId) => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+          console.log(`Stopped recorder for ${socketId}`);
+        }
+      });
+    }
 
-  setRecordedBlob(true);
-  endMeeting();
-  setHistortTitle(`recording_${Date.now()}.mp3`);
-};
+    // 🔥 NEW: Tell backend to save backup
+    if (socketRef.current && meetingId) {
+      socketRef.current.emit("stop-backup-recording", {
+        roomId: meetingId,
+        token
+      });
+    }
+
+    setRecordedBlob(true);
+    endMeeting();
+    setHistortTitle(`recording_${Date.now()}.mp3`);
+  };
 
 
   // const stopRecording = () => {
@@ -673,12 +688,12 @@ const stopRecording = () => {
   //         console.log(`Stopped individual recorder for ${socketId}`);
   //       }
   //     });
-      
+
   //     // Stop main media recorder
   //     if (mediaRecorderRef.current?.state === "recording") {
   //       mediaRecorderRef.current.stop();
   //     }
-      
+
   //     await axios.post(
   //       `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
   //       {},
@@ -688,7 +703,7 @@ const stopRecording = () => {
   //         },
   //       }
   //     );
-      
+
   //     // Emit room:ended event to all connected guests
   //     if (socketRef.current) {
   //       socketRef.current.emit("host:end-meeting", { roomId: meetingId });
@@ -704,62 +719,62 @@ const stopRecording = () => {
 
   // Updated endMeeting function in LiveMeeting.jsx
 
-const endMeeting = async () => {
-  try {
-    console.log("🛑 Ending meeting:", meetingId);
-    
-    // Stop all individual recordings first
-    individualRecordersRef.current.forEach((recorder, socketId) => {
-      if (recorder.state === "recording") {
-        recorder.stop();
-        console.log(`Stopped individual recorder for ${socketId}`);
+  const endMeeting = async () => {
+    try {
+      console.log("🛑 Ending meeting:", meetingId);
+
+      // Stop all individual recordings first
+      individualRecordersRef.current.forEach((recorder, socketId) => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+          console.log(`Stopped individual recorder for ${socketId}`);
+        }
+      });
+
+      // Stop main media recorder
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
       }
-    });
-    
-    // Stop main media recorder
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
-    
-    // Emit host:end-meeting event BEFORE making API call
-    // This ensures guests get disconnected immediately
-    if (socketRef.current && socketRef.current.connected) {
-      console.log("📤 Emitting host:end-meeting to room:", meetingId);
-      socketRef.current.emit("host:end-meeting", { roomId: meetingId });
-    }
-    
-    // Then make API call to mark meeting as ended in database
-    await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+
+      // Emit host:end-meeting event BEFORE making API call
+      // This ensures guests get disconnected immediately
+      if (socketRef.current && socketRef.current.connected) {
+        console.log("📤 Emitting host:end-meeting to room:", meetingId);
+        socketRef.current.emit("host:end-meeting", { roomId: meetingId });
       }
-    );
-    
-    // Close all WebRTC peer connections
-    peersRef.current.forEach((pc) => {
-      pc.close();
-    });
-    peersRef.current.clear();
-    
-    // Clear audio monitoring intervals
-    audioIntervalsRef.current.forEach((interval) => {
-      clearInterval(interval);
-    });
-    audioIntervalsRef.current.clear();
-    
-    // Reset participant count
-    setParticipants(0);
-    
-    addToast("success", "Meeting ended successfully.");
-  } catch (err) {
-    console.error("Error ending meeting:", err);
-    addToast("error", "Error ending meeting.");
-  }
-};
+
+      // Then make API call to mark meeting as ended in database
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Close all WebRTC peer connections
+      peersRef.current.forEach((pc) => {
+        pc.close();
+      });
+      peersRef.current.clear();
+
+      // Clear audio monitoring intervals
+      audioIntervalsRef.current.forEach((interval) => {
+        clearInterval(interval);
+      });
+      audioIntervalsRef.current.clear();
+
+      // Reset participant count
+      setParticipants(0);
+
+      addToast("success", "Meeting ended successfully.");
+    } catch (err) {
+      console.error("Error ending meeting:", err);
+      addToast("error", "Error ending meeting.");
+    }
+  };
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -773,69 +788,164 @@ const endMeeting = async () => {
     return `${window.location.origin}/join-meeting/${meetingId}`;
   };
 
-  const handleStartMakingNotes = async () => {
-    if (!recordingBlobRef.current) {
-      addToast("error", "Please record some audio first");
-      return;
+  // const handleStartMakingNotes = async () => {
+  //   if (!recordingBlobRef.current) {
+  //     addToast("error", "Please record some audio first");
+  //     return;
+  //   }
+  //   setIsProcessing(true);
+  //   try {
+  //     const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
+  //       type: "audio/mpeg",
+  //     });
+
+  //     const formData = new FormData();
+  //     formData.append("audio", file);
+  //     formData.append("source", "Live Transcript Conversion");
+
+  //     const response = await axios.post(
+  //       `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+  //       formData,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           "Content-Type": "multipart/form-data",
+  //         },
+  //       }
+  //     );
+
+  //     if (response.data) {
+  //       const { audioUrl, id, uploadedAt, title, audioId, transcription, language, transcriptAudioId, userId } = response.data;
+  //       setAudioID(audioId);
+  //       setUpdatedMeetingId(transcriptAudioId);
+  //       setUploadedUserId(userId);
+  //       setHistoryID(id);
+  //       setFinalTranscript(transcription || "");
+  //       setDetectLanguage(language);
+  //       setShowModal(true);
+  //       setRecordedBlob(false);
+  //       addToast("success", "Audio processed successfully!");
+  //     } else {
+  //       addToast("error", "Upload failed or audioUrl missing");
+  //     }
+  //   } catch (error) {
+  //     addToast("error", "Failed to process file. Please try again.");
+  //     console.error("Error processing notes:", error);
+  //   } finally {
+  //     setIsProcessing(false);
+  //   }
+  // };
+
+const handleStartMakingNotes = async () => {
+  if (!recordingBlobRef.current) {
+    addToast("error", "Please record some audio first");
+    return;
+  }
+  setIsProcessing(true);
+  try {
+    const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
+      type: "audio/mpeg",
+    });
+
+    const formData = new FormData();
+    formData.append("audio", file);
+    formData.append("source", "Live Transcript Conversion");
+
+    const response = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    if (response.data) {
+      const {
+        audioUrl,
+        id,
+        uploadedAt,
+        title,
+        audioId,
+        transcription,
+        language,
+        transcriptAudioId,
+        userId,
+        usedMinutes,
+        remainingMinutes,
+        message,
+      } = response.data;
+
+      setAudioID(audioId);
+      setUpdatedMeetingId(transcriptAudioId);
+      setUploadedUserId(userId);
+      setHistoryID(id);
+      setFinalTranscript(transcription || "");
+      setDetectLanguage(language);
+      setShowModal(true);
+      setRecordedBlob(false);
+
+      // ✅ Show success message with minutes info if present
+      const successMessage = usedMinutes
+        ? `${message || "Audio processed successfully!"} (${usedMinutes} minutes used, ${remainingMinutes} remaining)`
+        : message || "Audio processed successfully!";
+
+      addToast("success", successMessage);
+    } else {
+      addToast("error", "Upload failed or audioUrl missing");
     }
-    setIsProcessing(true);
-    try {
-      const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
-        type: "audio/mpeg",
-      });
+  } catch (error) {
+    console.error("Error processing notes:", error);
 
-      const formData = new FormData();
-      formData.append("audio", file);
-      formData.append("source", "Live Transcript Conversion");
+    // 🚨 Handle insufficient minutes error (402)
+    if (error.response?.status === 402) {
+      const errorData = error.response.data;
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
+      addToast(
+        "error",
+        `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} remaining. Please recharge to continue.`,
+        10000
       );
 
-      if (response.data) {
-        const { audioUrl, id, uploadedAt, title, audioId, transcription, language, transcriptAudioId, userId } = response.data;
-        setAudioID(audioId);
-        setUpdatedMeetingId(transcriptAudioId);
-        setUploadedUserId(userId);
-        setHistoryID(id);
-        setFinalTranscript(transcription || "");
-        setDetectLanguage(language);
-        setShowModal(true);
-        setRecordedBlob(false);
-        addToast("success", "Audio processed successfully!");
-      } else {
-        addToast("error", "Upload failed or audioUrl missing");
+      // Optional: trigger your recharge modal or UI flow
+      if (setShowRechargeModal) {
+        setShowRechargeModal(true);
+        setRechargeInfo({
+          required: errorData.requiredMinutes,
+          remaining: errorData.remainingMinutes,
+          deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+        });
       }
-    } catch (error) {
-      addToast("error", "Failed to process file. Please try again.");
-      console.error("Error processing notes:", error);
-    } finally {
-      setIsProcessing(false);
+    } else {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to process file. Please try again.";
+      addToast("error", errorMessage);
     }
-  };
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
 
   const { email, fullName, token } = useSelector((state) => state.auth);
 
   const HandleSaveTable = async (data, downloadOptions) => {
     saveTranscriptFiles(data, addToast, downloadOptions, email, fullName);
 
-   const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
+    const formattedUTCDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
 
-const historyData = {
-  source: "Live Transcript Conversion",
-  date: formattedUTCDate, // send UTC time to backend
-  data: data,
-  language: detectLanguage,
-  audio_id: audioID,
-};
-    
+    const historyData = {
+      source: "Live Transcript Conversion",
+      date: formattedUTCDate, // send UTC time to backend
+      data: data,
+      language: detectLanguage,
+      audio_id: audioID,
+    };
+
     setShowModal2(false);
     setShowModal(false);
   };
@@ -843,8 +953,7 @@ const historyData = {
   const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
     try {
       await axios.patch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
+        `${import.meta.env.VITE_BACKEND_URL
         }/api/live-meeting/audio-files/${updatedMeetingId}`,
         historyData,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -857,33 +966,33 @@ const historyData = {
   };
 
   // 🔥 NEW: Check for backup after page load (recovery)
-useEffect(() => {
-  const checkForBackup = async () => {
-    if (!meetingId) return;
-    
-    const backupUrl = localStorage.getItem(`backup_${meetingId}`);
-    
-    if (backupUrl && !recordingBlobRef.current) {
-      console.log('🔄 Found backup, attempting restore...');
-      addToast('info', 'Restoring recording from backup...');
-      
-      try {
-        const response = await fetch(backupUrl);
-        const blob = await response.blob();
-        recordingBlobRef.current = blob;
-        setRecordedBlob(true);
-        
-        localStorage.removeItem(`backup_${meetingId}`);
-        addToast('success', 'Recording restored from backup!');
-      } catch (error) {
-        console.error('❌ Failed to restore backup:', error);
-        addToast('error', 'Failed to restore backup');
-      }
-    }
-  };
+  useEffect(() => {
+    const checkForBackup = async () => {
+      if (!meetingId) return;
 
-  checkForBackup();
-}, [meetingId, addToast]);
+      const backupUrl = localStorage.getItem(`backup_${meetingId}`);
+
+      if (backupUrl && !recordingBlobRef.current) {
+        console.log('🔄 Found backup, attempting restore...');
+        addToast('info', 'Restoring recording from backup...');
+
+        try {
+          const response = await fetch(backupUrl);
+          const blob = await response.blob();
+          recordingBlobRef.current = blob;
+          setRecordedBlob(true);
+
+          localStorage.removeItem(`backup_${meetingId}`);
+          addToast('success', 'Recording restored from backup!');
+        } catch (error) {
+          console.error('❌ Failed to restore backup:', error);
+          addToast('error', 'Failed to restore backup');
+        }
+      }
+    };
+
+    checkForBackup();
+  }, [meetingId, addToast]);
 
   useEffect(() => {
     const updateBarCount = () => {
@@ -914,15 +1023,15 @@ useEffect(() => {
   };
 
   const toggleMute = () => {
-  if (!localMicRef.current) return;
+    if (!localMicRef.current) return;
 
-  const newMuteState = !isMuted; // toggle first
-  localMicRef.current.getAudioTracks().forEach((track) => {
-    track.enabled = !newMuteState; // true means unmuted
-    console.log(`🎙️ Host mic ${newMuteState ? "muted" : "unmuted"} (track.enabled=${track.enabled})`);
-  });
-  setIsMuted(newMuteState);
-};
+    const newMuteState = !isMuted; // toggle first
+    localMicRef.current.getAudioTracks().forEach((track) => {
+      track.enabled = !newMuteState; // true means unmuted
+      console.log(`🎙️ Host mic ${newMuteState ? "muted" : "unmuted"} (track.enabled=${track.enabled})`);
+    });
+    setIsMuted(newMuteState);
+  };
 
 
   const approve = (id) => {
@@ -1038,7 +1147,7 @@ useEffect(() => {
   return (
     <>
       <Helmet>
-        <meta charSet="utf-8" name="robots" content="noindex, nofollow"/>
+        <meta charSet="utf-8" name="robots" content="noindex, nofollow" />
         <title>Smart Minutes of the Meeting (OfficeMoM) | LiveMeeting</title>
         <link rel="canonical" href="https://officemom.me/live-meeting" />
       </Helmet>
@@ -1051,7 +1160,7 @@ useEffect(() => {
             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
             <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
           </div>
-          
+
           {/* Grid pattern */}
           <div className="absolute inset-0 opacity-10 dark:opacity-5">
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
@@ -1060,7 +1169,7 @@ useEffect(() => {
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10">
           <div className=" min-h-screen">
             {!showModal && (
-                <Breadcrumb items={breadcrumbItems} />
+              <Breadcrumb items={breadcrumbItems} />
             )}
             <Heading
               heading="Start New Meeting"
@@ -1099,17 +1208,15 @@ useEffect(() => {
                         {/* Left side - Microphone Icon with Pulse Effect */}
                         <div className="relative flex items-center">
                           <div
-                            className={`absolute inset-0 rounded-full bg-green-500 opacity-20 ${
-                              isRecording ? "animate-ping" : ""
-                            }`}
+                            className={`absolute inset-0 rounded-full bg-green-500 opacity-20 ${isRecording ? "animate-ping" : ""
+                              }`}
                           ></div>
                           <div className="relative z-10 p-3 rounded-full bg-green-50">
                             <Mic
-                              className={`md:w-8 md:h-8 w-6 h-6 ${
-                                isRecording
-                                  ? "text-green-600"
-                                  : "text-green-500"
-                              } transition-colors duration-300`}
+                              className={`md:w-8 md:h-8 w-6 h-6 ${isRecording
+                                ? "text-green-600"
+                                : "text-green-500"
+                                } transition-colors duration-300`}
                             />
                           </div>
                         </div>
@@ -1119,9 +1226,8 @@ useEffect(() => {
                               (_, index) => (
                                 <div
                                   key={index}
-                                  className={`w-1 bg-gradient-to-t from-green-600 to-green-400 rounded-full transition-all duration-300 ${
-                                    isRecording ? "animate-pulse" : "opacity-30"
-                                  }`}
+                                  className={`w-1 bg-gradient-to-t from-green-600 to-green-400 rounded-full transition-all duration-300 ${isRecording ? "animate-pulse" : "opacity-30"
+                                    }`}
                                   style={{
                                     height: `${Math.random() * 30 + 10}px`,
                                     animationDelay: `${index * 0.1}s`,
@@ -1135,11 +1241,10 @@ useEffect(() => {
                         <button
                           onClick={isRecording ? stopRecording : startRecording}
                           disabled={isProcessing}
-                          className={`relative capitalize text-sm cursor-pointer disabled:cursor-not-allowed px-6 py-3 rounded-full font-semibold text-white shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 ${
-                            isRecording
-                              ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:ring-red-500/50 animate-pulse"
-                              : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
-                          }`}
+                          className={`relative capitalize text-sm cursor-pointer disabled:cursor-not-allowed px-6 py-3 rounded-full font-semibold text-white shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 ${isRecording
+                            ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:ring-red-500/50 animate-pulse"
+                            : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:ring-green-500/50"
+                            }`}
                         >
                           {isRecording ? "Stop Meeting" : "Start Meeting"}
                         </button>
@@ -1189,11 +1294,10 @@ useEffect(() => {
                               </div>
                             </div>
                             <button
-                              className={`px-4 py-2 mt-4 cursor-pointer rounded flex items-center gap-2 ${
-                                isMuted
-                                  ? "bg-gray-600"
-                                  : "bg-blue-600 hover:bg-blue-700"
-                              } text-white`}
+                              className={`px-4 py-2 mt-4 cursor-pointer rounded flex items-center gap-2 ${isMuted
+                                ? "bg-gray-600"
+                                : "bg-blue-600 hover:bg-blue-700"
+                                } text-white`}
                               onClick={toggleMute}
                             >
                               {isMuted ? (
@@ -1228,13 +1332,12 @@ useEffect(() => {
                       isProcessing ||
                       previews.length === 0
                     }
-                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${
-                      lastPreview?.needToShow === false ||
+                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${lastPreview?.needToShow === false ||
                       isProcessing ||
                       previews.length === 0
-                        ? "bg-gray-500/20 cursor-not-allowed"
-                        : "bg-blue-400/20 hover:bg-blue-500 cursor-pointer"
-                    }`}
+                      ? "bg-gray-500/20 cursor-not-allowed"
+                      : "bg-blue-400/20 hover:bg-blue-500 cursor-pointer"
+                      }`}
                   >
                     {isProcessing ? (
                       <>
@@ -1277,6 +1380,17 @@ useEffect(() => {
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
         <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
       </section>
+      {showRechargeModal && (
+        <RechargeModal
+          isOpen={showRechargeModal}
+          onClose={() => setShowRechargeModal(false)}
+          requiredMinutes={rechargeInfo?.required || 0}
+          remainingMinutes={rechargeInfo?.remaining || 0}
+          onRecharge={() => {
+            window.location.href = '/pricing'; // Update with your actual pricing page route
+          }}
+        />
+      )}
     </>
   );
 };
