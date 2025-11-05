@@ -122,6 +122,7 @@ const Meeting = () => {
 
     // Listen for Deepgram captions instead of transcript
     socket.on("caption", ({ text, isFinal }) => {
+      console.log("Socket caption:", text);
       if (!text) return;
 
       setTranscript((prev) => {

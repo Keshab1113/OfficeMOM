@@ -1,4 +1,4 @@
-  import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Plus,
   X,
@@ -21,7 +21,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
     { id: 3, heading: "Responsibility" },
     { id: 4, heading: "Target Date" },
     { id: 5, heading: "Status" },
-    
+
   ]);
 
   // eslint-disable-next-line no-unused-vars
@@ -167,8 +167,8 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
   }, []);
 
   return (
-    <div className="my-10 w-full lg:max-w-[71vw] max-w-[90vw] animate-fade-in h-fit ">
-      <div className="dark:bg-gray-900 bg-white w-full h-full min-h-[40vh] p-4 md:p-6 py-16 rounded-xl  shadow-2xl hover:shadow-3xl transform hover:scale-[1.01] transition-all duration-500 ease-out backdrop-blur-sm">
+    <div className="my-10 w-full max-w-full animate-fade-in h-fit ">
+      <div className="dark:bg-gray-900 bg-white w-full h-full min-h-[40vh] p-4 md:p-6 py-16 rounded-xl  shadow-2xl hover:shadow-3xl transform  transition-all duration-500 ease-out backdrop-blur-sm">
         <div className="flex justify-center items-center gap-4 mb-8 animate-bounce-slow">
           <h1 className=" dark:text-white text-xl font-medium">Add Columns</h1>
           <button
@@ -183,9 +183,8 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
         <div className=" rounded-xl border border-gray-200 dark:border-gray-700 border-solid overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 animate-slide-up">
           <div className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-track-gray-300 dark:scrollbar-track-gray-700 scrollbar-thumb-blue-500 scrollbar-thumb-rounded">
             <div
-              className={`${
-                columns.length > 3 ? "min-w-[800px]" : "w-full"
-              } transition-all duration-300`}>
+              className={`${columns.length > 3 ? "min-w-[800px]" : "w-full"
+                } transition-all duration-300`}>
               <div className="flex dark:bg-gray-900   animate-slide-down">
                 <div className="w-16 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 sm:w-20 p-3 sm:p-4 flex items-center justify-center flex-shrink-0  transition-colors duration-200">
                   <h3 className="dark:text-white text-gray-700 text-sm sm:text-lg font-bold animate-fade-in">
@@ -202,17 +201,14 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                     onDragEnter={(e) => handleDragEnter(e, index)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, index)}
-                    className={`group border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative ${
-                      columns.length > 3 ? "w-60" : "flex-1"
-                    } min-w-[200px] p-3 sm:p-4 cursor-move transition-all duration-300 ease-out select-none ${
-                      dragOverIndex === index
+                    className={`group border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative ${columns.length > 3 ? "w-60" : "flex-1"
+                      } min-w-[200px] p-3 sm:p-4 cursor-move transition-all duration-300 ease-out select-none ${dragOverIndex === index
                         ? " transform scale-[1.02] shadow-lg animate-pulse-fast"
                         : ""
-                    } ${
-                      draggedIndex === index
+                      } ${draggedIndex === index
                         ? "opacity-60 transform rotate-2 scale-95 shadow-2xl animate-shake"
                         : ""
-                    } ${index !== columns.length ? " " : ""}`}
+                      } ${index !== columns.length ? " " : ""}`}
                     style={{
                       animationDelay: `${index * 100}ms`,
                       animationFillMode: "both",
@@ -298,40 +294,39 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                   rowIndex === 0
                     ? "opacity-100 text-[18px]"
                     : rowIndex === 1
-                    ? "opacity-90 text-[16px]"
-                    : rowIndex === 2
-                    ? "opacity-80 text-[14px]"
-                    : rowIndex === 3
-                    ? "opacity-60 text-[12px]"
-                    : rowIndex === 4
-                    ? "opacity-50 text-[10px]"
-                    : "opacity-40 text-[8px]";
+                      ? "opacity-90 text-[16px]"
+                      : rowIndex === 2
+                        ? "opacity-80 text-[14px]"
+                        : rowIndex === 3
+                          ? "opacity-60 text-[12px]"
+                          : rowIndex === 4
+                            ? "opacity-50 text-[10px]"
+                            : "opacity-40 text-[8px]";
 
                 const padding =
                   rowIndex === 0
                     ? "py-[12px]"
                     : rowIndex === 1
-                    ? "py-[9px]"
-                    : rowIndex === 2
-                    ? "py-[7px]"
-                    : rowIndex === 3
-                    ? "py-[5px]"
-                    : rowIndex === 4
-                    ? "py-[3px]"
-                    : "py-[2px]";
+                      ? "py-[9px]"
+                      : rowIndex === 2
+                        ? "py-[7px]"
+                        : rowIndex === 3
+                          ? "py-[5px]"
+                          : rowIndex === 4
+                            ? "py-[3px]"
+                            : "py-[2px]";
 
                 return (
                   <div
                     key={rowIndex}
                     className={`flex transition-all duration-300 ease-out animate-slide-up w-full ${opacity}`}>
                     <div
-                      className={`w-16 sm:w-20 flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${
-                        rowIndex === 0
+                      className={`w-16 sm:w-20 flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${rowIndex === 0
                           ? "dark:bg-[#162130] bg-[#a8aeb7]"
                           : rowIndex === 1
-                          ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
-                          : "dark:bg-[#262f3b] bg-[#dae0e8]"
-                      }`}>
+                            ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
+                            : "dark:bg-[#262f3b] bg-[#dae0e8]"
+                        }`}>
                       <div className="dark:text-gray-300 text-gray-600 font-semibold transition-colors duration-200">
                         {rowIndex + 1}
                       </div>
@@ -340,15 +335,13 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                     {columns.map((column) => (
                       <div
                         key={`cell-${column.id}-${rowIndex}`}
-                        className={`border-b border-r border-gray-200 dark:border-gray-700 ${
-                          columns.length > 3 ? "w-60" : "flex-1"
-                        } min-w-[200px] transition-all duration-200 ${
-                          rowIndex === 0
+                        className={`border-b border-r border-gray-200 dark:border-gray-700 ${columns.length > 3 ? "w-60" : "flex-1"
+                          } min-w-[200px] transition-all duration-200 ${rowIndex === 0
                             ? "dark:bg-[#162130] bg-[#a8aeb7]"
                             : rowIndex === 1
-                            ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
-                            : "dark:bg-[#262f3b] bg-[#dae0e8]"
-                        } ${padding} px-4`}>
+                              ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
+                              : "dark:bg-[#262f3b] bg-[#dae0e8]"
+                          } ${padding} px-4`}>
                         <div className="h-fit flex items-center">
                           <p className="dark:text-gray-300 text-gray-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 cursor-default">
                             Content
@@ -378,7 +371,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
             ) : (
               <>
                 <Save className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="relative z-10">Save</span>
+                <span className="relative z-10">Create MoM</span>
               </>
             )}
           </button>

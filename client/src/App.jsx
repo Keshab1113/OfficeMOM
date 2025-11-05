@@ -27,6 +27,9 @@ import Subscription from './pages/PaymentResult/Subscription';
 import BotMaster from "./pages/BotMaster/BotMaster";
 import SupportedLanguages from "./pages/SupportedLanguages/SupportedLanguages";
 import CheckoutPage from "./pages/CheckoutPage/CheckoutPage";
+import MeetingHome from "./pages/Meeting/MeetingHome";
+import MeetingRoom from "./pages/Meeting/MeetingRoom";
+import MeetingResult from "./pages/Meeting/MeetingResult";
 
 function App() {
   return (
@@ -35,10 +38,34 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route
+            path="/meetings"
+            element={
+              <ProtectedRoute>
+                <Meeting/>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/meeting"
             element={
               <ProtectedRoute>
-                <Meeting />
+                <MeetingHome/>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/meeting/:meetingId"
+            element={
+              <ProtectedRoute>
+                <MeetingRoom/>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/meeting/:meetingId/result"
+            element={
+              <ProtectedRoute>
+                <MeetingResult/>
               </ProtectedRoute>
             }
           />

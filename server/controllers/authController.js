@@ -55,16 +55,13 @@ const signup = async (req, res) => {
       "INSERT INTO users (fullName, email, password, otp, isVerified) VALUES (?, ?, ?, ?, ?)",
       [fullName, email, hashedPassword, otp, false]
     );
-
     const userId = result.insertId;
-
     await connection.execute(
       `INSERT INTO user_subscription_details 
         (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [userId, null, 300, 300, 0, 0, 0, 0]
     );
-
     // Try sending OTP email
     await transporter.sendMail({
       from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
@@ -167,7 +164,7 @@ const login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Login Failed" });
   }
 };
 
