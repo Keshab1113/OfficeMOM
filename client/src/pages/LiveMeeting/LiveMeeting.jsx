@@ -493,44 +493,7 @@ const LiveMeeting = () => {
     }
   };
 
-  // const startRecording = async () => {
-  //   setRecordingTime(0);
-  //   const someId = lastPreview?.id;
-  //   dispatch(updateNeedToShow({ id: someId, needToShow: false }));
-  //   const { data } = await axios.post(
-  //     `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
-  //     {},
-  //     {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //     }
-  //   );
-  //   await setMeetingId(data.roomId);
-  //   setIsRecording(true);
-  //   if (!mediaRecorderRef.current) return;
-  //   recordedChunksRef.current = [];
-  //   individualRecordersRef.current.clear();
-  //   individualChunksRef.current.clear();
-  //   mediaRecorderRef.current.start(1000);
-  //   if (localMicRef.current) {
-  //     startIndividualRecording("host", localMicRef.current);
-  //   }
-
-  //   peersRef.current.forEach((pc, socketId) => {
-  //     const remoteStream = new MediaStream();
-  //     pc.getReceivers().forEach((receiver) => {
-  //       if (receiver.track) {
-  //         remoteStream.addTrack(receiver.track);
-  //       }
-  //     });
-
-  //     if (remoteStream.getAudioTracks().length > 0) {
-  //       startIndividualRecording(socketId, remoteStream);
-  //     }
-  //   });
-  // };
-
+   
   const startRecording = async () => {
     setRecordingTime(0);
     const someId = lastPreview?.id;
@@ -662,63 +625,7 @@ const LiveMeeting = () => {
   };
 
 
-  // const stopRecording = () => {
-  //   setIsRecording(false);
-  //   if (mediaRecorderRef.current?.state === "recording") {
-  //     mediaRecorderRef.current.stop();
-
-  //     individualRecordersRef.current.forEach((recorder, socketId) => {
-  //       if (recorder.state === "recording") {
-  //         recorder.stop();
-  //         console.log(`Stopped recorder for ${socketId}`);
-  //       }
-  //     });
-  //   }
-  //   setRecordedBlob(true);
-  //   endMeeting();
-  //   setHistortTitle(`recording_${Date.now()}.mp3`);
-  // };
-
-  // const endMeeting = async () => {
-  //   try {
-  //     // Stop all individual recordings first
-  //     individualRecordersRef.current.forEach((recorder, socketId) => {
-  //       if (recorder.state === "recording") {
-  //         recorder.stop();
-  //         console.log(`Stopped individual recorder for ${socketId}`);
-  //       }
-  //     });
-
-  //     // Stop main media recorder
-  //     if (mediaRecorderRef.current?.state === "recording") {
-  //       mediaRecorderRef.current.stop();
-  //     }
-
-  //     await axios.post(
-  //       `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/end`,
-  //       {},
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       }
-  //     );
-
-  //     // Emit room:ended event to all connected guests
-  //     if (socketRef.current) {
-  //       socketRef.current.emit("host:end-meeting", { roomId: meetingId });
-  //       // Also emit to room to ensure all guests receive it
-  //       socketRef.current.emit("room:ended", { roomId: meetingId });
-  //     }
-  //     addToast("success", "Meeting ended successfully.");
-  //   } catch (err) {
-  //     console.error("Error ending meeting:", err);
-  //     addToast("error", "Error ending meeting.");
-  //   }
-  // };
-
-  // Updated endMeeting function in LiveMeeting.jsx
-
+ 
   const endMeeting = async () => {
     try {
       console.log("🛑 Ending meeting:", meetingId);
@@ -788,54 +695,7 @@ const LiveMeeting = () => {
     return `${window.location.origin}/join-meeting/${meetingId}`;
   };
 
-  // const handleStartMakingNotes = async () => {
-  //   if (!recordingBlobRef.current) {
-  //     addToast("error", "Please record some audio first");
-  //     return;
-  //   }
-  //   setIsProcessing(true);
-  //   try {
-  //     const file = new File([recordingBlobRef.current], `recording_${Date.now()}.mp3`, {
-  //       type: "audio/mpeg",
-  //     });
-
-  //     const formData = new FormData();
-  //     formData.append("audio", file);
-  //     formData.append("source", "Live Transcript Conversion");
-
-  //     const response = await axios.post(
-  //       `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-  //       formData,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "multipart/form-data",
-  //         },
-  //       }
-  //     );
-
-  //     if (response.data) {
-  //       const { audioUrl, id, uploadedAt, title, audioId, transcription, language, transcriptAudioId, userId } = response.data;
-  //       setAudioID(audioId);
-  //       setUpdatedMeetingId(transcriptAudioId);
-  //       setUploadedUserId(userId);
-  //       setHistoryID(id);
-  //       setFinalTranscript(transcription || "");
-  //       setDetectLanguage(language);
-  //       setShowModal(true);
-  //       setRecordedBlob(false);
-  //       addToast("success", "Audio processed successfully!");
-  //     } else {
-  //       addToast("error", "Upload failed or audioUrl missing");
-  //     }
-  //   } catch (error) {
-  //     addToast("error", "Failed to process file. Please try again.");
-  //     console.error("Error processing notes:", error);
-  //   } finally {
-  //     setIsProcessing(false);
-  //   }
-  // };
-
+  
 const handleStartMakingNotes = async () => {
   if (!recordingBlobRef.current) {
     addToast("error", "Please record some audio first");
@@ -950,20 +810,7 @@ const handleStartMakingNotes = async () => {
     setShowModal(false);
   };
 
-  const addHistory = async (token, historyData, addToast, updatedMeetingId) => {
-    try {
-      await axios.patch(
-        `${import.meta.env.VITE_BACKEND_URL
-        }/api/live-meeting/audio-files/${updatedMeetingId}`,
-        historyData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      dispatch(removeAudioPreview(updatedMeetingId));
-    } catch (err) {
-      console.error("Add history error:", err);
-      addToast("error", "Failed to add history");
-    }
-  };
+  
 
   // 🔥 NEW: Check for backup after page load (recovery)
   useEffect(() => {
