@@ -3,6 +3,12 @@
 const db = require("../config/db");
 const uploadToFTP = require("../config/uploadToFTP");
 const axios = require("axios");
+const { 
+   getAudioDuration,
+  checkUserMinutes, 
+  deductUserMinutes, 
+  logMinutesUsage 
+} = require("./../middlewares/minutesManager");
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
@@ -59,38 +65,81 @@ async function downloadFromDrive(driveUrl) {
   return Buffer.from(fileRes.data);
 }
 
+ 
 const uploadAudio = async (req, res) => {
   const { source, driveUrl } = req.body;
   
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: no user ID" });
+      return res.status(401).json({ 
+        success: false,
+        message: "Unauthorized: no user ID" 
+      });
     }
 
     let buffer;
     let originalName;
+    let actualSource = source || "upload";
 
-    // 🔥 Check if it's a Google Drive URL or file upload
+    // 🔥 Get audio buffer and name based on source
     if (driveUrl) {
-      // Handle Google Drive URL
+      // Google Drive URL
       if (!driveUrl.includes("drive.google.com")) {
-        return res.status(400).json({ message: "Invalid Google Drive URL" });
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid Google Drive URL" 
+        });
       }
-      
       buffer = await downloadFromDrive(driveUrl);
-      originalName = `drive_audio_${Date.now()}.mp3`; // Default name for Drive files
+      originalName = `drive_audio_${Date.now()}.mp3`;
+      actualSource = source || "google_drive";
       
     } else if (req.file) {
-      // Handle direct file upload
+      // Direct file upload (from computer, recorded audio, etc.)
       buffer = req.file.buffer;
       originalName = req.file.originalname;
       
+      // Determine source based on originalname or source field
+      if (!source) {
+        if (originalName.includes("recorded_audio")) {
+          actualSource = "Live Transcript Conversion";
+        } else {
+          actualSource = "Generate Notes Conversion";
+        }
+      }
+      
     } else {
       return res.status(400).json({ 
+        success: false,
         message: "No audio file uploaded or Google Drive URL provided" 
       });
     }
+
+    console.log(`Processing audio - Source: ${actualSource}, File: ${originalName}`);
+
+    // ⏱️ STEP 1: Check audio duration and user minutes
+    const durationResult = await getAudioDuration(buffer);
+    const audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
+    const isEstimated = typeof durationResult === 'object' ? durationResult.estimated : false;
+
+    console.log(`✅ Audio duration: ${audioDurationMinutes} minutes${isEstimated ? ' (estimated)' : ''}`);
+
+    // ⏱️ STEP 2: Check if user has sufficient minutes
+    const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
+
+    if (!minutesCheck.hasMinutes) {
+      return res.status(402).json({
+        success: false,
+        message: minutesCheck.message,
+        requiredMinutes: audioDurationMinutes,
+        remainingMinutes: minutesCheck.remainingMinutes,
+        needsRecharge: true,
+        rechargeUrl: "/pricing"
+      });
+    }
+
+    // ✅ User has sufficient minutes, proceed with upload
 
     // Upload to FTP
     const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
@@ -98,7 +147,10 @@ const uploadAudio = async (req, res) => {
     // Verify user exists
     const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
     if (user.length === 0) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
+      });
     }
 
     // Format current date
@@ -120,7 +172,7 @@ const uploadAudio = async (req, res) => {
         ftpUrl,
         formattedDate,
         false,
-        source || (driveUrl ? "google_drive" : "upload"),
+        actualSource,
         null,
         null,
       ]
@@ -134,11 +186,25 @@ const uploadAudio = async (req, res) => {
         originalName, 
         ftpUrl, 
         formattedDate, 
-        source || (driveUrl ? "google_drive" : "upload")
+        actualSource
       ]
     );
 
-    // 🔥 Start AssemblyAI transcription
+    // ⏱️ STEP 3: Deduct minutes BEFORE sending to AssemblyAI
+    const deductionResult = await deductUserMinutes(userId, audioDurationMinutes);
+    
+    console.log(`Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
+
+    // 📊 Log the usage (optional but recommended for audit trail)
+    // Uncomment after creating the minutes_usage_log table
+    // await logMinutesUsage(
+    //   userId, 
+    //   uploadAudioResult.insertId, 
+    //   audioDurationMinutes, 
+    //   actualSource
+    // );
+
+    // 🔥 STEP 4: Now send to AssemblyAI for transcription
     const created = await createTranscription(ftpUrl);
     const resultTranscript = await pollTranscription(created.id);
 
@@ -156,10 +222,17 @@ const uploadAudio = async (req, res) => {
       ]
     );
 
+    // Success response with appropriate message based on source
+    let successMessage = "Audio uploaded and transcribed successfully";
+    if (driveUrl) {
+      successMessage = "Google Drive audio processed and transcribed successfully";
+    } else if (actualSource === "Live Transcript Conversion") {
+      successMessage = "Live recording transcribed successfully";
+    }
+
     res.status(200).json({
-      message: driveUrl 
-        ? "Google Drive audio processed and transcribed successfully"
-        : "Audio uploaded and transcribed successfully",
+      success: true,
+      message: successMessage,
       id: result.insertId,
       userId,
       audioId: uploadAudioResult.insertId,
@@ -171,13 +244,33 @@ const uploadAudio = async (req, res) => {
       transcription: speakerText,
       full: resultTranscript,
       language: resultTranscript.language_code,
-      source: source || (driveUrl ? "google_drive" : "upload"),
+      source: actualSource,
+      // ⏱️ Include minutes info in response
+      minutesUsed: audioDurationMinutes,
+      remainingMinutes: deductionResult.remainingMinutes,
     });
 
   } catch (err) {
     console.error("Upload audio error:", err);
-    res.status(500).json({
-      message: "Server error while processing audio",
+    
+    // Better error messages
+    let errorMessage = "Server error while processing audio";
+    let statusCode = 500;
+    
+    if (err.message.includes("Unable to determine audio duration")) {
+      errorMessage = "Could not read audio file. Using estimated duration based on file size.";
+      statusCode = 400;
+    } else if (err.message.includes("Insufficient minutes")) {
+      errorMessage = err.message;
+      statusCode = 402;
+    } else if (err.message.includes("Invalid Google Drive")) {
+      errorMessage = err.message;
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({
+      success: false,
+      message: errorMessage,
       error: err.message,
     });
   }

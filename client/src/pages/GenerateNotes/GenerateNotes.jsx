@@ -19,7 +19,7 @@ import OnlineMeeting from "../../components/MeetingInstructions/MeetingInstructi
 import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
 import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
 import { DateTime } from "luxon";
-
+import RechargeModal from './../../components/RechargeModal/RechargeModal';
 const breadcrumbItems = [{ label: "Generate Notes" }];
 
 const GenerateNotes = () => {
@@ -40,6 +40,9 @@ const GenerateNotes = () => {
   const [updatedMeetingId, setUpdatedMeetingId] = useState(null);
   const [uploadedUserId, setUploadedUserId] = useState(null);
   const [historyID, setHistoryID] = useState(null);
+const [showRechargeModal, setShowRechargeModal] = useState(false);
+const [rechargeInfo, setRechargeInfo] = useState(null);
+
 
   const fileInputRef = useRef(null);
   const { addToast } = useToast();
@@ -68,6 +71,8 @@ const GenerateNotes = () => {
     }
   };
 
+   
+
   // const handleStartMakingNotes = async () => {
   //   if (activeTab === "computer" && !selectedFile) {
   //     return;
@@ -78,131 +83,182 @@ const GenerateNotes = () => {
   //   }
   //   setIsProcessing(true);
 
-  //   const formData = new FormData();
-  //   let apiUrl = "";
-
-  //   if (activeTab === "computer") {
-  //     formData.append("recordedAudio", selectedFile);
-  //     formData.append("source", "Generate Notes Conversion");
-  //     apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
-  //   } else {
-  //     formData.append("driveUrl", driveUrl);
-  //     apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/process-drive`;
-  //   }
+  //   // 🔥 Single API endpoint for both file upload and Google Drive
+  //   const apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
 
   //   try {
-  //     const resp = await axios.post(apiUrl, formData, {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //         "Content-Type": "multipart/form-data",
-  //       },
-  //     });
+  //     let response;
 
-  //     if (resp.statusText !== "OK") {
-  //       throw new Error(`Server error: ${resp.status}`);
+  //     if (activeTab === "computer") {
+  //       // 📁 File Upload - use FormData
+  //       const formData = new FormData();
+  //       formData.append("audio", selectedFile); // Changed from "recordedAudio" to "audio"
+  //       formData.append("source", "Generate Notes Conversion");
+
+  //       response = await axios.post(apiUrl, formData, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           "Content-Type": "multipart/form-data",
+  //         },
+  //       });
+  //     } else {
+  //       // 🔗 Google Drive URL - use JSON
+  //       response = await axios.post(
+  //         apiUrl,
+  //         {
+  //           driveUrl: driveUrl,
+  //           source: "google_drive",
+  //         },
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             "Content-Type": "application/json",
+  //           },
+  //         }
+  //       );
   //     }
 
-  //     const data = await resp?.data;
+  //     if (response.status !== 200) {
+  //       throw new Error(`Server error: ${response.status}`);
+  //     }
+
+  //     const data = response.data;
+
+  //     // ✅ Set all the state values
   //     setAudioURL(data.audioUrl);
   //     setAudioID(data.audioId);
   //     setDetectLanguage(data.language);
   //     setFinalTranscript(data.transcription || "");
-  //     setHistoryID(data?.id);
-  //     setUpdatedMeetingId(data?.transcriptAudioId);
-  //     setUploadedUserId(data?.userId);
+  //     setHistoryID(data.id);
+  //     setUpdatedMeetingId(data.transcriptAudioId);
+  //     setUploadedUserId(data.userId);
   //     setShowModal(true);
+
+  //     // 🧹 Clear inputs
   //     setSelectedFile(null);
   //     setDriveUrl("");
   //     if (fileInputRef.current) {
   //       fileInputRef.current.value = "";
   //     }
+
+  //     // Optional: Show success message
+  //     addToast("success", data.message || "Audio processed successfully!");
+
   //   } catch (err) {
-  //     console.error(err);
-  //     addToast("error", "Failed to process file. Please try again.");
+  //     console.error("Processing error:", err);
+  //     const errorMessage = err.response?.data?.message || err.message || "Failed to process file. Please try again.";
+  //     addToast("error", errorMessage);
   //   } finally {
   //     setIsProcessing(false);
   //   }
   // };
 
-  const handleStartMakingNotes = async () => {
-    if (activeTab === "computer" && !selectedFile) {
-      return;
-    }
-    if (activeTab === "drive" && !driveUrl) {
-      setError("Please paste a valid Google Drive URL");
-      return;
-    }
-    setIsProcessing(true);
 
-    // 🔥 Single API endpoint for both file upload and Google Drive
-    const apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
+  // Key changes to handleStartMakingNotes function in GenerateNotes.jsx
 
-    try {
-      let response;
+const handleStartMakingNotes = async () => {
+  if (activeTab === "computer" && !selectedFile) {
+    return;
+  }
+  if (activeTab === "drive" && !driveUrl) {
+    setError("Please paste a valid Google Drive URL");
+    return;
+  }
+  setIsProcessing(true);
 
-      if (activeTab === "computer") {
-        // 📁 File Upload - use FormData
-        const formData = new FormData();
-        formData.append("audio", selectedFile); // Changed from "recordedAudio" to "audio"
-        formData.append("source", "Generate Notes Conversion");
+  const apiUrl = `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`;
 
-        response = await axios.post(apiUrl, formData, {
+  try {
+    let response;
+
+    if (activeTab === "computer") {
+      const formData = new FormData();
+      formData.append("audio", selectedFile);
+      formData.append("source", "Generate Notes Conversion");
+
+      response = await axios.post(apiUrl, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      response = await axios.post(
+        apiUrl,
+        {
+          driveUrl: driveUrl,
+          source: "google_drive",
+        },
+        {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
+            "Content-Type": "application/json",
           },
-        });
-      } else {
-        // 🔗 Google Drive URL - use JSON
-        response = await axios.post(
-          apiUrl,
-          {
-            driveUrl: driveUrl,
-            source: "google_drive",
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-      }
+        }
+      );
+    }
 
-      if (response.status !== 200) {
-        throw new Error(`Server error: ${response.status}`);
-      }
+    if (response.status !== 200) {
+      throw new Error(`Server error: ${response.status}`);
+    }
 
-      const data = response.data;
+    const data = response.data;
 
-      // ✅ Set all the state values
-      setAudioURL(data.audioUrl);
-      setAudioID(data.audioId);
-      setDetectLanguage(data.language);
-      setFinalTranscript(data.transcription || "");
-      setHistoryID(data.id);
-      setUpdatedMeetingId(data.transcriptAudioId);
-      setUploadedUserId(data.userId);
-      setShowModal(true);
+    // ✅ Set all the state values
+    setAudioURL(data.audioUrl);
+    setAudioID(data.audioId);
+    setDetectLanguage(data.language);
+    setFinalTranscript(data.transcription || "");
+    setHistoryID(data.id);
+    setUpdatedMeetingId(data.transcriptAudioId);
+    setUploadedUserId(data.userId);
+    setShowModal(true);
 
-      // 🧹 Clear inputs
-      setSelectedFile(null);
-      setDriveUrl("");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    // 🧹 Clear inputs
+    setSelectedFile(null);
+    setDriveUrl("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
-      // Optional: Show success message
-      addToast("success", data.message || "Audio processed successfully!");
+    // ⏱️ Show success message with minutes info
+    const successMessage = data.minutesUsed 
+      ? `${data.message} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
+      : data.message;
+    
+    addToast("success", successMessage);
 
-    } catch (err) {
-      console.error("Processing error:", err);
+  } catch (err) {
+    console.error("Processing error:", err);
+    
+    // 🚨 Handle insufficient minutes error (402)
+    if (err.response?.status === 402) {
+      const errorData = err.response.data;
+      
+      // Show detailed error modal or toast
+      addToast(
+        "error", 
+        `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge to continue.`,
+        10000 // Show for 10 seconds
+      );
+      
+      // Optional: Show recharge modal
+      setShowRechargeModal(true);
+      setRechargeInfo({
+        required: errorData.requiredMinutes,
+        remaining: errorData.remainingMinutes,
+        deficit: errorData.requiredMinutes - errorData.remainingMinutes
+      });
+      
+    } else {
+      // Handle other errors
       const errorMessage = err.response?.data?.message || err.message || "Failed to process file. Please try again.";
       addToast("error", errorMessage);
-    } finally {
-      setIsProcessing(false);
     }
-  };
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleSaveHeaders = async (
     headers,
@@ -571,6 +627,17 @@ const GenerateNotes = () => {
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
         <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
       </section>
+       {showRechargeModal && (
+        <RechargeModal
+          isOpen={showRechargeModal}
+          onClose={() => setShowRechargeModal(false)}
+          requiredMinutes={rechargeInfo?.required || 0}
+          remainingMinutes={rechargeInfo?.remaining || 0}
+          onRecharge={() => {
+            window.location.href = '/pricing'; // Update with your actual pricing page route
+          }}
+        />
+      )}
     </>
   );
 };
