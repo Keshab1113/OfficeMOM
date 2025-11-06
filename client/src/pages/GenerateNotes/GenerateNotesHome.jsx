@@ -71,7 +71,11 @@ const GenerateNotesHome = () => {
             }
 
             const data = response.data;
-            addToast("success", data.message);
+
+            const successMessage = data.minutesUsed
+                ? `${data.message} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
+                : data.message;
+            addToast("success", successMessage);
             navigate(`/generate-notes/${data.audioId}/result`, {
                 state: {
                     audioData: data,
@@ -94,7 +98,12 @@ const GenerateNotesHome = () => {
                     remaining: errorData.remainingMinutes,
                     deficit: errorData.requiredMinutes - errorData.remainingMinutes,
                 });
-                addToast("error", "Insufficient Minutes! Please recharge.");
+                // addToast("error", "Insufficient Minutes! Please recharge.");
+                addToast(
+                    "error",
+                    `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining.Please recharge to continue.`,
+                    10000 // Show for 10 seconds
+                );
             } else {
                 addToast("error", "Upload failed. Please try again.");
             }

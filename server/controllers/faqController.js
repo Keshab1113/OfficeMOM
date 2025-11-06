@@ -13,6 +13,7 @@ const getFAQsByPage = async (req, res) => {
       });
     }
 
+
     const [rows] = await db.execute(`
       SELECT 
         id,
