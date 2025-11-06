@@ -346,26 +346,41 @@ socket.on("start-backup-recording", ({ roomId }) => {
 }); 
 
   // 🔥 NEW: Stop backup recording
-  socket.on("stop-backup-recording", async ({ roomId, token }) => {
-    try {
-      const backupUrl = await audioBackup.stopRecording(
-        roomId,
-        process.env.BACKEND_URL || 'http://localhost:3000',
-        token
-      );
+  // Update this in your backend socket handlers
 
-      const room = rooms.get(roomId);
-      if (room?.hostSocketId && backupUrl) {
-        io.to(room.hostSocketId).emit("backup-recording-saved", {
-          backupUrl,
-          roomId,
-        });
-        console.log(`✅ Backup saved and sent to host: ${backupUrl}`);
-      }
-    } catch (error) {
-      console.error('❌ Error stopping backup:', error);
+socket.on("stop-backup-recording", async ({ roomId, token }) => {
+  console.log(`📥 Received stop-backup-recording for ${roomId}`);
+  
+  try {
+    const backupUrl = await audioBackup.stopRecording(
+      roomId,
+      process.env.BACKEND_URL || 'http://localhost:3000',
+      token
+    );
+
+    const room = rooms.get(roomId);
+    if (room?.hostSocketId && backupUrl) {
+      io.to(room.hostSocketId).emit("backup-recording-saved", {
+        backupUrl,
+        roomId,
+      });
+      console.log(`✅ Backup saved and sent to host: ${backupUrl}`);
     }
-  });
+    
+    // 🔥 INCREASED: Cleanup after longer delay (3 seconds)
+    setTimeout(() => {
+      audioBackup.cleanup(roomId);
+      console.log(`🗑️ Delayed cleanup completed for ${roomId}`);
+    }, 3000); // Increased from 1000ms to 3000ms
+    
+  } catch (error) {
+    console.error('❌ Error stopping backup:', error);
+    // Cleanup anyway on error after delay
+    setTimeout(() => {
+      audioBackup.cleanup(roomId);
+    }, 2000);
+  }
+});
 
   // --- Guest explicitly disconnects ---
   socket.on("guest:disconnect", () => {
@@ -395,34 +410,34 @@ socket.on("start-backup-recording", ({ roomId }) => {
 
   // --- Host ends meeting ---
   socket.on("host:end-meeting", ({ roomId }) => {
-    const room = rooms.get(roomId);
-    if (!room || room.hostSocketId !== socket.id) return;
+  const room = rooms.get(roomId);
+  if (!room || room.hostSocketId !== socket.id) return;
 
-    console.log(`🛑 Host ending meeting: ${roomId}`);
-    
-    room.approvedPeers.forEach((_, guestSocketId) => {
-      const guest = io.sockets.sockets.get(guestSocketId);
-      if (guest) {
-        guest.emit("room:ended");
-        guest.emit("host:end-meeting");
-        guest.leave(roomId);
-      }
-    });
-    
-    room.pendingRequests.forEach((_, guestSocketId) => {
-      const guest = io.sockets.sockets.get(guestSocketId);
-      if (guest) {
-        guest.emit("guest:denied", { reason: "Meeting ended by host" });
-        guest.disconnect();
-      }
-    });
-    
-    // 🔥 NEW: Cleanup backup
-    audioBackup.cleanup(roomId);
-    
-    rooms.delete(roomId);
-    closeAssemblyAIWS(roomId);
+  console.log(`🛑 Host ending meeting: ${roomId}`);
+  
+  room.approvedPeers.forEach((_, guestSocketId) => {
+    const guest = io.sockets.sockets.get(guestSocketId);
+    if (guest) {
+      guest.emit("room:ended");
+      guest.emit("host:end-meeting");
+      guest.leave(roomId);
+    }
   });
+  
+  room.pendingRequests.forEach((_, guestSocketId) => {
+    const guest = io.sockets.sockets.get(guestSocketId);
+    if (guest) {
+      guest.emit("guest:denied", { reason: "Meeting ended by host" });
+      guest.disconnect();
+    }
+  });
+  
+  // 🔥 CHANGED: Don't cleanup immediately - wait for backup to save
+  // audioBackup.cleanup(roomId); // ❌ REMOVE THIS LINE
+  
+  rooms.delete(roomId);
+  closeAssemblyAIWS(roomId);
+});
 
   // --- Handle disconnection ---
   socket.on("disconnecting", () => {

@@ -277,7 +277,7 @@ const Header = ({ isVisible = true }) => {
       </AnimatePresence>
 
       {/* Add scrollbar width calculation */}
-      <style jsx>{`
+      <style>{`
         :root {
           --scrollbar-width: ${typeof window !== "undefined"
             ? window.innerWidth - document.documentElement.clientWidth + "px"
