@@ -393,7 +393,7 @@ const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
 
       )}
 
-      <style jsx>{`
+      <style >{`
         @keyframes shimmer {
           100% {
             transform: translateX(100%);
