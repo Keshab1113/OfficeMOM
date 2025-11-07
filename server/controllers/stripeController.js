@@ -1,6 +1,7 @@
 const axios = require("axios");
 const db = require("../config/db.js");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const nodemailer = require("nodemailer");
 
 exports.createCheckoutSession = async (req, res) => {
   let connection;
@@ -365,6 +366,7 @@ exports.createRechargeSession = async (req, res) => {
     params.append("metadata[minutes]", minutes.toString());
     params.append("metadata[amount]", amount.toString());
     params.append("customer_update[address]", "auto");
+    params.append("metadata[session_id]", "temp");
 
     // Add payment method types
     params.append("payment_method_types[0]", "card");
@@ -502,40 +504,54 @@ exports.handleStripeWebhook = async (req, res) => {
 };
 
 
-// 🔹 WEBHOOK EVENT HANDLERS
 async function handleCheckoutSessionCompleted(session, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
-
   console.log(`🔄 Processing session: ${session.id}, mode: ${session.mode}`);
 
   try {
     const paymentStatus = safeValue(session.payment_status);
 
-    // Update payment status first
+    // Atomic: only update if it wasn't paid already
     const [updateResult] = await connection.execute(
-      `UPDATE stripe_payments 
-       SET payment_status = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE stripe_session_id = ?`,
+      `UPDATE stripe_payments
+       SET payment_status = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE stripe_session_id = ? AND payment_status <> 'paid'`,
       [paymentStatus, session.id]
     );
 
-    console.log(`✅ Payment status updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`);
+    // If this update didn't change a row, someone already processed it
+    if (updateResult.affectedRows === 0) {
+      console.log(`⚠️ Session ${session.id} already processed. Skipping...`);
+      return;
+    }
 
-    // Check if this is a subscription or one-time payment
-    if (session.mode === 'subscription' && session.subscription) {
-      // Handle subscription flow
+    // Fetch stripe_payment_id now and pass along to avoid NULLs later
+    const [rows] = await connection.execute(
+      `SELECT id FROM stripe_payments WHERE stripe_session_id = ? LIMIT 1`,
+      [session.id]
+    );
+    const stripePaymentId = rows?.[0]?.id || null;
+
+    if (session.mode === "subscription" && session.subscription) {
       await handleSubscriptionSession(session, connection, paymentStatus);
-    } else if (session.mode === 'payment') {
-      // Handle one-time payment flow (for recharge)
+    } else if (session.mode === "payment") {
+      // Attach ids for de-dupe downstream
+      session.metadata = {
+        ...(session.metadata || {}),
+        session_id: session.id,
+        stripe_payment_id: stripePaymentId,
+      };
       await handleOneTimePaymentSession(session, connection, paymentStatus);
     }
 
+    console.log(`🎯 Completed session handling for ${session.id}`);
   } catch (error) {
-    console.error('❌ Error in handleCheckoutSessionCompleted:', error);
+    console.error("❌ Error in handleCheckoutSessionCompleted:", error);
     throw error;
   }
 }
+
+
 
 async function handleOneTimePaymentSession(session, connection, paymentStatus) {
   console.log(`💰 Processing one-time payment session: ${session.id}`);
@@ -809,6 +825,15 @@ async function updateUserSubscriptionDetails(userId, planName, connection) {
 
   const payment = payments[0];
 
+  const [plans] = await connection.execute(
+    `SELECT * FROM plans 
+     WHERE name = ?
+     ORDER BY created_at DESC LIMIT 1`,
+    [payment.product_name]
+  );
+
+  const plan = plans[0];
+
   // Determine total and monthly minutes based on billing cycle
   let totalMinutes = planMinutesMap[planName] || 0;
   let remainingTime = totalMinutes;
@@ -835,10 +860,11 @@ async function updateUserSubscriptionDetails(userId, planName, connection) {
   if (existingSubscription.length === 0) {
     await connection.execute(
       `INSERT INTO user_subscription_details 
-       (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (user_id,plan_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
+       VALUES (?,?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
+        plan ? plan.id : 1,
         payment.id,
         totalMinutes,
         remainingTime,
@@ -852,6 +878,7 @@ async function updateUserSubscriptionDetails(userId, planName, connection) {
     await connection.execute(
       `UPDATE user_subscription_details 
        SET stripe_payment_id = ?, 
+       plan_id = ?,
            total_minutes = ?, 
            total_remaining_time = ?, 
            total_used_time = ?, 
@@ -861,6 +888,7 @@ async function updateUserSubscriptionDetails(userId, planName, connection) {
        WHERE user_id = ?`,
       [
         payment.id,
+        plan ? plan.id : 1,
         totalMinutes,
         remainingTime,
         usedTime,
@@ -897,63 +925,32 @@ async function downgradeToFreePlan(userId, connection) {
   );
 }
 
-async function handlePaymentIntentSucceeded(paymentIntent, connection) {
-  const safeValue = (v) => (v === undefined ? null : v);
-
-  console.log(`🔄 Processing payment intent: ${paymentIntent.id}`);
-
-  try {
-    // Get the session associated with this payment intent
-    const [sessions] = await connection.execute(
-      `SELECT * FROM stripe_payments WHERE stripe_session_id = ?`,
-      [paymentIntent.id]
-    );
-
-    if (sessions.length === 0) {
-      console.log(`⚠️ No session found for payment intent: ${paymentIntent.id}`);
-      return;
-    }
-
-    const session = sessions[0];
-
-    // Update payment status
-    await connection.execute(
-      `UPDATE stripe_payments 
-       SET payment_status = 'paid',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE stripe_session_id = ?`,
-      [paymentIntent.id]
-    );
-
-    console.log(`✅ Payment intent processed: ${paymentIntent.id}`);
-
-    // If this is a recharge, add minutes to user's account
-    if (session.type === 'recharge') {
-      await addRechargeMinutes(session.user_id, session.metadata, connection);
-    }
-
-  } catch (error) {
-    console.error('❌ Error in handlePaymentIntentSucceeded:', error);
-    throw error;
-  }
-}
-
 async function addRechargeMinutes(userId, metadata, connection) {
-  let minutes, amount;
+  let minutes, amount, sessionId, stripePaymentId;
 
-  // Handle both string and object metadata
-  if (typeof metadata === 'string') {
+  // 🔹 Parse metadata (supports both string/object)
+  if (typeof metadata === "string") {
     try {
-      const parsedMetadata = JSON.parse(metadata);
-      minutes = parseInt(parsedMetadata.minutes) || 0;
-      amount = parseFloat(parsedMetadata.original_amount) || 0;
+      const parsed = JSON.parse(metadata);
+      minutes = parseInt(parsed.minutes) || 0;
+      amount =
+        parseFloat(parsed.amount) ||
+        parseFloat(parsed.original_amount) ||
+        0;
+      sessionId = parsed.session_id || null;
+      stripePaymentId = parsed.stripe_payment_id || null;
     } catch (e) {
-      console.error('❌ Error parsing metadata:', e);
+      console.error("❌ Error parsing metadata:", e);
       return;
     }
   } else {
     minutes = parseInt(metadata.minutes) || 0;
-    amount = parseFloat(metadata.amount) || parseFloat(metadata.original_amount) || 0;
+    amount =
+      parseFloat(metadata.amount) ||
+      parseFloat(metadata.original_amount) ||
+      0;
+    sessionId = metadata.session_id || null;
+    stripePaymentId = metadata.stripe_payment_id || null;
   }
 
   if (minutes <= 0) {
@@ -961,89 +958,85 @@ async function addRechargeMinutes(userId, metadata, connection) {
     return;
   }
 
-  console.log(`🔄 Adding ${minutes} minutes to user: ${userId}`);
+  console.log(`🔄 Adding ${minutes} minutes for user ${userId}`);
 
-  try {
-    // Check if user has existing subscription details
-    const [existingDetails] = await connection.execute(
-      `SELECT * FROM user_subscription_details WHERE user_id = ?`,
-      [userId]
+  // 🔹 Resolve stripe_payment_id if missing
+  if (!stripePaymentId && sessionId) {
+    const [paymentRow] = await connection.execute(
+      `SELECT id FROM stripe_payments WHERE stripe_session_id = ? AND user_id = ? LIMIT 1`,
+      [sessionId, userId]
     );
-
-    if (existingDetails.length > 0) {
-      // Update existing record - add minutes to both total and monthly remaining
-      const currentDetails = existingDetails[0];
-
-      const newTotalRemaining = (currentDetails.total_remaining_time || 0) + minutes;
-      const newMonthlyRemaining = (currentDetails.monthly_remaining || 0) + minutes;
-      const newTotalMinutes = (currentDetails.total_minutes || 0) + minutes;
-
-      await connection.execute(
-        `UPDATE user_subscription_details 
-         SET total_remaining_time = ?,
-             monthly_remaining = ?,
-             total_minutes = ?,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = ?`,
-        [
-          newTotalRemaining,
-          newMonthlyRemaining,
-          newTotalMinutes,
-          userId
-        ]
-      );
-
-      console.log(`✅ Added ${minutes} minutes to user ${userId}. New total: ${newTotalRemaining} minutes`);
-    } else {
-      // Create new record for user
-      await connection.execute(
-        `INSERT INTO user_subscription_details 
-         (user_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          userId,
-          minutes,
-          minutes,
-          0,
-          minutes,
-          0,
-          minutes
-        ]
-      );
-
-      console.log(`✅ Created new subscription details for user ${userId} with ${minutes} minutes`);
+    if (paymentRow.length > 0) {
+      stripePaymentId = paymentRow[0].id;
     }
-
-    // Get the stripe_payment_id for this recharge
-    const [paymentRecords] = await connection.execute(
-      `SELECT id FROM stripe_payments WHERE stripe_session_id = ? AND user_id = ?`,
-      [metadata.session_id || '', userId]
-    );
-
-    const stripePaymentId = paymentRecords.length > 0 ? paymentRecords[0].id : null;
-
-    // Log the recharge transaction
-    await connection.execute(
-      `INSERT INTO recharge_transactions 
-       (user_id, amount, minutes, rate, status, stripe_payment_id, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-      [
-        userId,
-        amount,
-        minutes,
-        0.01,
-        'completed',
-        stripePaymentId
-      ]
-    );
-
-    console.log(`✅ Recharge transaction logged for user ${userId}`);
-
-  } catch (error) {
-    console.error('❌ Error adding recharge minutes:', error);
-    throw error;
   }
+
+  // 🔹 Check if a recharge already exists for this user+session
+  const [existing] = await connection.execute(
+    `SELECT id, stripe_payment_id FROM recharge_transactions 
+     WHERE user_id = ? 
+     AND (stripe_payment_id = ? OR (stripe_payment_id IS NULL AND ? IS NOT NULL))
+     ORDER BY id DESC LIMIT 1`,
+    [userId, stripePaymentId, stripePaymentId]
+  );
+
+  if (existing.length > 0) {
+    console.log(
+      `⚠️ Existing recharge found (id=${existing[0].id}, stripe_payment_id=${existing[0].stripe_payment_id}). Updating instead of inserting...`
+    );
+
+    // Update existing null stripe_payment_id if available
+    await connection.execute(
+      `UPDATE recharge_transactions
+       SET stripe_payment_id = COALESCE(?, stripe_payment_id),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [stripePaymentId, existing[0].id]
+    );
+    return;
+  }
+
+  // 🔹 Update or create user subscription details
+  const [details] = await connection.execute(
+    `SELECT * FROM user_subscription_details WHERE user_id = ?`,
+    [userId]
+  );
+
+  if (details.length > 0) {
+    const d = details[0];
+    await connection.execute(
+      `UPDATE user_subscription_details
+       SET total_remaining_time = total_remaining_time + ?,
+           total_minutes = total_minutes + ?,
+           monthly_remaining = monthly_remaining + ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = ?`,
+      [minutes, minutes, minutes, userId]
+    );
+    console.log(`✅ Updated subscription details for user ${userId}`);
+  } else {
+    await connection.execute(
+      `INSERT INTO user_subscription_details 
+       (user_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining)
+       VALUES (?, ?, ?, 0, ?, 0, ?)`,
+      [userId, minutes, minutes, minutes, minutes]
+    );
+    console.log(`✅ Created subscription details for user ${userId}`);
+  }
+
+  // 🔹 Insert recharge transaction (only once)
+  await connection.execute(
+    `INSERT INTO recharge_transactions
+     (user_id, amount, minutes, rate, status, stripe_payment_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'completed', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    [userId, amount, minutes, 0.01, stripePaymentId]
+  );
+
+  console.log(
+    `✅ Recharge logged for user ${userId} (stripe_payment_id=${stripePaymentId || "null"})`
+  );
 }
+
 
 exports.getUserMinutes = async (req, res) => {
   let connection;
@@ -1285,53 +1278,179 @@ exports.getBillingHistory = async (req, res) => {
   }
 };
 
-// Cancel subscription
+
 exports.cancelSubscription = async (req, res) => {
   let connection;
   try {
     const { subscriptionId } = req.body;
     const userId = req.user?.id;
+    const userEmail = req.user?.email;
 
     if (!subscriptionId) {
       return res.status(400).json({ error: "Subscription ID is required" });
     }
 
-    // Verify the subscription belongs to the user
     connection = await db.getConnection();
+
+    const [requestedCancellations] = await connection.execute(
+      `SELECT * FROM cancel_subscription_requests WHERE stripe_subscription_id = ? AND user_id = ?`,
+      [subscriptionId, userId]
+    );
+    const request = requestedCancellations[0];
+    if (request) {
+      connection.release();
+      return res.status(400).json({ error: "Cancellation request already submitted for this subscription" });
+    }
+
+    // 1️⃣ Verify subscription belongs to user
     const [subscriptions] = await connection.execute(
       `SELECT * FROM stripe_payments WHERE stripe_subscription_id = ? AND user_id = ?`,
       [subscriptionId, userId]
     );
+
+    const [user_subscription_details] = await connection.execute(
+      `SELECT * FROM user_subscription_details WHERE user_id = ?`,
+      [userId]
+    );
+    const user_subscription = user_subscription_details[0];
 
     if (subscriptions.length === 0) {
       connection.release();
       return res.status(404).json({ error: "Subscription not found" });
     }
 
-    // Cancel subscription in Stripe (at period end)
-    const params = new URLSearchParams();
-    params.append("invoice_now", "false");
-    params.append("prorate", "false");
+    const subscription = subscriptions[0];
+    // console.log("subscriptions: ", subscription);
+    // console.log("user_subscription: ", user_subscription);
 
-    const response = await axios.post(
-      `${process.env.STRIPE_URL}/subscriptions/${subscriptionId}`,
-      params,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
+    const total_remaining_time = user_subscription ? user_subscription.total_remaining_time : 0;
+    const total_used_time = user_subscription ? user_subscription.total_used_time : 0;
+    const total_minutes = user_subscription ? user_subscription.total_minutes : 0;
+    const total_used_balance = total_used_time * 0.01;
+
+    // 2️⃣ Insert cancel request into table
+    await connection.execute(
+      `INSERT INTO cancel_subscription_requests 
+        (user_id, user_email, stripe_subscription_id, plan_name, billing_cycle, amount, currency, current_period_end, total_minutes, total_remaining_time, total_used_time, total_used_balance ) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        userEmail,
+        subscription.stripe_subscription_id,
+        subscription.plan_name,
+        subscription.billing_cycle,
+        subscription.amount,
+        subscription.currency,
+        subscription.current_period_end,
+        total_minutes,
+        total_remaining_time,
+        total_used_time,
+        total_used_balance
+      ]
     );
 
-    // Webhook will handle the database update when subscription is actually canceled
+    // 3️⃣ Setup Nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAILTRAP_HOST,
+      port: process.env.MAILTRAP_PORT,
+      secure: true,
+      auth: {
+        user: process.env.MAIL_USER_NOREPLY,
+        pass: process.env.MAIL_PASS,
+      },
+      tls: { rejectUnauthorized: false },
+    });
+
+    // 4️⃣ Email templates
+    const userHtml = `
+      <html>
+      <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
+        <table style="max-width:600px; margin:auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background:#4a90e2; color:#fff; text-align:center; padding:20px; font-size:20px; font-weight:bold;">
+              Subscription Cancellation Confirmation
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px; color:#333;">
+              <p>Hello,</p>
+              <p>Your subscription for <b>${subscription.product_name}</b> has been scheduled for cancellation.</p>
+              <p><b>Plan:</b> ${subscription.plan_name}<br/>
+                 <b>Billing Cycle:</b> ${subscription.billing_cycle}<br/>
+                 <b>Amount:</b> $${subscription.amount} ${subscription.currency}<br/>
+                 <b>Subscription ID:</b> ${subscription.stripe_subscription_id}<br/>
+                 <b>Valid Until:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+                 <b>Total Used Time:</b> ${total_used_time}<br/>
+                 <b>Total Used Balance:</b> ${total_used_balance}<br/>
+              <p>You’ll retain access until the end of your current billing period.</p>
+              <p>A refund will be processed within <b>15 working days</b>.</p>
+              <p style="margin-top:30px;">Best,<br/>The OfficeMoM Team</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f0f0f0; text-align:center; padding:10px; font-size:12px; color:#777;">
+              © ${new Date().getFullYear()} OfficeMoM. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const adminHtml = `
+      <html>
+      <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
+        <table style="max-width:600px; margin:auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background:#dc3545; color:#fff; text-align:center; padding:20px; font-size:20px; font-weight:bold;">
+              New Subscription Cancellation Request
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px; color:#333;">
+              <p><b>User Email:</b> ${userEmail}</p>
+              <p><b>Subscription ID:</b> ${subscription.stripe_subscription_id}</p>
+              <p><b>Plan:</b> ${subscription.plan_name}</p>
+              <p><b>Amount:</b> $${subscription.amount} ${subscription.currency}</p>
+              <p><b>Billing Cycle:</b> ${subscription.billing_cycle}</p>
+              <p><b>Current Period End:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+              <p><b>Invoice:</b> <a href="${subscription.invoice_pdf}" target="_blank">View PDF</a></p>
+              <p>Status: <b>Pending Refund</b></p>
+              <b>Total Used Time:</b> ${total_used_time}<br/>
+              <b>Total Used Balance:</b> ${total_used_balance}<br/>
+              <b>Total Recharge Time:</b> ${total_minutes} min<br/>
+              <b>Total Remaining Time:</b> ${total_remaining_time} min<br/>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const adminEmail = process.env.MAIL_USER;
+
+    // 5️⃣ Send user + admin email
+    await transporter.sendMail({
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
+      to: userEmail,
+      subject: "Your subscription cancellation confirmation - OfficeMoM",
+      html: userHtml,
+    });
+
+    await transporter.sendMail({
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
+      to: adminEmail,
+      subject: `User canceled subscription - ${userEmail}`,
+      html: adminHtml,
+    });
+
     connection.release();
 
     res.json({
       success: true,
-      message: "Subscription cancellation scheduled",
-      data: response.data,
+      message: "Subscription cancellation request saved and email notifications sent",
     });
+
   } catch (error) {
     if (connection) connection.release();
     console.error("Cancel subscription error:", error.response?.data || error.message);

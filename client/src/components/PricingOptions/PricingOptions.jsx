@@ -303,7 +303,7 @@ const PricingOptions = () => {
               <SkeletonItem key={index} />
             ))
             : plans && plans.length > 0
-              ? plans.map((plan) => {
+              ? plans.map((plan, indx) => {
                 if (!plan?.name) return null;
                 const IconComponent = getPlanIcon(plan.name);
                 const displayPrice =
@@ -431,10 +431,11 @@ const PricingOptions = () => {
                     {/* CTA Button */}
                     <button
                       onClick={() => handleOpenModal(plan)}
+                      disabled={subscription?.plan_name === plan.name}
                       className={`w-full disabled:cursor-not-allowed cursor-pointer py-3.5 px-6 rounded-xl font-semibold transition-all duration-200 ${plan.isHighlighted
                         ? "bg-white text-indigo-600 hover:bg-gray-50 hover:shadow-lg transform hover:-translate-y-0.5"
                         : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg transform hover:-translate-y-0.5"
-                        }`}
+                        } ${subscription?.plan_id > indx && "hidden"}`}
                     >
                       {subscription?.plan_name === plan.name ? "Subscribed" : plan.buttonText}
                     </button>

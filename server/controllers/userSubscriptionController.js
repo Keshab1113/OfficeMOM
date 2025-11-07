@@ -11,7 +11,8 @@ const userSubscriptionDetails = async (req, res) => {
     const [rows] = await db.execute(
       `SELECT 
     usd.id, 
-    usd.user_id, 
+    usd.user_id,
+    usd.plan_id,
     usd.stripe_payment_id, 
     usd.total_minutes, 
     usd.total_remaining_time, 

@@ -14,15 +14,19 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Helmet } from "react-helmet";
+import ConfirmCancelModal from "../../components/LittleComponent/ConfirmCancelModal";
+import { useToast } from "../../components/ToastContext";
 
 const Subscription = () => {
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
+  const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { token } = useSelector((state) => state.auth);
   const nav = useNavigate();
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (token) {
@@ -80,29 +84,19 @@ const Subscription = () => {
   };
 
   const cancelSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
-
-    if (
-      !window.confirm(
-        "Are you sure you want to cancel your subscription? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
+    setShowModal(false);
     try {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/stripe/cancel-subscription`,
         { subscriptionId: subscription.stripe_subscription_id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      // Refresh subscription data
       fetchSubscriptionData();
-      alert("Subscription cancelled successfully");
+      addToast("success", "Subscription cancellation requested successfully!");
     } catch (err) {
-      console.log("Failed to cancel subscription", err);
-      alert("Failed to cancel subscription");
+      console.error("Failed to cancel subscription", err);
+      const errorMsg = err.response?.data?.error || "Failed to cancel subscription";
+      addToast("error", errorMsg || "Failed to cancel subscription");
     }
   };
 
@@ -383,7 +377,7 @@ const Subscription = () => {
                     <div className="flex md:flex-row flex-col gap-3">
                       {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
                         <button
-                          onClick={cancelSubscription}
+                          onClick={() => setShowModal(true)}
                           className="px-4 cursor-pointer py-2 border border-red-300 text-red-600 dark:text-red-400 
                         hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         >
@@ -541,6 +535,11 @@ const Subscription = () => {
             )}
           </div>
         </div>
+        <ConfirmCancelModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onConfirm={cancelSubscription}
+        />
         <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
