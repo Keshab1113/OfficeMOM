@@ -179,7 +179,7 @@ const Failure = () => {
       <div className="absolute top-1/3 left-10 text-2xl animate-pulse opacity-15" style={{ animationDelay: '1s' }}>⚡</div>
       <div className="absolute bottom-1/3 right-10 text-3xl animate-bounce opacity-20" style={{ animationDelay: '1.5s' }}>🔄</div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
