@@ -5,20 +5,22 @@ const {
   getBillingHistory,
   getSubscriptionDetails,
   cancelSubscription,
-  handleStripeWebhook, // Add the webhook handler
+  createRechargeSession,
+  getUserMinutes,
 } = require("../controllers/stripeController");
 const authMiddleware = require("../middlewares/authMiddleware");
+
 const router = express.Router();
 
-// 🔹 WEBHOOK ROUTE - Must be before body parser and without auth middleware
-// This should be mounted before any express.json() middleware in your main app file
-// Alternatively, you can handle it in your main app.js file
-
-// 🔹 PROTECTED ROUTES (require authentication)
+// Authenticated routes
 router.post("/create-checkout-session", authMiddleware, createCheckoutSession);
 router.get("/payment-success", authMiddleware, handlePaymentSuccess);
 router.get("/billing-history", authMiddleware, getBillingHistory);
 router.get("/subscription-details", authMiddleware, getSubscriptionDetails);
 router.post("/cancel-subscription", authMiddleware, cancelSubscription);
+
+// Recharge
+router.post("/create-recharge-session", authMiddleware, createRechargeSession);
+router.get("/user-minutes", authMiddleware, getUserMinutes);
 
 module.exports = router;

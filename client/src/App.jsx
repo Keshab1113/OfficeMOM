@@ -29,6 +29,7 @@ import MeetingHome from "./pages/Meeting/MeetingHome";
 import MeetingRoom from "./pages/Meeting/MeetingRoom";
 import MeetingResult from "./pages/Meeting/MeetingResult";
 import GenerateNotesHome from "./pages/GenerateNotes/GenerateNotesHome";
+import Recharge from "./pages/Recharge/Recharge";
 
 function App() {
   return (
@@ -117,6 +118,11 @@ function App() {
           <Route path="/checkout" element={
             <ProtectedRoute>
               <CheckoutPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/recharge" element={
+            <ProtectedRoute>
+              <Recharge />
             </ProtectedRoute>
           } />
           <Route path="/about-us" element={<AboutUs />} />

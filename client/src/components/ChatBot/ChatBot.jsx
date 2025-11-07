@@ -20,7 +20,7 @@ const ChatBot = () => {
     {
       question: "is there a free trial",
       answer:
-        "Yes! We offer a 300-minute (lifetime) free plan with a maximum of 30 minutes per meeting or file upload. No credit card required to start.",
+        "Yes! We offer a 100-minute (lifetime) free plan with a maximum of 30 minutes per meeting or file upload. No credit card required to start.",
     },
     {
       question: "how to reset password",

@@ -1,12 +1,12 @@
 import React from 'react';
 import { X, Clock, Zap, CreditCard } from 'lucide-react';
 
-const RechargeModal = ({ 
-  isOpen, 
-  onClose, 
-  requiredMinutes = 0, 
+const RechargeModal = ({
+  isOpen,
+  onClose,
+  requiredMinutes = 0,
   remainingMinutes = 0,
-  onRecharge 
+  onRecharge
 }) => {
   if (!isOpen) return null;
 
@@ -68,7 +68,7 @@ const RechargeModal = ({
                 <span>{remainingMinutes} / {requiredMinutes} minutes</span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                <div 
+                <div
                   className="bg-gradient-to-r from-orange-400 to-red-500 h-full transition-all duration-500 rounded-full"
                   style={{ width: `${Math.min((remainingMinutes / requiredMinutes) * 100, 100)}%` }}
                 />

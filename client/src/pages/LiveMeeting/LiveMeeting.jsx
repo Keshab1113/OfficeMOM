@@ -1170,7 +1170,7 @@ const LiveMeeting = () => {
           requiredMinutes={rechargeInfo?.required || 0}
           remainingMinutes={rechargeInfo?.remaining || 0}
           onRecharge={() => {
-            window.location.href = '/pricing'; // Update with your actual pricing page route
+            window.location.href = '/recharge'; // Update with your actual pricing page route
           }}
         />
       )}

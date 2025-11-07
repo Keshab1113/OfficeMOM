@@ -77,7 +77,7 @@ const Success = () => {
       );
     }
   };
-  console.log("paymentDetails: ",paymentDetails);
+  console.log("paymentDetails: ", paymentDetails);
 
   if (loading) {
     return (
@@ -148,11 +148,10 @@ const Success = () => {
 
             <div className="relative z-10 flex items-center justify-center px-4 sm:px-6 lg:px-8">
               <div
-                className={`text-center transform transition-all duration-1000 w-full max-w-4xl ${
-                  isVisible
-                    ? "translate-y-0 opacity-100 scale-100"
-                    : "translate-y-10 opacity-0 scale-95"
-                }`}
+                className={`text-center transform transition-all duration-1000 w-full max-w-4xl ${isVisible
+                  ? "translate-y-0 opacity-100 scale-100"
+                  : "translate-y-10 opacity-0 scale-95"
+                  }`}
               >
                 {/* Success icon */}
                 <div className="mb-3 flex justify-center">
@@ -261,29 +260,33 @@ const Success = () => {
                               <span className="text-gray-600 dark:text-gray-400 font-medium">
                                 Current Period:
                               </span>
-                              <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-right">
-                                {new Date(
-                                  paymentDetails.current_period_start
-                                ).toLocaleDateString()}{" "}
-                                <br />
-                                to <br />
-                                {new Date(
-                                  paymentDetails.current_period_end
-                                ).toLocaleDateString()}
-                              </span>
+                              {paymentDetails.plan_name === "Minutes Recharge" ? <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-right">
+                                Valid until you use purchased minutes
+                              </span> :
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-right">
+                                  {new Date(
+                                    paymentDetails.current_period_start
+                                  ).toLocaleDateString()}{" "}
+                                  <br />
+                                  to <br />
+                                  {new Date(
+                                    paymentDetails.current_period_end
+                                  ).toLocaleDateString()}
+                                </span>
+                              }
                             </div>
-
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400 font-medium">
-                                Subscription ID:
-                              </span>
-                              <span className="font-mono text-sm text-emerald-600 dark:text-emerald-400">
-                                {paymentDetails.stripe_subscription_id?.slice(
-                                  -8
-                                )}
-                              </span>
-                            </div>
-
+                            {paymentDetails.plan_name != "Minutes Recharge" &&
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400 font-medium">
+                                  Subscription ID:
+                                </span>
+                                <span className="font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                                  {paymentDetails.stripe_subscription_id?.slice(
+                                    -8
+                                  )}
+                                </span>
+                              </div>
+                            }
                             {paymentDetails.invoice_number && (
                               <div className="flex justify-between">
                                 <span className="text-gray-600 dark:text-gray-400 font-medium">
@@ -349,7 +352,7 @@ const Success = () => {
                                 Download Invoice PDF
                               </button>
                             </>
-                          ) : (
+                          ) : (paymentDetails.plan_name != "Minutes Recharge" &&
                             <div className="text-center w-full py-4">
                               <p className="text-amber-600 dark:text-amber-400 mb-3">
                                 ⏳ Your official invoice is being generated...

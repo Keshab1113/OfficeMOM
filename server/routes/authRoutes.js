@@ -67,9 +67,9 @@ router.get(
           `INSERT INTO user_subscription_details 
             (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [user.id, null, 300, 300, 0, 0, 0, 0]
+          [user.id, null, 100, 100, 0, 0, 0, 0]
         );
-        userSub = { total_remaining_time: 300, total_used_time: 0 };
+        userSub = { total_remaining_time: 100, total_used_time: 0 };
         console.log(`✅ Created default subscription for Google OAuth user ${user.id}`);
       }
 
@@ -134,7 +134,7 @@ router.get(
           `INSERT INTO user_subscription_details 
             (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [user.id, null, 300, 300, 0, 0, 0, 0]
+          [user.id, null, 100, 100, 0, 0, 0, 0]
         );
         console.log(`✅ Created default subscription for Facebook OAuth user ${user.id}`);
       }

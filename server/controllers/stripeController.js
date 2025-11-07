@@ -201,6 +201,8 @@ exports.createCheckoutSession = async (req, res) => {
     params.append("line_items[0][price]", stripePriceId);
     params.append("line_items[0][quantity]", "1");
 
+
+
     params.append("metadata[user_id]", userId);
     params.append("metadata[plan_name]", plan);
     params.append("subscription_data[metadata][user_id]", userId);
@@ -293,36 +295,172 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
+exports.createRechargeSession = async (req, res) => {
+  let connection;
+  try {
+    const { amount, minutes, type } = req.body;
+
+    if (!amount || amount < 5) {
+      return res.status(400).json({
+        error: "Invalid recharge amount",
+        details: "Minimum recharge amount is $5"
+      });
+    }
+
+    // Get user info from token
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
+    const userName = req.user?.name;
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    // 🔹 STEP 1: Create or reuse a Stripe customer
+    let customerId;
+    try {
+      const customerParams = new URLSearchParams();
+      if (userEmail) customerParams.append("email", userEmail);
+      if (userName) customerParams.append("name", userName);
+      customerParams.append("metadata[user_id]", userId.toString());
+
+      const customerResponse = await axios.post(
+        `${process.env.STRIPE_URL}/customers`,
+        customerParams,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      customerId = customerResponse.data.id;
+    } catch (customerError) {
+      return res.status(500).json({
+        error: "Failed to create Stripe customer",
+        details: customerError.response?.data || customerError.message,
+      });
+    }
+
+    // 🔹 STEP 2: Create one-time payment checkout session
+    const params = new URLSearchParams();
+    params.append("mode", "payment"); // One-time payment, not subscription
+    params.append(
+      "success_url",
+      `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`
+    );
+    params.append("cancel_url", `${process.env.FRONTEND_URL}/recharge`);
+    params.append("customer", customerId);
+
+    // Line item for minutes recharge
+    params.append("line_items[0][price_data][currency]", "usd");
+    params.append("line_items[0][price_data][product_data][name]", `Minutes Recharge - ${minutes} minutes`);
+    params.append("line_items[0][price_data][product_data][description]", `Top-up ${minutes} minutes to your account`);
+    params.append("line_items[0][price_data][unit_amount]", Math.round(amount * 100)); // Convert to cents
+    params.append("line_items[0][quantity]", "1");
+
+    params.append("metadata[user_id]", userId);
+    params.append("metadata[type]", "recharge");
+    params.append("metadata[minutes]", minutes.toString());
+    params.append("metadata[amount]", amount.toString());
+    params.append("customer_update[address]", "auto");
+
+    // Add payment method types
+    params.append("payment_method_types[0]", "card");
+
+    const response = await axios.post(
+      `${process.env.STRIPE_URL}/checkout/sessions`,
+      params,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const session = response.data;
+
+    // 🔹 STEP 3: Save recharge session to DB
+    connection = await db.getConnection();
+    const safeValue = (v) => (v === undefined ? null : v);
+
+    await connection.execute(
+      `INSERT INTO stripe_payments (
+        stripe_session_id,
+        plan_name,
+        billing_cycle,
+        amount,
+        currency,
+        payment_status,
+        customer_email,
+        customer_name,
+        payment_method_types,
+        user_id,
+        stripe_customer_id,
+        type,
+        metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        safeValue(session.id),
+        'Minutes Recharge',
+        'one_time', // One-time payment, not recurring
+        safeValue(amount),
+        "usd",
+        "pending", // Initial status, will be updated by webhook
+        safeValue(userEmail),
+        safeValue(userName),
+        JSON.stringify(['card']),
+        safeValue(userId),
+        safeValue(customerId),
+        'recharge', // Type to distinguish from subscriptions
+        JSON.stringify({
+          minutes: minutes,
+          original_amount: amount,
+          rate: 0.01 // $0.01 per minute
+        })
+      ]
+    );
+
+
+
+    // Release connection and send response
+    connection.release();
+
+    res.json({
+      url: session.url,
+      sessionId: session.id,
+      type: "recharge",
+      amount: amount,
+      minutes: minutes
+    });
+
+
+  } catch (error) {
+    if (connection) connection.release();
+    console.error("Recharge session error:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to create recharge session",
+      details: error.response?.data || error.message,
+    });
+  }
+};
+
+
 exports.handleStripeWebhook = async (req, res) => {
-  const sig = req.headers['stripe-signature'];
+  const sig = req.headers["stripe-signature"];
   let event;
 
   try {
-    // Verify webhook signature
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
     console.log(`✅ Webhook received: ${event.type}`);
-
-    // Log important event data for debugging
-    if (event.type === 'checkout.session.completed') {
-      console.log('🔍 Session data:', {
-        id: event.data.object.id,
-        subscription: event.data.object.subscription,
-        payment_status: event.data.object.payment_status,
-        metadata: event.data.object.metadata
-      });
-    }
-
-    if (event.type === 'invoice.payment_succeeded') {
-      console.log('🔍 Invoice data:', {
-        id: event.data.object.id,
-        subscription: event.data.object.subscription,
-        number: event.data.object.number,
-        invoice_pdf: event.data.object.invoice_pdf
-      });
-    }
-
   } catch (err) {
-    console.error(`❌ Webhook signature verification failed:`, err.message);
+    console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -331,23 +469,21 @@ exports.handleStripeWebhook = async (req, res) => {
     connection = await db.getConnection();
 
     switch (event.type) {
-      case 'checkout.session.completed':
-        console.log('🔄 Processing checkout.session.completed');
+      case "checkout.session.completed":
         await handleCheckoutSessionCompleted(event.data.object, connection);
         break;
 
-      case 'invoice.payment_succeeded':
-        console.log('🔄 Processing invoice.payment_succeeded');
+      case "invoice.payment_succeeded":
         await handleInvoicePaymentSucceeded(event.data.object, connection);
         break;
 
-      case 'customer.subscription.updated':
-        console.log('🔄 Processing customer.subscription.updated');
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+        console.log(`📦 Subscription event received: ${event.type}`);
         await handleSubscriptionUpdated(event.data.object, connection);
         break;
 
-      case 'customer.subscription.deleted':
-        console.log('🔄 Processing customer.subscription.deleted');
+      case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object, connection);
         break;
 
@@ -355,96 +491,44 @@ exports.handleStripeWebhook = async (req, res) => {
         console.log(`⚡ Unhandled event type: ${event.type}`);
     }
 
+
     connection.release();
-    res.json({ received: true, processed: event.type });
+    return res.status(200).json({ received: true });
   } catch (error) {
     if (connection) connection.release();
-    console.error('❌ Webhook handler error:', error);
-    res.status(500).json({ error: 'Webhook handler failed', details: error.message });
+    console.error("❌ Webhook handler error:", error);
+    return res.status(500).json({ error: "Webhook handler failed" });
   }
 };
+
 
 // 🔹 WEBHOOK EVENT HANDLERS
 async function handleCheckoutSessionCompleted(session, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
 
-  console.log(`🔄 Processing session: ${session.id}, subscription: ${session.subscription}`);
+  console.log(`🔄 Processing session: ${session.id}, mode: ${session.mode}`);
 
   try {
-    // Get subscription details
-    const subscriptionResponse = await axios.get(
-      `${process.env.STRIPE_URL}/subscriptions/${session.subscription}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-        },
-      }
-    );
-
-    const subscriptionData = subscriptionResponse.data;
-    console.log(`✅ Subscription data retrieved:`, {
-      status: subscriptionData.status,
-      current_period_start: subscriptionData.current_period_start,
-      current_period_end: subscriptionData.current_period_end,
-      has_period_start: !!subscriptionData.current_period_start,
-      has_period_end: !!subscriptionData.current_period_end
-    });
-
-    // 🔹 FIX: Ensure all values are properly converted to null if undefined
     const paymentStatus = safeValue(session.payment_status);
-    const subscriptionId = safeValue(session.subscription);
-    const subscriptionStatus = safeValue(subscriptionData.status);
-    const currentPeriodStart = subscriptionData.current_period_start
-      ? safeValue(subscriptionData.current_period_start)
-      : null;
-    const currentPeriodEnd = subscriptionData.current_period_end
-      ? safeValue(subscriptionData.current_period_end)
-      : null;
 
-    console.log(`📊 Final update values:`, {
-      paymentStatus,
-      subscriptionId,
-      subscriptionStatus,
-      currentPeriodStart,
-      currentPeriodEnd
-    });
-
-    // Update payment record with subscription details
+    // Update payment status first
     const [updateResult] = await connection.execute(
       `UPDATE stripe_payments 
        SET payment_status = ?,
-           stripe_subscription_id = ?,
-           subscription_status = ?,
-           current_period_start = FROM_UNIXTIME(?),
-           current_period_end = FROM_UNIXTIME(?),
            updated_at = CURRENT_TIMESTAMP
        WHERE stripe_session_id = ?`,
-      [
-        paymentStatus,
-        subscriptionId,
-        subscriptionStatus,
-        currentPeriodStart,
-        currentPeriodEnd,
-        session.id
-      ]
+      [paymentStatus, session.id]
     );
 
-    console.log(`✅ Database updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`);
+    console.log(`✅ Payment status updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`);
 
-    // Check if update actually worked
-    const [updatedRecord] = await connection.execute(
-      `SELECT stripe_subscription_id, subscription_status, current_period_start, current_period_end 
-       FROM stripe_payments WHERE stripe_session_id = ?`,
-      [session.id]
-    );
-
-    console.log(`📋 Updated record:`, updatedRecord[0]);
-
-    // Update user subscription details if we have user_id
-    if (session.metadata && session.metadata.user_id) {
-      await updateUserSubscriptionDetails(session.metadata.user_id, session.metadata.plan_name, connection);
-    } else {
-      console.warn('⚠️ No user_id in session metadata');
+    // Check if this is a subscription or one-time payment
+    if (session.mode === 'subscription' && session.subscription) {
+      // Handle subscription flow
+      await handleSubscriptionSession(session, connection, paymentStatus);
+    } else if (session.mode === 'payment') {
+      // Handle one-time payment flow (for recharge)
+      await handleOneTimePaymentSession(session, connection, paymentStatus);
     }
 
   } catch (error) {
@@ -453,96 +537,238 @@ async function handleCheckoutSessionCompleted(session, connection) {
   }
 }
 
+async function handleOneTimePaymentSession(session, connection, paymentStatus) {
+  console.log(`💰 Processing one-time payment session: ${session.id}`);
+
+  // If payment is successful and this is a recharge, add minutes to user's account
+  if (paymentStatus === 'paid' && session.metadata && session.metadata.type === 'recharge') {
+    console.log(`🔋 Adding recharge minutes for user: ${session.metadata.user_id}`);
+    await addRechargeMinutes(session.metadata.user_id, session.metadata, connection);
+  }
+}
+
+async function handleSubscriptionSession(session, connection, paymentStatus) {
+  const safeValue = (v) => (v === undefined ? null : v);
+  console.log(`📦 Processing subscription session: ${session.id}`);
+
+  // Get subscription details from Stripe
+  const subscriptionResponse = await axios.get(
+    `${process.env.STRIPE_URL}/subscriptions/${session.subscription}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      },
+    }
+  );
+
+  const subscriptionData = subscriptionResponse.data;
+  const subscriptionId = safeValue(session.subscription);
+  const subscriptionStatus = safeValue(subscriptionData.status);
+
+  let currentPeriodStart = safeValue(subscriptionData.current_period_start);
+  let currentPeriodEnd = safeValue(subscriptionData.current_period_end);
+
+  // 🔹 If period missing, fallback to created_at + billing_cycle
+  if (!currentPeriodStart || !currentPeriodEnd) {
+    console.log("⚠️ Missing current period dates — calculating manually...");
+
+    const [paymentRow] = await connection.execute(
+      `SELECT billing_cycle, created_at FROM stripe_payments WHERE stripe_session_id = ? LIMIT 1`,
+      [session.id]
+    );
+
+    if (paymentRow.length > 0) {
+      const createdAt = new Date(paymentRow[0].created_at);
+      const billingCycle = paymentRow[0].billing_cycle;
+
+      currentPeriodStart = Math.floor(createdAt.getTime() / 1000);
+
+      const endDate = new Date(createdAt);
+      if (billingCycle === "yearly") {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+      currentPeriodEnd = Math.floor(endDate.getTime() / 1000);
+
+      console.log(`🧮 Manually set current_period_start=${createdAt}, current_period_end=${endDate}`);
+    }
+  }
+
+  // Update payment record
+  const [updateResult] = await connection.execute(
+    `UPDATE stripe_payments 
+     SET payment_status = ?,
+         stripe_subscription_id = ?,
+         subscription_status = ?,
+         current_period_start = FROM_UNIXTIME(?),
+         current_period_end = FROM_UNIXTIME(?),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE stripe_session_id = ?`,
+    [
+      paymentStatus,
+      subscriptionId,
+      subscriptionStatus,
+      currentPeriodStart,
+      currentPeriodEnd,
+      session.id
+    ]
+  );
+
+  console.log(`✅ Subscription updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`);
+
+  if (session.metadata && session.metadata.user_id && session.metadata.plan_name) {
+    await updateUserSubscriptionDetails(session.metadata.user_id, session.metadata.plan_name, connection);
+  } else {
+    console.warn('⚠️ No user_id or plan_name in session metadata');
+  }
+}
+
+
 async function handleInvoicePaymentSucceeded(invoice, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
 
   console.log(`🔄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`);
 
-  if (invoice.subscription) {
-    try {
-      // 🔹 FIX: Ensure all values are properly converted
-      const invoiceId = safeValue(invoice.id);
-      const invoiceNumber = safeValue(invoice.number);
-      const invoicePdf = safeValue(invoice.invoice_pdf);
-      const subscriptionId = safeValue(invoice.subscription);
+  let subscriptionId = safeValue(invoice.subscription);
 
-      console.log(`📊 Invoice update values:`, {
-        invoiceId,
-        invoiceNumber,
-        invoicePdf,
-        subscriptionId
-      });
-
-      // Update the most recent payment record for this subscription
-      const [updateResult] = await connection.execute(
-        `UPDATE stripe_payments 
-         SET stripe_invoice_id = ?,
-             invoice_number = ?,
-             invoice_pdf = ?,
-             payment_status = 'paid',
-             updated_at = CURRENT_TIMESTAMP
-         WHERE stripe_subscription_id = ?
-         ORDER BY created_at DESC 
-         LIMIT 1`,
-        [
-          invoiceId,
-          invoiceNumber,
-          invoicePdf,
-          subscriptionId
-        ]
-      );
-
-      console.log(`✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateResult.affectedRows}`);
-
-      // Verify the update
-      const [updatedRecord] = await connection.execute(
-        `SELECT stripe_invoice_id, invoice_number, invoice_pdf 
-         FROM stripe_payments WHERE stripe_subscription_id = ?`,
-        [subscriptionId]
-      );
-
-      console.log(`📋 Updated invoice record:`, updatedRecord[0]);
-
-    } catch (error) {
-      console.error('❌ Error updating invoice:', error);
+  // ✅ If invoice has no subscription, fetch using customer
+  if (!subscriptionId && invoice.customer) {
+    console.log("⚠️ Invoice missing subscription, fetching customer subscriptions...");
+    const customerSubs = await stripe.subscriptions.list({ customer: invoice.customer, limit: 1 });
+    if (customerSubs.data.length > 0) {
+      subscriptionId = customerSubs.data[0].id;
+      console.log(`✅ Found subscription via customer: ${subscriptionId}`);
     }
+  }
+
+  if (!subscriptionId) {
+    console.warn(`⚠️ Still no subscription found for invoice: ${invoice.id}`);
+    return;
+  }
+
+  const invoiceId = safeValue(invoice.id);
+  const invoiceNumber = safeValue(invoice.number);
+  const invoicePdf = safeValue(invoice.invoice_pdf);
+  const customerId = safeValue(invoice.customer);
+
+  console.log(`📊 Invoice update values:`, {
+    invoiceId,
+    invoiceNumber,
+    invoicePdf,
+    subscriptionId,
+    customerId
+  });
+
+  // ✅ Try updating by subscription_id first
+  const [updateBySub] = await connection.execute(
+    `UPDATE stripe_payments 
+     SET stripe_invoice_id = ?,
+         invoice_number = ?,
+         invoice_pdf = ?,
+         payment_status = 'paid',
+         updated_at = CURRENT_TIMESTAMP
+     WHERE stripe_subscription_id = ?
+     ORDER BY created_at DESC 
+     LIMIT 1`,
+    [invoiceId, invoiceNumber, invoicePdf, subscriptionId]
+  );
+
+  if (updateBySub.affectedRows === 0) {
+    // ✅ If subscription row not found yet, fallback to updating by customer_id
+    console.log("⚠️ No row matched subscription_id, updating by customer_id instead...");
+    const [updateByCustomer] = await connection.execute(
+      `UPDATE stripe_payments 
+       SET stripe_invoice_id = ?,
+           invoice_number = ?,
+           invoice_pdf = ?,
+           stripe_subscription_id = ?,
+           payment_status = 'paid',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE stripe_customer_id = ?
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [invoiceId, invoiceNumber, invoicePdf, subscriptionId, customerId]
+    );
+    await stripe.invoices.update(invoice.id, {
+      footer: "Thank you for subscribing to QuantumHash — your trusted AI meeting assistant!",
+      custom_fields: [
+        { name: "Customer ID", value: `User-${invoice.customer}` },
+        { name: "Plan", value: invoice.lines.data[0]?.description || "N/A" },
+      ],
+    });
+
+    console.log(`✅ Invoice updated by customer_id, rows affected: ${updateByCustomer.affectedRows}`);
   } else {
-    console.warn('⚠️ Invoice has no subscription:', invoice.id);
+    console.log(`✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateBySub.affectedRows}`);
   }
 }
 
 async function handleSubscriptionUpdated(subscription, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
 
-  // 🔹 FIX: Ensure all values are properly converted
-  const subscriptionStatus = safeValue(subscription.status);
-  const currentPeriodStart = safeValue(subscription.current_period_start);
-  const currentPeriodEnd = safeValue(subscription.current_period_end);
   const subscriptionId = safeValue(subscription.id);
+  const subscriptionStatus = safeValue(subscription.status);
+  const customerId = safeValue(subscription.customer);
 
-  await connection.execute(
-    `UPDATE stripe_payments 
+  let currentPeriodStart = safeValue(subscription.current_period_start);
+  let currentPeriodEnd = safeValue(subscription.current_period_end);
+
+  // 🔹 If missing period fields, calculate manually using created_at + billing_cycle
+  if (!currentPeriodStart || !currentPeriodEnd) {
+    console.log("⚠️ Missing period fields — calculating manually...");
+    const [paymentRow] = await connection.execute(
+      `SELECT created_at, billing_cycle FROM stripe_payments WHERE stripe_customer_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [customerId]
+    );
+
+    if (paymentRow.length > 0) {
+      const createdAt = new Date(paymentRow[0].created_at);
+      const billingCycle = paymentRow[0].billing_cycle;
+
+      currentPeriodStart = Math.floor(createdAt.getTime() / 1000);
+
+      const endDate = new Date(createdAt);
+      if (billingCycle === "yearly") {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+      currentPeriodEnd = Math.floor(endDate.getTime() / 1000);
+
+      console.log(`🧮 Manually set current_period_start=${createdAt}, current_period_end=${endDate}`);
+    } else {
+      console.warn("⚠️ No matching payment record found to calculate manually.");
+    }
+  }
+
+  // Update the row
+  const [update] = await connection.execute(
+    `UPDATE stripe_payments
      SET subscription_status = ?,
          current_period_start = FROM_UNIXTIME(?),
          current_period_end = FROM_UNIXTIME(?),
          updated_at = CURRENT_TIMESTAMP
-     WHERE stripe_subscription_id = ?`,
+     WHERE stripe_subscription_id = ? OR stripe_customer_id = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
     [
       subscriptionStatus,
       currentPeriodStart,
       currentPeriodEnd,
-      subscriptionId
+      subscriptionId,
+      customerId
     ]
   );
-  console.log(`✅ Subscription updated: ${subscriptionId}, status: ${subscriptionStatus}`);
 
-  // If subscription was canceled, update user subscription details
-  if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
-    if (subscription.metadata && subscription.metadata.user_id) {
-      await downgradeToFreePlan(subscription.metadata.user_id, connection);
-    }
+  if (update.affectedRows > 0) {
+    console.log(`✅ Subscription period updated successfully (${update.affectedRows} row)`);
+  } else {
+    console.warn(`⚠️ No rows updated for subscription ${subscriptionId}`);
   }
 }
+
+
 
 async function handleSubscriptionDeleted(subscription, connection) {
   const subscriptionId = safeValue(subscription.id);
@@ -670,6 +896,212 @@ async function downgradeToFreePlan(userId, connection) {
     ]
   );
 }
+
+async function handlePaymentIntentSucceeded(paymentIntent, connection) {
+  const safeValue = (v) => (v === undefined ? null : v);
+
+  console.log(`🔄 Processing payment intent: ${paymentIntent.id}`);
+
+  try {
+    // Get the session associated with this payment intent
+    const [sessions] = await connection.execute(
+      `SELECT * FROM stripe_payments WHERE stripe_session_id = ?`,
+      [paymentIntent.id]
+    );
+
+    if (sessions.length === 0) {
+      console.log(`⚠️ No session found for payment intent: ${paymentIntent.id}`);
+      return;
+    }
+
+    const session = sessions[0];
+
+    // Update payment status
+    await connection.execute(
+      `UPDATE stripe_payments 
+       SET payment_status = 'paid',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE stripe_session_id = ?`,
+      [paymentIntent.id]
+    );
+
+    console.log(`✅ Payment intent processed: ${paymentIntent.id}`);
+
+    // If this is a recharge, add minutes to user's account
+    if (session.type === 'recharge') {
+      await addRechargeMinutes(session.user_id, session.metadata, connection);
+    }
+
+  } catch (error) {
+    console.error('❌ Error in handlePaymentIntentSucceeded:', error);
+    throw error;
+  }
+}
+
+async function addRechargeMinutes(userId, metadata, connection) {
+  let minutes, amount;
+
+  // Handle both string and object metadata
+  if (typeof metadata === 'string') {
+    try {
+      const parsedMetadata = JSON.parse(metadata);
+      minutes = parseInt(parsedMetadata.minutes) || 0;
+      amount = parseFloat(parsedMetadata.original_amount) || 0;
+    } catch (e) {
+      console.error('❌ Error parsing metadata:', e);
+      return;
+    }
+  } else {
+    minutes = parseInt(metadata.minutes) || 0;
+    amount = parseFloat(metadata.amount) || parseFloat(metadata.original_amount) || 0;
+  }
+
+  if (minutes <= 0) {
+    console.warn(`⚠️ Invalid minutes value: ${minutes} for user: ${userId}`);
+    return;
+  }
+
+  console.log(`🔄 Adding ${minutes} minutes to user: ${userId}`);
+
+  try {
+    // Check if user has existing subscription details
+    const [existingDetails] = await connection.execute(
+      `SELECT * FROM user_subscription_details WHERE user_id = ?`,
+      [userId]
+    );
+
+    if (existingDetails.length > 0) {
+      // Update existing record - add minutes to both total and monthly remaining
+      const currentDetails = existingDetails[0];
+
+      const newTotalRemaining = (currentDetails.total_remaining_time || 0) + minutes;
+      const newMonthlyRemaining = (currentDetails.monthly_remaining || 0) + minutes;
+      const newTotalMinutes = (currentDetails.total_minutes || 0) + minutes;
+
+      await connection.execute(
+        `UPDATE user_subscription_details 
+         SET total_remaining_time = ?,
+             monthly_remaining = ?,
+             total_minutes = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ?`,
+        [
+          newTotalRemaining,
+          newMonthlyRemaining,
+          newTotalMinutes,
+          userId
+        ]
+      );
+
+      console.log(`✅ Added ${minutes} minutes to user ${userId}. New total: ${newTotalRemaining} minutes`);
+    } else {
+      // Create new record for user
+      await connection.execute(
+        `INSERT INTO user_subscription_details 
+         (user_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          minutes,
+          minutes,
+          0,
+          minutes,
+          0,
+          minutes
+        ]
+      );
+
+      console.log(`✅ Created new subscription details for user ${userId} with ${minutes} minutes`);
+    }
+
+    // Get the stripe_payment_id for this recharge
+    const [paymentRecords] = await connection.execute(
+      `SELECT id FROM stripe_payments WHERE stripe_session_id = ? AND user_id = ?`,
+      [metadata.session_id || '', userId]
+    );
+
+    const stripePaymentId = paymentRecords.length > 0 ? paymentRecords[0].id : null;
+
+    // Log the recharge transaction
+    await connection.execute(
+      `INSERT INTO recharge_transactions 
+       (user_id, amount, minutes, rate, status, stripe_payment_id, created_at) 
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        userId,
+        amount,
+        minutes,
+        0.01,
+        'completed',
+        stripePaymentId
+      ]
+    );
+
+    console.log(`✅ Recharge transaction logged for user ${userId}`);
+
+  } catch (error) {
+    console.error('❌ Error adding recharge minutes:', error);
+    throw error;
+  }
+}
+
+exports.getUserMinutes = async (req, res) => {
+  let connection;
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    connection = await db.getConnection();
+
+    const [subscriptionDetails] = await connection.execute(
+      `SELECT * FROM user_subscription_details WHERE user_id = ?`,
+      [userId]
+    );
+
+    if (subscriptionDetails.length === 0) {
+      connection.release();
+      return res.json({
+        success: true,
+        data: {
+          total_minutes: 0,
+          total_remaining_time: 0,
+          total_used_time: 0,
+          monthly_limit: 0,
+          monthly_used: 0,
+          monthly_remaining: 0,
+          plan_name: "Free"
+        }
+      });
+    }
+
+    const details = subscriptionDetails[0];
+
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        total_minutes: details.total_minutes || 0,
+        total_remaining_time: details.total_remaining_time || 0,
+        total_used_time: details.total_used_time || 0,
+        monthly_limit: details.monthly_limit || 0,
+        monthly_used: details.monthly_used || 0,
+        monthly_remaining: details.monthly_remaining || 0,
+        plan_name: details.plan_name || "Free"
+      }
+    });
+
+  } catch (error) {
+    if (connection) connection.release();
+    console.error("Get user minutes error:", error);
+    res.status(500).json({
+      error: "Failed to retrieve user minutes",
+    });
+  }
+};
 
 // 🔹 LEGACY SUCCESS HANDLER (for frontend redirects - minimal updates)
 exports.handlePaymentSuccess = async (req, res) => {

@@ -30,6 +30,8 @@ const Subscription = () => {
     }
   }, [token]);
 
+
+
   const fetchSubscriptionData = async () => {
     try {
       setLoading(true);
@@ -41,26 +43,37 @@ const Subscription = () => {
           {
             headers: { Authorization: `Bearer ${token}` },
           }
-        ),
+        ).catch(err => {
+          console.error('Subscription details error:', err);
+          throw new Error(err.response?.data?.error || 'Failed to load subscription details');
+        }),
         axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/stripe/billing-history`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
-        ),
+        ).catch(err => {
+          console.error('Billing history error:', err);
+          // Don't throw error for billing history, just log it
+          return { data: { success: true, data: [] } };
+        }),
       ]);
 
-      console.log("subscriptionRes: ", subscriptionRes);
+      console.log("Subscription response:", subscriptionRes);
 
       if (subscriptionRes.data.success) {
         setSubscription(subscriptionRes.data.data);
+      } else {
+        throw new Error(subscriptionRes.data.error || 'Failed to load subscription');
       }
 
       if (billingRes.data.success) {
         setBillingHistory(billingRes.data.data);
       }
+
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to load subscription data");
+      console.error('Fetch subscription data error:', err);
+      setError(err.message || "Failed to load subscription data");
     } finally {
       setLoading(false);
     }
@@ -227,7 +240,7 @@ const Subscription = () => {
               <div className="text-center py-12">
                 <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  No Active Subscription
+                  No Active Subscription0
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
                   You don't have an active subscription. Upgrade to unlock

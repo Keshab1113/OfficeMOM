@@ -37,6 +37,7 @@ app.post(
   express.raw({ type: "application/json" }),
   stripeController.handleStripeWebhook
 );
+
 app.use(
   cors({
     origin: (origin, callback) => callback(null, true), // allow all origins
@@ -56,6 +57,8 @@ app.use(
   })
 );
 app.use(passport.initialize());
+
+console.log("✅ Stripe webhook route registered before express.json()");
 
 app.get("/", (req, res) => {
   res.json({
@@ -93,7 +96,6 @@ const io = new SocketIOServer(server, {
     credentials: true, // optional — can set to false if not needed
   },
 });
-
 
 // 👇 ADD THIS HERE — before io.on("connection")
 io.engine.on("connection_error", (err) => {

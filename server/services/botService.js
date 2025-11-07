@@ -138,7 +138,7 @@ class BotService {
       // Save recording info with FTP URL
       await db.execute(
         'INSERT INTO bot_recordings (meeting_id, file_path, file_size, duration, bot_display_name) VALUES (?, ?, ?, ?, ?)',
-        [meetingId, ftpUrl, audioBuffer.length, 300, botDisplayName]
+        [meetingId, ftpUrl, audioBuffer.length, 100, botDisplayName]
       );
 
       // Log successful recording

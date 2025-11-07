@@ -330,7 +330,7 @@ const GenerateNotesHome = () => {
                                             <button
                                                 onClick={handleStartMakingNotes}
                                                 disabled={isProcessing || !selectedFile}
-                                                className={`mt-6 w-full py-4  rounded-lg text-gray-600 dark:text-white font-semibold transition-colors ${isProcessing || !selectedFile
+                                                className={`mt-6 w-full py-4  rounded-lg text-gray-100 dark:text-white font-semibold transition-colors ${isProcessing || !selectedFile
                                                     ? "bg-gray-500/20 cursor-not-allowed "
                                                     : "bg-blue-500 hover:bg-blue-600 cursor-pointer"
                                                     } flex items-center justify-center`}
@@ -394,7 +394,7 @@ const GenerateNotesHome = () => {
                     onClose={() => setShowRechargeModal(false)}
                     requiredMinutes={rechargeInfo?.required || 0}
                     remainingMinutes={rechargeInfo?.remaining || 0}
-                    onRecharge={() => (window.location.href = "/pricing")}
+                    onRecharge={() => (window.location.href = "/recharge")}
                 />
             )}
         </>

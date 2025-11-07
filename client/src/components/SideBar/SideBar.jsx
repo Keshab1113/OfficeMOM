@@ -74,9 +74,6 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
     email,
     fullName,
     token,
-    totalCreatedMoMs,
-    totalRemainingTime,
-    totalTimes,
   } = useSelector((state) => state.auth);
   const { profileImage } = useSelector((state) => state.auth);
   const { addToast } = useToast();
@@ -108,26 +105,35 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   }, []);
 
   useEffect(() => {
-    if (token) {
-      const fetchSubscription = async () => {
-        try {
-          const res = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          setSubscription(res.data.data);
-        } catch (err) {
-          console.error("Failed to load subscription details.", err);
-        }
-      };
+    if (!token) return;
 
-      fetchSubscription();
-    }
+    let intervalId;
+
+    const fetchSubscription = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setSubscription(res.data.data);
+      } catch (err) {
+        console.error("Failed to load subscription details.", err);
+      }
+    };
+
+    fetchSubscription();
+
+    // 🔁 Fetch every 10 seconds (adjust as needed)
+    intervalId = setInterval(fetchSubscription, 10000);
+
+    // 🧹 cleanup
+    return () => clearInterval(intervalId);
   }, [token]);
+
 
   const handleLogout = () => {
     dispatch(logout());

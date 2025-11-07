@@ -60,7 +60,7 @@ const signup = async (req, res) => {
       `INSERT INTO user_subscription_details 
         (user_id, stripe_payment_id, total_minutes, total_remaining_time, total_used_time, monthly_limit, monthly_used, monthly_remaining) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, null, 300, 300, 0, 0, 0, 0]
+      [userId, null, 100, 100, 0, 0, 0, 0]
     );
     // Try sending OTP email
     await transporter.sendMail({

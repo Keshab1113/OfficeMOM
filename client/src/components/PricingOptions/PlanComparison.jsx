@@ -33,7 +33,7 @@ const PlanComparison = ({ plans, billingCycle }) => {
             values: plans.reduce((acc, plan) => {
               if (plan.name === "Free") {
                 acc[plan.name] = `${
-                  plan.totalLifetimeMinutes || 300
+                  plan.totalLifetimeMinutes || 100
                 } total (lifetime)`;
               } else {
                 acc[plan.name] = `${plan.monthlyMinutes || 0}/month`;

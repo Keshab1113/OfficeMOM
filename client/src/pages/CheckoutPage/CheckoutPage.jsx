@@ -59,6 +59,7 @@ const CheckoutPage = () => {
     const { addToast } = useToast();
     const { token } = useSelector((state) => state.auth);
 
+
     const handleCheckout = async () => {
         setLoadingCheckout(true);
         if (!paymentMethod) {
@@ -68,42 +69,62 @@ const CheckoutPage = () => {
         }
 
         try {
-            const finalPrice =
-                billingCycle === "yearly"
-                    ? plan?.yearlyPrice
-                    : plan?.price;
+            // Check if this is a recharge
+            const isRecharge = location.state?.isRecharge;
 
-            // Get the correct priceID based on billing cycle
-            const priceID =
-                billingCycle === "yearly"
-                    ? plan?.yearly_priceID
-                    : plan?.priceID;
+            if (isRecharge) {
+                // Handle recharge checkout
+                const rechargeAmount = location.state?.rechargeAmount;
+                const rechargeMinutes = location.state?.rechargeMinutes;
 
-            const requestData = {
-                plan: plan?.name,
-                paymentMethods: [paymentMethod],
-                billingCycle: billingCycle,
-                price: finalPrice,
-            };
-
-            if (priceID) {
-                requestData.priceID = priceID;
-            }
-
-            const res = await axios.post(
-                `${import.meta.env.VITE_BACKEND_URL
-                }/api/stripe/create-checkout-session`,
-                requestData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
+                const res = await axios.post(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/stripe/create-recharge-session`,
+                    {
+                        amount: rechargeAmount,
+                        minutes: rechargeMinutes,
+                        type: "recharge"
                     },
-                }
-            );
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
 
-            if (res.data.url) {
-                setLoadingCheckout(false);
-                window.location.href = res.data.url;
+                if (res.data.url) {
+                    setLoadingCheckout(false);
+                    window.location.href = res.data.url;
+                }
+            } else {
+                // Handle subscription checkout (existing code)
+                const finalPrice = billingCycle === "yearly" ? plan?.yearlyPrice : plan?.price;
+                const priceID = billingCycle === "yearly" ? plan?.yearly_priceID : plan?.priceID;
+
+                const requestData = {
+                    plan: plan?.name,
+                    paymentMethods: [paymentMethod],
+                    billingCycle: billingCycle,
+                    price: finalPrice,
+                };
+
+                if (priceID) {
+                    requestData.priceID = priceID;
+                }
+
+                const res = await axios.post(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/stripe/create-checkout-session`,
+                    requestData,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                if (res.data.url) {
+                    setLoadingCheckout(false);
+                    window.location.href = res.data.url;
+                }
             }
         } catch (err) {
             setLoadingCheckout(false);

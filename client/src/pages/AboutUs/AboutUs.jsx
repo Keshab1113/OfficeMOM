@@ -371,7 +371,7 @@ export default function AboutUs() {
                     </button>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-8">
-                    No credit card required • 300 min free trial • Cancel
+                    No credit card required • 100 min free trial • Cancel
                     anytime
                   </p>
                 </div>
