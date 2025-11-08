@@ -38,6 +38,7 @@ const LiveMeeting = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
+  const [isAudioPreviewProcessing, setIsAudioPreviewProcessing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const [recordedBlob, setRecordedBlob] = useState(false);
   const [barCount, setBarCount] = useState(32);
@@ -427,10 +428,10 @@ const LiveMeeting = () => {
         formData.append("audio", file);
         formData.append("source", "Live Transcript Conversion");
         formData.append("meetingId", meetingIdRef.current);
-formData.append("recordingTime", accumulatedTimeRef.current);
+        formData.append("recordingTime", accumulatedTimeRef.current);
         console.log("meeting id", meetingIdRef.current);
 
-        
+
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio-ftp`,
           formData,
@@ -600,11 +601,11 @@ formData.append("recordingTime", accumulatedTimeRef.current);
       });
 
       backupRecorder.ondataavailable = (e) => {
-  if (e.data.size > 0 && socketRef.current?.connected) {
-    // Always send chunks - backend will handle if recording stopped
-    socketRef.current.emit('audio-chunk-backup', e.data);
-  }
-};
+        if (e.data.size > 0 && socketRef.current?.connected) {
+          // Always send chunks - backend will handle if recording stopped
+          socketRef.current.emit('audio-chunk-backup', e.data);
+        }
+      };
 
       backupRecorder.onerror = (err) => {
         console.error('❌ Backup recorder error:', err);
@@ -623,10 +624,11 @@ formData.append("recordingTime", accumulatedTimeRef.current);
   };
 
 
- 
+
   const stopRecording = async () => {
     accumulatedTimeRef.current = recordingTime;
     setIsRecording(false);
+    setIsAudioPreviewProcessing(true);
 
     console.log(`⏱ Saving accumulated time: ${accumulatedTimeRef.current}s`);
 
@@ -656,10 +658,10 @@ formData.append("recordingTime", accumulatedTimeRef.current);
     // STEP 4: Tell backend to finalize and save
     if (socketRef.current && meetingId) {
       socketRef.current.emit("stop-backup-recording", {
-  roomId: meetingId,
-  token,
-  recordingTime: accumulatedTimeRef.current // ✅ Pass timer duration
-});
+        roomId: meetingId,
+        token,
+        recordingTime: accumulatedTimeRef.current // ✅ Pass timer duration
+      });
       console.log('📤 Sent stop-backup-recording to backend');
     }
 
@@ -838,7 +840,7 @@ formData.append("recordingTime", accumulatedTimeRef.current);
 
 
 
- const handleStartMakingNotes = async () => {
+  const handleStartMakingNotes = async () => {
     setIsProcessing(true);
     try {
       // ✅ Step 1: Fetch latest meeting info (ensures newest audioUrl)
@@ -858,27 +860,27 @@ formData.append("recordingTime", accumulatedTimeRef.current);
 
       const audioUrl = data.latestMeeting.audio_url;
       const meetingDurationMinutes = data.latestMeeting.duration_minutes || Math.ceil(accumulatedTimeRef.current / 60);
-      
+
       console.log("📥 Fetching latest audio from:", audioUrl);
       console.log("⏱️ Meeting duration:", meetingDurationMinutes, "minutes");
 
       // ✅ Step 2: Fetch audio file as blob
       // ✅ Step 3: Send audio URL directly for processing
-const payload = {
-  audioUrl, // Use existing FTP/hosted URL
-  source: "Live Transcript Conversion",
-  meetingDuration: meetingDurationMinutes,
-};
+      const payload = {
+        audioUrl, // Use existing FTP/hosted URL
+        source: "Live Transcript Conversion",
+        meetingDuration: meetingDurationMinutes,
+      };
 
-const response = await axios.post(
-  `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-  payload,
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.data) {
         const {
@@ -1327,36 +1329,35 @@ const response = await axios.post(
                       )}
                     </div>
                   </div>
-                 {lastPreview?.needToShow === true && meetingId ? (
-  <StylishAudioPreview
-    onRecordAgain={handleRecordAgain}
-    onRemove={onRemove}
-  />
-) : (
-  recordedBlob && (
-    <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
-      <Loader2 className="w-10 h-10 animate-spin" />
-      Meeting Preview Processing...
-    </div>
-  )
-)}
+                  {lastPreview?.needToShow === true && meetingId ? (
+                    <StylishAudioPreview
+                      onRecordAgain={handleRecordAgain}
+                      onRemove={onRemove}
+                    />
+                  ) : (
+                    isAudioPreviewProcessing && (
+                      <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
+                        <Loader2 className="w-10 h-10 animate-spin" />
+                        Meeting Preview Processing...
+                      </div>
+                    )
+                  )}
 
                   <button
                     onClick={handleStartMakingNotes}
                     disabled={
-  !meetingId ||
-  lastPreview?.needToShow === false ||
-  isProcessing ||
-  previews.length === 0
-}
-className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${
-  !meetingId ||
-  lastPreview?.needToShow === false ||
-  isProcessing ||
-  previews.length === 0
-    ? "bg-gray-500/20 cursor-not-allowed"
-    : "bg-blue-400/20 hover:bg-blue-500 cursor-pointer"
-}`}
+                      !meetingId ||
+                      lastPreview?.needToShow === false ||
+                      isProcessing ||
+                      previews.length === 0
+                    }
+                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${!meetingId ||
+                        lastPreview?.needToShow === false ||
+                        isProcessing ||
+                        previews.length === 0
+                        ? "bg-gray-500/20 cursor-not-allowed"
+                        : "bg-blue-400/20 hover:bg-blue-500 hover:text-white cursor-pointer"
+                      }`}
 
                   >
                     {isProcessing ? (
