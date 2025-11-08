@@ -219,7 +219,7 @@ setAudioData(allMeetings);
             {audioData.map((audio, index) => {
               const isLastPreview =
                 audio?.id === lastPreview?.id &&
-                lastPreview.needToShow === true;
+                lastPreview?.needToShow === true;
               return (
                 <div
                   key={index}
