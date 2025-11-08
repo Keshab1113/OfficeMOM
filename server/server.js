@@ -230,24 +230,53 @@ io.on("connection", (socket) => {
   });
 
   // --- Guest requests to join ---
+  // socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
+  //   const room = rooms.get(roomId);
+  //   if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+
+  //   socket.data.roomId = roomId;
+  //   socket.data.deviceName = deviceName;
+  //   socket.data.deviceLabel = deviceLabel;
+    
+  //   room.pendingRequests.set(socket.id, { deviceName, deviceLabel });
+
+  //   socket.emit("host:socket-id", { hostId: room.hostSocketId });
+    
+  //   io.to(room.hostSocketId).emit("host:join-request", {
+  //     socketId: socket.id,
+  //     deviceName,
+  //     deviceLabel,
+  //   });
+  // });
+
   socket.on("guest:request-join", ({ roomId, deviceName, deviceLabel }) => {
-    const room = rooms.get(roomId);
-    if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+  let room = rooms.get(roomId);
 
-    socket.data.roomId = roomId;
-    socket.data.deviceName = deviceName;
-    socket.data.deviceLabel = deviceLabel;
-    
-    room.pendingRequests.set(socket.id, { deviceName, deviceLabel });
+  // 🔹 If room ended but exists, allow rejoin
+  if (!room) return socket.emit("guest:denied", { reason: "Room not found" });
+  
+  if (room.ended) {
+    // Reset approvedPeers for rejoin
+    room.approvedPeers = new Map();
+    room.pendingRequests = new Map();
+    room.ended = false; // mark active again
+    console.log(`🔄 Guest rejoining ended room: ${roomId}`);
+  }
 
-    socket.emit("host:socket-id", { hostId: room.hostSocketId });
-    
-    io.to(room.hostSocketId).emit("host:join-request", {
-      socketId: socket.id,
-      deviceName,
-      deviceLabel,
-    });
+  socket.data.roomId = roomId;
+  socket.data.deviceName = deviceName;
+  socket.data.deviceLabel = deviceLabel;
+
+  room.pendingRequests.set(socket.id, { deviceName, deviceLabel });
+
+  socket.emit("host:socket-id", { hostId: room.hostSocketId });
+  
+  io.to(room.hostSocketId).emit("host:join-request", {
+    socketId: socket.id,
+    deviceName,
+    deviceLabel,
   });
+});
 
   // --- Host approves guest ---
   socket.on("host:approve", ({ guestSocketId }) => {
@@ -409,12 +438,43 @@ socket.on("stop-backup-recording", async ({ roomId, token }) => {
   });
 
   // --- Host ends meeting ---
-  socket.on("host:end-meeting", ({ roomId }) => {
+//   socket.on("host:end-meeting", ({ roomId }) => {
+//   const room = rooms.get(roomId);
+//   if (!room || room.hostSocketId !== socket.id) return;
+
+//   console.log(`🛑 Host ending meeting: ${roomId}`);
+  
+//   room.approvedPeers.forEach((_, guestSocketId) => {
+//     const guest = io.sockets.sockets.get(guestSocketId);
+//     if (guest) {
+//       guest.emit("room:ended");
+//       guest.emit("host:end-meeting");
+//       guest.leave(roomId);
+//     }
+//   });
+  
+//   room.pendingRequests.forEach((_, guestSocketId) => {
+//     const guest = io.sockets.sockets.get(guestSocketId);
+//     if (guest) {
+//       guest.emit("guest:denied", { reason: "Meeting ended by host" });
+//       guest.disconnect();
+//     }
+//   });
+  
+//   // 🔥 CHANGED: Don't cleanup immediately - wait for backup to save
+//   // audioBackup.cleanup(roomId); // ❌ REMOVE THIS LINE
+  
+//   rooms.delete(roomId);
+//   closeAssemblyAIWS(roomId);
+// });
+
+// --- Host ends meeting ---
+socket.on("host:end-meeting", ({ roomId }) => {
   const room = rooms.get(roomId);
   if (!room || room.hostSocketId !== socket.id) return;
 
   console.log(`🛑 Host ending meeting: ${roomId}`);
-  
+
   room.approvedPeers.forEach((_, guestSocketId) => {
     const guest = io.sockets.sockets.get(guestSocketId);
     if (guest) {
@@ -423,7 +483,7 @@ socket.on("stop-backup-recording", async ({ roomId, token }) => {
       guest.leave(roomId);
     }
   });
-  
+
   room.pendingRequests.forEach((_, guestSocketId) => {
     const guest = io.sockets.sockets.get(guestSocketId);
     if (guest) {
@@ -431,12 +491,13 @@ socket.on("stop-backup-recording", async ({ roomId, token }) => {
       guest.disconnect();
     }
   });
-  
-  // 🔥 CHANGED: Don't cleanup immediately - wait for backup to save
-  // audioBackup.cleanup(roomId); // ❌ REMOVE THIS LINE
-  
-  rooms.delete(roomId);
+
+  // 🔹 DO NOT delete room immediately
+  // rooms.delete(roomId);
   closeAssemblyAIWS(roomId);
+
+  // Mark room as ended
+  room.ended = true;
 });
 
   // --- Handle disconnection ---

@@ -4,10 +4,11 @@ const db = require("../config/db");
 const uploadToFTP = require("../config/uploadToFTP");
 const axios = require("axios");
 const { 
-   getAudioDuration,
+  getAudioDuration,
   checkUserMinutes, 
   deductUserMinutes, 
-  logMinutesUsage 
+  logMinutesUsage,
+  secondsToMinutes
 } = require("./../middlewares/minutesManager");
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
@@ -120,11 +121,13 @@ const uploadAudio = async (req, res) => {
 
     // ⏱️ STEP 1: Check audio duration and user minutes
     // ⏱️ STEP 1: Get meeting duration from frontend or fallback to auto calculation
+// ⏱️ STEP 1: Get audio duration in SECONDS
+// ⏱️ STEP 1: Get audio duration in MINUTES
 let audioDurationMinutes;
 let isEstimated = false;
 
 if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
-  audioDurationMinutes = parseInt(req.body.meetingDuration);
+  audioDurationMinutes = parseFloat(req.body.meetingDuration);
   console.log(`✅ Using frontend meeting duration: ${audioDurationMinutes} minutes`);
 } else {
   const durationResult = await getAudioDuration(buffer);
@@ -136,11 +139,11 @@ if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
 // ⏱️ STEP 2: Check if user has sufficient minutes
 const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
 
-    if (!minutesCheck.hasMinutes) {
+  if (!minutesCheck.hasMinutes) {
       return res.status(402).json({
         success: false,
         message: minutesCheck.message,
-        requiredMinutes: audioDurationMinutes,
+        requiredMinutes: minutesCheck.requiredMinutes,
         remainingMinutes: minutesCheck.remainingMinutes,
         needsRecharge: true,
         rechargeUrl: "/pricing"
@@ -198,19 +201,12 @@ const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
       ]
     );
 
-    // ⏱️ STEP 3: Deduct minutes BEFORE sending to AssemblyAI
+     
+  // ⏱️ STEP 3: Deduct minutes BEFORE sending to AssemblyAI (pass seconds)
+   // ⏱️ STEP 3: Deduct minutes BEFORE sending to AssemblyAI
     const deductionResult = await deductUserMinutes(userId, audioDurationMinutes);
     
-    console.log(`Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
-
-    // 📊 Log the usage (optional but recommended for audit trail)
-    // Uncomment after creating the minutes_usage_log table
-    // await logMinutesUsage(
-    //   userId, 
-    //   uploadAudioResult.insertId, 
-    //   audioDurationMinutes, 
-    //   actualSource
-    // );
+    console.log(`✅ Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
 
     // 🔥 STEP 4: Now send to AssemblyAI for transcription
     const created = await createTranscription(ftpUrl);
@@ -283,10 +279,14 @@ const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
     });
   }
 };
-
+ 
 const uploadAudioToFTPOnly = async (req, res) => {
+  console.log("response from uploadtoftp",req.body)
   try {
     const userId = req.user?.id;
+   const { meetingId, recordingTime: recordingTimeRaw } = req.body;
+const recordingTime = recordingTimeRaw ? parseInt(recordingTimeRaw, 10) : 0; // ✅ Parse as integer
+
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: no user ID" });
     }
@@ -295,25 +295,94 @@ const uploadAudioToFTPOnly = async (req, res) => {
       return res.status(400).json({ message: "No audio file uploaded" });
     }
 
+    if (!meetingId) {
+      return res.status(400).json({ message: "Missing meeting ID" });
+    }
+
     const buffer = req.file.buffer;
     const originalName = req.file.originalname;
+
+    console.log(`📤 Uploading meeting audio for meetingId: ${meetingId}`);
 
     // Upload to FTP
     const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
 
+    console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
+
+    // ✅ Determine final duration to save (Priority: Timer > Database > File)
+let finalMinutesValue = 0;
+
+if (recordingTime && recordingTime > 0) {
+  // Priority 1: Use timer duration from frontend (most accurate)
+  finalMinutesValue = secondsToMinutes(recordingTime);
+  console.log(`⏱️ Using timer duration: ${recordingTime}s = ${finalMinutesValue} minutes (rounded up)`);
+} else {
+  // Priority 2: Check database for existing duration
+  try {
+    const [meeting] = await db.query(
+      "SELECT duration_minutes FROM meetings WHERE room_id = ?",
+      [meetingId]
+    );
+    
+    if (meeting.length > 0 && meeting[0].duration_minutes > 0) {
+      finalMinutesValue = parseFloat(meeting[0].duration_minutes);
+      console.log(`✅ Using database duration: ${finalMinutesValue} minutes`);
+    } else {
+      // Priority 3: Calculate from uploaded file as last resort
+      console.log(`⚠️ No timer or database duration, calculating from file...`);
+      const durationResult = await getAudioDuration(buffer);
+      finalMinutesValue = typeof durationResult === "object" ? durationResult.minutes : durationResult;
+      console.log(`ℹ️ Calculated duration from file: ${finalMinutesValue} minutes (rounded up)`);
+    }
+  } catch (error) {
+    console.error("Error getting duration from database:", error);
+    // Fallback to file calculation
+    const durationResult = await getAudioDuration(buffer);
+    finalMinutesValue = typeof durationResult === "object" ? durationResult.minutes : durationResult;
+    console.log(`ℹ️ Fallback: Calculated from file: ${finalMinutesValue} minutes (rounded up)`);
+  }
+}
+
+// Update meeting record with final duration
+const [updateResult] = await db.query(
+  `UPDATE meetings 
+   SET 
+     audio_url = ?,
+     duration_minutes = ?,
+     ended_at = NOW()
+   WHERE room_id = ?`,
+  [ftpUrl, finalMinutesValue, meetingId]
+);
+
+
+
+    if (updateResult.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Meeting not found or not owned by user",
+      });
+    }
+
+    console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
+
     res.status(200).json({
-      message: "Audio uploaded successfully to FTP",
+      success: true,
+      message: "Audio uploaded and meeting updated successfully",
+      meetingId,
       audioUrl: ftpUrl,
       fileName: originalName,
+      durationMinutes: finalMinutesValue,
     });
   } catch (err) {
-    console.error("FTP upload error:", err);
+    console.error("❌ FTP upload error:", err);
     res.status(500).json({
-      message: "Error uploading audio to FTP",
+      success: false,
+      message: "Error uploading audio or updating meeting",
       error: err.message,
     });
   }
 };
+
 
 module.exports = {
   uploadAudio,
