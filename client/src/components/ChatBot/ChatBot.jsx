@@ -35,7 +35,7 @@ const ChatBot = () => {
     {
       question: "what is your refund policy",
       answer:
-        "We offer a 10-day money-back guarantee. If you're not satisfied, contact our support team within 10 days of purchase for remaining refund.",
+        "We offer a 7-day money-back guarantee. If you're not satisfied, contact our support team within 7 days of purchase for remaining refund.",
     },
     {
       question: "how to cancel subscription",

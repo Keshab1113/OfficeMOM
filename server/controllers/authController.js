@@ -332,16 +332,15 @@ const sendPasswordResetOtp = async (req, res) => {
       [email]
     );
 
-    // Check if user exists - return error if not found
     if (rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "User with this email does not exist"
+        message: "User with this email does not exist",
       });
     }
 
     const otp = String(crypto.randomInt(100000, 1000000)).padStart(6, "0");
-    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expires = Date.now() + 10 * 60 * 1000; // store expiry as ms timestamp (10 min)
 
     await db.query(
       "UPDATE users SET resetOtp = ?, resetOtpExpires = ? WHERE email = ?",
@@ -365,7 +364,7 @@ const sendPasswordResetOtp = async (req, res) => {
                   OfficeMoM Password Reset
                 </td></tr>
                 <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
-                  <p>Hello ${rows[0].fullName ? ` ${rows[0].fullName}` : ""},</p>
+                  <p>Hello${rows[0].fullName ? ` ${rows[0].fullName}` : ""},</p>
                   <p>Use the OTP below to reset your password. It is valid for <b>10 minutes</b>:</p>
                   <p style="text-align:center; margin:30px 0;">
                     <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
@@ -385,56 +384,56 @@ const sendPasswordResetOtp = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Password reset OTP has been sent to your email"
+      message: "Password reset OTP has been sent to your email",
     });
   } catch (err) {
     console.error("sendPasswordResetOtp error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error. Please try again later."
+      message: "Server error. Please try again later.",
     });
   }
 };
+
 
 const resetPasswordWithOtp = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) {
-      return res
-        .status(400)
-        .json({ message: "Email, OTP, and newPassword are required" });
+      return res.status(400).json({ message: "Email, OTP, and new password are required" });
     }
 
     const [rows] = await db.query(
       "SELECT id, resetOtp, resetOtpExpires FROM users WHERE email = ?",
       [email]
     );
+
     if (rows.length === 0) {
       return res.status(400).json({ message: "Invalid email or OTP" });
     }
 
     const user = rows[0];
+
     if (!user.resetOtp || !user.resetOtpExpires) {
       return res.status(400).json({
         message: "No active reset request. Please request a new OTP.",
       });
     }
 
-    const isExpired = new Date(user.resetOtpExpires).getTime() < Date.now();
+    // check expiry using UNIX timestamp (ms)
+    const isExpired = Number(user.resetOtpExpires) < Date.now();
     if (isExpired) {
-      return res
-        .status(400)
-        .json({ message: "OTP expired. Please request a new one." });
+      return res.status(400).json({ message: "OTP expired. Please request a new one." });
     }
 
     if (String(user.resetOtp) !== String(otp)) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
+
     const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword);
     if (!strong) {
       return res.status(400).json({
-        message:
-          "Password must be at least 8 characters long and include uppercase, lowercase, and a number",
+        message: "Password must be at least 8 characters long and include uppercase, lowercase, and a number",
       });
     }
 
@@ -451,6 +450,7 @@ const resetPasswordWithOtp = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 const resetPasswordWithoutOtp = async (req, res) => {
   try {
     const { email, newPassword } = req.body;

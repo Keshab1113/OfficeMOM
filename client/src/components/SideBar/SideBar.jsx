@@ -281,7 +281,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
         {/* Mobile Only Dropdown Menu */}
 
 
-        <div className="space-y-3 2xl:mt-20 mt-10">
+        <div className="md:space-y-3 space-y-2 2xl:mt-20 mt-10">
           {navItems.map((item, index) => {
             const IconComponent = item.icon;
             return (
@@ -291,7 +291,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                 onClick={handleNavClick}
                 title={(isCollapsed && !isMobile) ? item.heading : ""}
                 className={({ isActive }) =>
-                  `group border-0 border-none flex items-center cursor-pointer gap-4 p-4 rounded-2xl transition-all duration-300 relative overflow-hidden
+                  `group border-0 border-none flex items-center cursor-pointer gap-4 px-4 md:py-4 py-2 rounded-2xl transition-all duration-300 relative overflow-hidden
                   ${(isCollapsed && !isMobile) ? "justify-center" : "justify-start"}
                   ${isActive
                     ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transform "
@@ -344,10 +344,9 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
             <div className="relative " ref={mobileMenuRef}>
               <motion.button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="w-full flex items-center justify-between p-4 rounded-2xl 
-                bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600
-                text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600
-                transition-all duration-300 shadow-md border border-white/30 dark:border-gray-600/50"
+                className="w-full flex items-center justify-between p-2 px-4 rounded-2xl 
+                text-gray-700 dark:text-gray-300 
+                transition-all duration-300  "
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -366,7 +365,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <div className="mt-2 space-y-2 pl-4 ">
+                    <div className="mt-0 space-y-1 pl-4 ">
                       {mobileMenuItems.map((item, index) => {
                         const IconComponent = item.icon;
                         return (
@@ -374,12 +373,11 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                             key={index}
                             to={item.url}
                             onClick={handleNavClick}
-                            className=" w-full text-left p-3 rounded-xl 
-                          bg-white/60 dark:bg-gray-700/60 
+                            className=" w-full text-left px-3 py-1 rounded-xl 
                           text-gray-700 dark:text-gray-300 
-                          hover:bg-white/80 dark:hover:bg-gray-600/80
-                          transition-all duration-300 border border-white/30 dark:border-gray-600/50
-                          hover:shadow-md flex items-center gap-1"
+                          
+                          transition-all duration-300 
+                           flex items-center gap-1"
                           >
                             <IconComponent
                               className={`w-4 h-4 text-white}`}
@@ -521,7 +519,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                   Total Time:
                 </span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base">
-                  {`${subscription?.total_minutes || 300} min`}
+                  {`${subscription?.total_minutes || 0} min`}
                 </span>
               </div>
 
@@ -534,17 +532,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                 </span>
               </div>
 
-              {/* <div
-                className="flex justify-between items-center relative z-10 pt-2 border-t border-purple-200/40 
-                    dark:border-purple-400/30"
-              >
-                <span className="font-semibold text-gray-700 dark:text-gray-200">
-                  Total Created MoM:
-                </span>
-                <span className="text-purple-600 dark:text-purple-400 font-bold text-base">
-                  {totalCreatedMoMs || 0}
-                </span>
-              </div> */}
+              
             </div>
             {/* Menu Items with Colorful Hover Effects */}
             <Link

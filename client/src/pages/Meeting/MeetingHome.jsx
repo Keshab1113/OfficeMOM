@@ -104,7 +104,7 @@ export default function MeetingHome() {
                 <div className="min-h-screen container mx-auto px-4">
                     <div className="text-center mb-8 mt-10 px-4">
                         <h1 className="text-3xl md:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 pb-1 lg:pb-3">
-                            Smart Meeting Assistant
+                            Smart Meeting Connect
                         </h1>
                         <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
                             Transform your meetings with AI-powered transcription, automatic minutes, and actionable insights

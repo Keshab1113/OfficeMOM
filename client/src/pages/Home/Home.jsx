@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CTASection from "../../components/CTASection/CTASection";
+import MeetingHero from "../../components/MeetingHero/MeetingHero";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -99,6 +100,7 @@ const Home = () => {
           <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
           <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
         </section>
+        <MeetingHero/>
         <CTASection />
         <FAQ />
         <Footer />

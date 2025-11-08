@@ -1320,6 +1320,24 @@ exports.cancelSubscription = async (req, res) => {
     }
 
     const subscription = subscriptions[0];
+    if (subscription.current_period_start) {
+      // Stripe timestamps may be in seconds, ensure milliseconds
+      const purchaseDate = new Date(
+        subscription.current_period_start.toString().length === 10
+          ? subscription.current_period_start * 1000
+          : subscription.current_period_start
+      );
+      const now = new Date();
+      const diffDays = Math.floor((now - purchaseDate) / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 7) {
+        connection.release();
+        return res.status(403).json({
+          error: "Cancellation period expired",
+          details: "Subscriptions can only be cancelled within 7 days of purchase.",
+        });
+      }
+    }
     // console.log("subscriptions: ", subscription);
     // console.log("user_subscription: ", user_subscription);
 

@@ -84,15 +84,17 @@ const Subscription = () => {
   };
 
   const cancelSubscription = async () => {
-    setShowModal(false);
+    
     try {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/stripe/cancel-subscription`,
         { subscriptionId: subscription.stripe_subscription_id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchSubscriptionData();
+      // fetchSubscriptionData();
+      setShowModal(false);
       addToast("success", "Subscription cancellation requested successfully!");
+
     } catch (err) {
       console.error("Failed to cancel subscription", err);
       const errorMsg = err.response?.data?.error || "Failed to cancel subscription";
@@ -330,27 +332,12 @@ const Subscription = () => {
                               </span>) : (
                               <span className="font-semibold text-gray-900 dark:text-white">
                                 {new Date(
-                                  subscription.created_at
+                                  subscription.current_period_start
                                 ).toLocaleDateString()}{" "}
                                 -{" "}
-                                {(() => {
-                                  const startDate = new Date(
-                                    subscription.created_at
-                                  );
-                                  let endDate = new Date(startDate);
-
-                                  if (subscription.billing_cycle === "yearly") {
-                                    endDate.setFullYear(
-                                      endDate.getFullYear() + 1
-                                    );
-                                  } else if (
-                                    subscription.billing_cycle === "monthly"
-                                  ) {
-                                    endDate.setMonth(endDate.getMonth() + 1);
-                                  }
-
-                                  return endDate.toLocaleDateString();
-                                })()}
+                                {new Date(
+                                  subscription.current_period_end
+                                ).toLocaleDateString()}
                               </span>
                             )}
                           </div>

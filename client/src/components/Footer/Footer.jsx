@@ -8,7 +8,7 @@ const Footer = () => {
     product: [
       { name: "Features", href: "/features" },
       { name: "Pricing", href: "/pricing" },
-        { name: "Supported Language", href: "/supported-language" },
+      { name: "Supported Language", href: "/supported-language" },
     ],
     company: [
       { name: "About Us", href: "/about-us" },
@@ -49,9 +49,8 @@ const Footer = () => {
         id="animated-footer"
         className={`relative bg-gradient-to-br from-slate-50 via-blue-100 to-indigo-100 
                     dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30 
-                    border-t border-white/30 dark:border-gray-700/50 overflow-hidden  ${
-                      hideHeader ? "mb-0" : "lg:mb-20 mb-16"
-                    }`}
+                    border-t border-white/30 dark:border-gray-700/50 overflow-hidden  ${hideHeader ? "mb-0" : "lg:mb-20 mb-16"
+          }`}
       >
         {/* Background with gradient and patterns */}
         <div className="absolute inset-0">
@@ -202,9 +201,15 @@ const Footer = () => {
                 OfficeMoM
               </span>
               , a subsidiary of{" "}
-              <span className="font-semibold text-gray-700 dark:text-gray-300">
+              <Link
+                to="https://quantumhash.me"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-gray-700 dark:text-gray-300"
+              >
                 QuantumHash Corporation
-              </span>
+              </Link>
+
               . All rights reserved.
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
