@@ -9,6 +9,8 @@ const {
   transcribeAudioFromURL,
   transcribeAudio,
   updateAudioHistory,
+  getLatestMeeting,
+  getMeetingDetails,
 } = require("../controllers/liveController.js");
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -17,6 +19,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/createlive", authMiddleware, createMeeting);
 router.post("/:meetingId/end", authMiddleware, endMeeting);
+router.get("/:meetingId/latest", authMiddleware, getLatestMeeting);
+router.get("/:meetingId/details", authMiddleware, getMeetingDetails);
+
+
 router.post(
   "/:roomId/recording",
   authMiddleware,
