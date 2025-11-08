@@ -53,18 +53,69 @@ const getHistory = async (req, res) => {
       "SELECT id, source, date, created_at, data, title, isMoMGenerated, uploadedAt, audioUrl, language FROM history WHERE user_id = ? ORDER BY created_at DESC",
       [userId]
     );
-const fixed = rows.map(r => ({
-  ...r,
-  date: r.date ? DateTime.fromSQL(r.date, { zone: "utc" }).toISO() : null,
-  created_at: r.created_at ? DateTime.fromSQL(r.created_at, { zone: "utc" }).toISO() : null,
-  uploadedAt: r.uploadedAt ? DateTime.fromSQL(r.uploadedAt, { zone: "utc" }).toISO() : null,
-}));
+    const fixed = rows.map((r) => ({
+      ...r,
+      date: r.date ? DateTime.fromSQL(r.date, { zone: "utc" }).toISO() : null,
+      created_at: r.created_at
+        ? DateTime.fromSQL(r.created_at, { zone: "utc" }).toISO()
+        : null,
+      uploadedAt: r.uploadedAt
+        ? DateTime.fromSQL(r.uploadedAt, { zone: "utc" }).toISO()
+        : null,
+    }));
 
-res.status(200).json(fixed);
-     
+    res.status(200).json(fixed);
   } catch (err) {
     console.error("Get history error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+const getMeetingAudios = async (req, res) => {
+  try {
+    const hostUserId = req.user.id;
+
+    // Fetch meetings where this user is the host
+    const [rows] = await db.query(
+      `
+      SELECT 
+        m.id AS meetingId,
+        m.room_id AS roomId,
+        m.audio_url AS audioUrl,
+        m.duration_minutes AS duration,
+        m.created_at,
+        m.ended_at,
+        h.isMoMGenerated
+      FROM meetings m
+      LEFT JOIN history h 
+        ON h.meeting_id = m.id 
+        AND h.user_id = ?
+      WHERE 
+        m.host_user_id = ? 
+        
+        AND m.audio_url IS NOT NULL
+      ORDER BY m.created_at DESC
+      `,
+      [hostUserId, hostUserId]
+    );
+
+    // Format timestamps safely
+    const formatted = rows.map((r) => ({
+      ...r,
+      created_at: r.created_at
+        ? DateTime.fromJSDate(r.created_at).toISO()
+        : null,
+      ended_at: r.ended_at ? DateTime.fromJSDate(r.ended_at).toISO() : null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formatted.length,
+      meetings: formatted,
+    });
+  } catch (err) {
+    console.error("❌ Get meeting audios error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -126,7 +177,8 @@ const deleteHistory = async (req, res) => {
 const getUserHistoryStats = async (req, res) => {
   try {
     const userId = req.user.id;
-    const [historyRows] = await db.execute(`
+    const [historyRows] = await db.execute(
+      `
       SELECT 
         COUNT(*) as totalHistory,
         SUM(CASE WHEN source = 'Generate Notes Conversion' AND isMoMGenerated = 1 THEN 1 ELSE 0 END) as totalGeneratesNotes,
@@ -134,7 +186,9 @@ const getUserHistoryStats = async (req, res) => {
         SUM(CASE WHEN source = 'Live Transcript Conversion' AND isMoMGenerated = 1 THEN 1 ELSE 0 END) as totalLiveMeeting
       FROM history 
       WHERE user_id = ? AND isMoMGenerated = 1 AND source IN ('Generate Notes Conversion', 'Online Meeting Conversion', 'Live Transcript Conversion')
-    `, [userId]);
+    `,
+      [userId]
+    );
 
     const stats = historyRows[0];
 
@@ -146,15 +200,14 @@ const getUserHistoryStats = async (req, res) => {
         totalOnlineMeeting: parseInt(stats.totalOnlineMeeting) || 0,
         totalLiveMeeting: parseInt(stats.totalLiveMeeting) || 0,
       },
-      message: 'History statistics retrieved successfully'
+      message: "History statistics retrieved successfully",
     });
-
   } catch (error) {
-    console.error('Get user history stats error:', error);
+    console.error("Get user history stats error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error while fetching history statistics',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Server error while fetching history statistics",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -165,4 +218,5 @@ module.exports = {
   updateHistoryTitle,
   deleteHistory,
   getUserHistoryStats,
+  getMeetingAudios,
 };

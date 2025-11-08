@@ -103,12 +103,88 @@ const createMeeting = async (req, res) => {
 
 const endMeeting = async (req, res) => {
   const { meetingId } = req.params;
+  const { audioUrl, durationMinutes } = req.body;
   await db.query(
     'UPDATE meetings SET status="ended", ended_at=NOW() WHERE room_id=?',
     [meetingId]
   );
   res.json({ ok: true });
 };
+
+// ✅ Get the latest meeting record for a given meetingId (room_id)
+const getLatestMeeting = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const hostUserId = req.user?.id; // ✅ extracted from authMiddleware
+
+    // Fetch the most recent meeting record for this room_id
+    const [rows] = await db.query(
+      `SELECT * FROM meetings 
+       WHERE room_id = ? AND host_user_id = ? 
+       ORDER BY id DESC LIMIT 1`,
+      [meetingId, hostUserId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Meeting not found for this user" });
+    }
+
+    res.json({
+      success: true,
+      latestMeeting: rows[0],
+    });
+  } catch (error) {
+    console.error("❌ Error fetching latest meeting:", error);
+    res.status(500).json({ message: "Server error fetching latest meeting" });
+  }
+};
+
+// ✅ Get meeting details (audio_url + duration + status) by meetingId for logged-in host
+const getMeetingDetails = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const hostUserId = req.user?.id;
+
+    const [rows] = await db.query(
+      `SELECT id, room_id, audio_url, duration_minutes, status, created_at, ended_at
+       FROM meetings
+       WHERE room_id = ? AND host_user_id = ?
+       ORDER BY id DESC LIMIT 1`,
+      [meetingId, hostUserId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Meeting not found for this user" });
+    }
+
+    const meeting = rows[0];
+
+    // ✅ If meeting is ended, reactivate it
+    if (meeting.status === "ended") {
+      await db.query(
+        `UPDATE meetings 
+         SET status = 'active', ended_at = NULL 
+         WHERE id = ?`,
+        [meeting.id]
+      );
+      console.log(`🔄 Meeting ${meeting.room_id} reactivated for host ${hostUserId}`);
+      meeting.status = "active";
+      meeting.ended_at = null;
+    }
+
+    return res.json({
+      success: true,
+      meeting,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching meeting details:", error);
+    return res.status(500).json({ success: false, message: "Server error fetching meeting details" });
+  }
+};
+
+
+
+
 
 const getAllAudios = async (req, res) => {
   try {
@@ -227,4 +303,6 @@ module.exports = {
   createMeeting,
   transcribeAudioFromURL,
   transcribeAudio,
+  getLatestMeeting,
+  getMeetingDetails
 };
