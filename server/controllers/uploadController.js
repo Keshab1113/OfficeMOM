@@ -79,43 +79,50 @@ const uploadAudio = async (req, res) => {
       });
     }
 
-      let buffer;
-      let originalName;
-      let actualSource = source || "upload";
+    let buffer;
+let originalName;
+let actualSource = source || "upload";
+let ftpUrlToUse = null;
 
-    // 🔥 Get audio buffer and name based on source
-    if (driveUrl) {
-      // Google Drive URL
-      if (!driveUrl.includes("drive.google.com")) {
-        return res.status(400).json({ 
-          success: false,
-          message: "Invalid Google Drive URL" 
-        });
-      }
-      buffer = await downloadFromDrive(driveUrl);
-      originalName = `drive_audio_${Date.now()}.mp3`;
-      actualSource = source || "google_drive";
-      
-    } else if (req.file) {
-      // Direct file upload (from computer, recorded audio, etc.)
-      buffer = req.file.buffer;
-      originalName = req.file.originalname;
-      
-      // Determine source based on originalname or source field
-      if (!source) {
-        if (originalName.includes("recorded_audio")) {
-          actualSource = "Live Transcript Conversion";
-        } else {
-          actualSource = "Generate Notes Conversion";
-        }
-      }
-      
+// 🔥 Get audio buffer and name based on source
+if (req.body.audioUrl) {
+  // Direct URL (e.g., FTP or any hosted URL)
+  ftpUrlToUse = req.body.audioUrl;
+  originalName = `remote_audio_${Date.now()}.mp3`;
+  actualSource = source || "url_audio";
+
+} else if (driveUrl) {
+  // Google Drive URL
+  if (!driveUrl.includes("drive.google.com")) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Invalid Google Drive URL" 
+    });
+  }
+  buffer = await downloadFromDrive(driveUrl);
+  originalName = `drive_audio_${Date.now()}.mp3`;
+  actualSource = source || "google_drive";
+
+} else if (req.file) {
+  // Direct file upload
+  buffer = req.file.buffer;
+  originalName = req.file.originalname;
+
+  if (!source) {
+    if (originalName.includes("recorded_audio")) {
+      actualSource = "Live Transcript Conversion";
     } else {
-      return res.status(400).json({ 
-        success: false,
-        message: "No audio file uploaded or Google Drive URL provided" 
-      });
+      actualSource = "Generate Notes Conversion";
     }
+  }
+
+} else {
+  return res.status(400).json({ 
+    success: false,
+    message: "No audio file uploaded, URL or Google Drive link provided" 
+  });
+}
+
 
     console.log(`Processing audio - Source: ${actualSource}, File: ${originalName}`);
 
@@ -152,8 +159,16 @@ const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
 
     // ✅ User has sufficient minutes, proceed with upload
 
-    // Upload to FTP
-    const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+    // If we already have a URL, no need to upload
+let ftpUrl;
+if (ftpUrlToUse) {
+  ftpUrl = ftpUrlToUse;
+  console.log(`✅ Using existing audio URL: ${ftpUrl}`);
+} else {
+  ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+  console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
+}
+
 
     // Verify user exists
     const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
@@ -209,22 +224,84 @@ const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
     console.log(`✅ Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
 
     // 🔥 STEP 4: Now send to AssemblyAI for transcription
-    const created = await createTranscription(ftpUrl);
-    const resultTranscript = await pollTranscription(created.id);
+let assemblyUrl = ftpUrl;
+
+if (ftpUrlToUse) {
+  try {
+    console.log(`🎧 Trying to send FTP URL directly to AssemblyAI: ${ftpUrl}`);
+
+    // Try sending the FTP/public URL directly to AssemblyAI
+    const testResponse = await axios.post(
+      TRANSCRIPT_URL,
+      { 
+        audio_url: ftpUrl, 
+        language_detection: true, 
+        speaker_labels: true 
+      },
+      { headers: { authorization: ASSEMBLY_KEY } }
+    );
+
+    if (testResponse.data && testResponse.data.id) {
+      console.log("✅ AssemblyAI accepted FTP URL directly.");
+      assemblyUrl = ftpUrl;
+    } else {
+      throw new Error("AssemblyAI did not accept URL properly");
+    }
+
+    // Wait for completion
+    const resultTranscript = await pollTranscription(testResponse.data.id);
+    var finalTranscript = resultTranscript;
+
+  } catch (err) {
+    console.warn("⚠️ AssemblyAI might not have fetched full audio, reuploading...");
+
+    // Fallback: fetch the FTP audio and upload manually to AssemblyAI
+    try {
+      const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
+      const uploadRes = await axios.post(
+        UPLOAD_URL,
+        audioRes.data,
+        {
+          headers: {
+            authorization: ASSEMBLY_KEY,
+            "content-type": "application/octet-stream",
+          },
+        }
+      );
+      assemblyUrl = uploadRes.data.upload_url;
+      console.log(`✅ Reuploaded to AssemblyAI successfully: ${assemblyUrl}`);
+
+      const created = await createTranscription(assemblyUrl);
+      const resultTranscript = await pollTranscription(created.id);
+      finalTranscript = resultTranscript;
+
+    } catch (uploadErr) {
+      console.error("❌ Fallback upload failed:", uploadErr.message);
+      throw new Error("AssemblyAI upload failed");
+    }
+  }
+} else {
+  // Default flow for uploaded file or Google Drive
+  const created = await createTranscription(ftpUrl);
+  const resultTranscript = await pollTranscription(created.id);
+  finalTranscript = resultTranscript;
+}
+
 
     // 📝 Use plain transcript text
-    const speakerText = resultTranscript.text || "";
+const speakerText = finalTranscript.text || "";
 
-    // 📝 Insert transcript into database
-    const [transcriptResult] = await db.query(
-      "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
-      [
-        uploadAudioResult.insertId,
-        userId,
-        JSON.stringify(resultTranscript),
-        resultTranscript.language_code || null,
-      ]
-    );
+// 📝 Insert transcript into database
+const [transcriptResult] = await db.query(
+  "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
+  [
+    uploadAudioResult.insertId,
+    userId,
+    JSON.stringify(finalTranscript),
+    finalTranscript.language_code || null,
+  ]
+);
+
 
     // Success response with appropriate message based on source
     let successMessage = "Audio uploaded and transcribed successfully";
@@ -246,8 +323,8 @@ const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
       isMoMGenerated: false,
       uploadedAt: formattedDate,
       transcription: speakerText,
-      full: resultTranscript,
-      language: resultTranscript.language_code,
+      full: finalTranscript,
+      language: finalTranscript.language_code,
       source: actualSource,
       // ⏱️ Include minutes info in response
       minutesUsed: audioDurationMinutes,
@@ -363,16 +440,76 @@ const [updateResult] = await db.query(
       });
     }
 
+    // console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
+
+    // res.status(200).json({
+    //   success: true,
+    //   message: "Audio uploaded and meeting updated successfully",
+    //   meetingId,
+    //   audioUrl: ftpUrl,
+    //   fileName: originalName,
+    //   durationMinutes: finalMinutesValue,
+    // });
     console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
 
-    res.status(200).json({
-      success: true,
-      message: "Audio uploaded and meeting updated successfully",
-      meetingId,
-      audioUrl: ftpUrl,
-      fileName: originalName,
-      durationMinutes: finalMinutesValue,
-    });
+// 📝 Also update or insert into history table
+try {
+  // Check if a history record already exists for this meeting/audio
+  const [existingHistory] = await db.query(
+    "SELECT id FROM history WHERE user_id = ? AND (meeting_id = ? OR audioUrl = ?)",
+    [userId, meetingId, ftpUrl]
+  );
+
+  const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  if (existingHistory.length > 0) {
+    // ✅ Update existing record
+    await db.query(
+      `UPDATE history 
+       SET 
+         audioUrl = ?, 
+         uploadedAt = ?, 
+         meeting_id = ?, 
+         isMoMGenerated = 0, 
+         source = ?, 
+         title = ? 
+       WHERE id = ?`,
+      [ftpUrl, formattedDate, meetingId, "Live Transcript Conversion", originalName, existingHistory[0].id]
+    );
+    console.log(`♻️ Updated existing history record for meeting ${meetingId}`);
+  } else {
+    // ✅ Insert new record
+    await db.query(
+      `INSERT INTO history 
+       (user_id, meeting_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        meetingId,
+        originalName,
+        ftpUrl,
+        formattedDate,
+        false,
+        "Live Transcript Conversion",
+        null,
+        null
+      ]
+    );
+    console.log(`🆕 Inserted new history record for meeting ${meetingId}`);
+  }
+} catch (historyErr) {
+  console.error("⚠️ Error inserting/updating history:", historyErr);
+}
+
+res.status(200).json({
+  success: true,
+  message: "Audio uploaded, meeting and history updated successfully",
+  meetingId,
+  audioUrl: ftpUrl,
+  fileName: originalName,
+  durationMinutes: finalMinutesValue,
+});
+
   } catch (err) {
     console.error("❌ FTP upload error:", err);
     res.status(500).json({

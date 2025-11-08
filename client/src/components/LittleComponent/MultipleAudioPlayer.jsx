@@ -39,10 +39,15 @@ export default function MultipleAudioPlayer({
   useEffect(() => {
     const fetchHistory = async () => {
       try {
+        // const res = await axios.get(
+        //   `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+        //   { headers: { Authorization: `Bearer ${token}` } }
+        // );
         const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+  `${import.meta.env.VITE_BACKEND_URL}/api/history/meeting-audios`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
         const incomplete = res.data.filter(
           (item) =>
             item.isMoMGenerated === 0 &&

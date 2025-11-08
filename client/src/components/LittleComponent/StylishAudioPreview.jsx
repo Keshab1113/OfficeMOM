@@ -14,23 +14,26 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
   const dispatch = useDispatch();
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1); // range: 0 to 1
+
 
   // 🔥 Force audio element to reload when audioUrl changes
   React.useEffect(() => {
     if (audioRef.current && lastPreview?.audioUrl) {
       console.log('🔄 Audio source updated, reloading:', lastPreview.audioUrl);
-      
+
       // Stop current playback
       audioRef.current.pause();
       setIsPlaying(false);
       setCurrentTime(0);
-      
+
       // Reset duration to trigger fresh load
       setDuration(0);
-      
+
       // Force reload the audio
       audioRef.current.load();
-      
+
       // Try to get duration after load
       const handleCanPlay = () => {
         if (audioRef.current && !isNaN(audioRef.current.duration) && audioRef.current.duration !== Infinity) {
@@ -38,14 +41,22 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
           console.log('✅ Audio loaded successfully, duration:', audioRef.current.duration);
         }
       };
-      
+
       audioRef.current.addEventListener('canplay', handleCanPlay);
-      
+
       return () => {
         audioRef.current?.removeEventListener('canplay', handleCanPlay);
       };
     }
   }, [lastPreview?.audioUrl, lastPreview?.id]);
+
+  // 🎚️ Sync volume and mute state with the audio element
+  React.useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [volume, isMuted]);
+
 
   const togglePlayPause = async () => {
     if (audioRef.current) {
@@ -59,7 +70,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
             console.log('⏳ Audio not ready, loading...');
             await audioRef.current.load();
           }
-          
+
           await audioRef.current.play();
           setIsPlaying(true);
           console.log('▶️ Playing audio from:', lastPreview?.audioUrl);
@@ -77,7 +88,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
       if (!isNaN(d) && d !== Infinity) {
         setDuration(d);
         console.log('📊 Metadata loaded, duration:', d);
-        
+
         // Update Redux store with actual duration
         if (lastPreview?.id) {
           dispatch(
@@ -179,7 +190,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
                   Add Meeting Name
                 </button> */}
                 <button
-                  onClick={() =>onRemove()}
+                  onClick={() => onRemove()}
                   className="w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400"
                 >
                   Remove the preview
@@ -188,7 +199,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
             )}
           </div>
 
-         <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-xl p-4 border border-gray-200/70 dark:border-gray-700/70">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-xl p-4 border border-gray-200/70 dark:border-gray-700/70">
             <audio
               ref={audioRef}
               src={lastPreview?.audioUrl}
@@ -208,7 +219,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
             />
 
             <div className="flex items-center gap-4">
-             <button
+              <button
                 onClick={togglePlayPause}
                 disabled={!lastPreview?.audioUrl}
                 className="group relative w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 dark:from-blue-600 dark:to-purple-700 dark:hover:from-blue-700 dark:hover:to-purple-800 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl dark:shadow-blue-500/25 dark:hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -238,7 +249,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
                   </div>
                 </div>
 
-             <div className="flex justify-between items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
                   <span className="font-medium tabular-nums">
                     {formatTime(currentTime)}
                   </span>
@@ -248,18 +259,54 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center w-10 h-10 bg-gray-200/50 dark:bg-gray-700/50 rounded-full">
-                <Volume2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <div className="relative group">
+                {/* Button */}
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="flex items-center justify-center w-10 h-10 bg-gray-200/50 dark:bg-gray-700/50 rounded-full hover:bg-gray-300/60 dark:hover:bg-gray-600/60 transition"
+                >
+                  {isMuted || volume === 0 ? (
+                    <Volume2 className="w-4 h-4 text-gray-400 dark:text-gray-500 line-through" />
+                  ) : volume < 0.4 ? (
+                    <Volume2 className="w-4 h-4 text-blue-400 dark:text-blue-500" />
+                  ) : volume < 0.7 ? (
+                    <Volume2 className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-blue-600 dark:text-blue-300" />
+                  )}
+
+                </button>
+
+                {/* Volume Slider (appears on hover) */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-[-2px] transition-all duration-300 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-lg p-3 w-32 border border-gray-200 dark:border-gray-700">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setVolume(val);
+                      setIsMuted(val === 0);
+                      if (audioRef.current) {
+                        audioRef.current.volume = val; // ✅ instantly apply change to audio element
+                      }
+                    }}
+
+                    className="w-full accent-blue-500 cursor-pointer"
+                  />
+                </div>
               </div>
+
             </div>
 
             <div className="flex justify-center gap-1 mt-4">
               {[...Array(12)].map((_, i) => (
                 <div
                   key={i}
-                  className={`w-1 bg-gradient-to-t from-blue-400 to-purple-500 dark:from-blue-500 dark:to-purple-600 rounded-full ${
-                    isPlaying ? "animate-pulse" : ""
-                  }`}
+                  className={`w-1 bg-gradient-to-t from-blue-400 to-purple-500 dark:from-blue-500 dark:to-purple-600 rounded-full ${isPlaying ? "animate-pulse" : ""
+                    }`}
                   style={{
                     height: `${Math.random() * 16 + 8}px`,
                     animationDelay: `${i * 0.1}s`,

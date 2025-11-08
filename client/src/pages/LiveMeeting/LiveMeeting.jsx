@@ -863,29 +863,23 @@ formData.append("recordingTime", accumulatedTimeRef.current);
       console.log("⏱️ Meeting duration:", meetingDurationMinutes, "minutes");
 
       // ✅ Step 2: Fetch audio file as blob
-      const fetchResponse = await fetch(audioUrl);
-      const blob = await fetchResponse.blob();
+      // ✅ Step 3: Send audio URL directly for processing
+const payload = {
+  audioUrl, // Use existing FTP/hosted URL
+  source: "Live Transcript Conversion",
+  meetingDuration: meetingDurationMinutes,
+};
 
-      const file = new File([blob], `meeting_${Date.now()}.mp3`, {
-        type: "audio/mpeg",
-      });
+const response = await axios.post(
+  `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+  payload,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
 
-      // ✅ Step 3: Upload audio for processing with correct duration
-      const formData = new FormData();
-      formData.append("audio", file);
-      formData.append("source", "Live Transcript Conversion");
-      formData.append("meetingDuration", meetingDurationMinutes); // ✅ Pass the correct duration
-
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
       if (response.data) {
         const {
           audioUrl,
@@ -1333,32 +1327,37 @@ formData.append("recordingTime", accumulatedTimeRef.current);
                       )}
                     </div>
                   </div>
-                  {lastPreview?.needToShow === true ? (
-                    <StylishAudioPreview
-                      onRecordAgain={handleRecordAgain}
-                      onRemove={onRemove}
-                    />
-                  ) : (
-                    recordedBlob && (
-                      <div className=" text-xl font-medium text-black dark:text-white flex  justify-center items-center gap-2 my-4 py-4 px-4">
-                        <Loader2 className="w-10 h-10 animate-spin" />
-                        Meeting Preview Processing...
-                      </div>
-                    )
-                  )}
+                 {lastPreview?.needToShow === true && meetingId ? (
+  <StylishAudioPreview
+    onRecordAgain={handleRecordAgain}
+    onRemove={onRemove}
+  />
+) : (
+  recordedBlob && (
+    <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
+      <Loader2 className="w-10 h-10 animate-spin" />
+      Meeting Preview Processing...
+    </div>
+  )
+)}
+
                   <button
                     onClick={handleStartMakingNotes}
                     disabled={
-                      lastPreview?.needToShow === false ||
-                      isProcessing ||
-                      previews.length === 0
-                    }
-                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${lastPreview?.needToShow === false ||
-                      isProcessing ||
-                      previews.length === 0
-                      ? "bg-gray-500/20 cursor-not-allowed"
-                      : "bg-blue-400/20 hover:bg-blue-500 cursor-pointer"
-                      }`}
+  !meetingId ||
+  lastPreview?.needToShow === false ||
+  isProcessing ||
+  previews.length === 0
+}
+className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${
+  !meetingId ||
+  lastPreview?.needToShow === false ||
+  isProcessing ||
+  previews.length === 0
+    ? "bg-gray-500/20 cursor-not-allowed"
+    : "bg-blue-400/20 hover:bg-blue-500 cursor-pointer"
+}`}
+
                   >
                     {isProcessing ? (
                       <>
