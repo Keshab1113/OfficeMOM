@@ -48,12 +48,9 @@ export default function MultipleAudioPlayer({
   { headers: { Authorization: `Bearer ${token}` } }
 );
 
-        const incomplete = res.data.filter(
-          (item) =>
-            item.isMoMGenerated === 0 &&
-            item.source === "Live Transcript Conversion"
-        );
-        setAudioData(incomplete);
+        const allMeetings = res.data.meetings || [];
+setAudioData(allMeetings);
+
         setLoading(false);
       } catch (err) {
         console.error("Get history error:", err);
@@ -246,7 +243,7 @@ export default function MultipleAudioPlayer({
                       <span className=" md:block hidden">Delete</span>
                       <Trash className="w-4 h-4" />
                     </button>
-                    <button
+                    {/* <button
                       onClick={async () => {
                         setProcessingId(audio.id);
                         await onContinue(audio.audioUrl);
@@ -268,7 +265,7 @@ export default function MultipleAudioPlayer({
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
-                    </button>
+                    </button> */}
                   </div>
 
                   <audio

@@ -430,6 +430,18 @@ const [updateResult] = await db.query(
    WHERE room_id = ?`,
   [ftpUrl, finalMinutesValue, meetingId]
 );
+// 🔍 Get numeric meeting.id for this room_id
+const [meetingRow] = await db.query(
+  `SELECT id FROM meetings WHERE room_id = ?`,
+  [meetingId]
+);
+
+if (!meetingRow.length) {
+  return res.status(404).json({ message: "Meeting not found for room_id" });
+}
+
+const meetingNumericId = meetingRow[0].id;
+
 
 
 
@@ -454,52 +466,87 @@ const [updateResult] = await db.query(
 
 // 📝 Also update or insert into history table
 try {
-  // Check if a history record already exists for this meeting/audio
+  const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  // 1️⃣ Try to find any history row with this meeting_id or same audioUrl
   const [existingHistory] = await db.query(
-    "SELECT id FROM history WHERE user_id = ? AND (meeting_id = ? OR audioUrl = ?)",
+    `SELECT id, meeting_id FROM history 
+     WHERE user_id = ? AND (meeting_id = ? OR audioUrl = ?) 
+     ORDER BY uploadedAt DESC LIMIT 1`,
     [userId, meetingId, ftpUrl]
   );
 
-  const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
-
   if (existingHistory.length > 0) {
     // ✅ Update existing record
-    await db.query(
-      `UPDATE history 
-       SET 
-         audioUrl = ?, 
-         uploadedAt = ?, 
-         meeting_id = ?, 
-         isMoMGenerated = 0, 
-         source = ?, 
-         title = ? 
-       WHERE id = ?`,
-      [ftpUrl, formattedDate, meetingId, "Live Transcript Conversion", originalName, existingHistory[0].id]
-    );
-    console.log(`♻️ Updated existing history record for meeting ${meetingId}`);
+   // ✅ Update existing record
+await db.query(
+  `UPDATE history 
+   SET 
+     audioUrl = ?, 
+     uploadedAt = ?, 
+     meeting_id = ?, 
+     isMoMGenerated = 0, 
+     source = ?, 
+     title = ? 
+   WHERE id = ?`,
+  [ftpUrl, formattedDate, meetingNumericId, "Live Transcript Conversion", originalName, existingHistory[0].id]
+);
+
+
+    console.log(`♻️ Updated existing history record with meeting_id ${meetingId}`);
   } else {
-    // ✅ Insert new record
-    await db.query(
-      `INSERT INTO history 
-       (user_id, meeting_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        meetingId,
-        originalName,
-        ftpUrl,
-        formattedDate,
-        false,
-        "Live Transcript Conversion",
-        null,
-        null
-      ]
+    // 2️⃣ If none found, check if there’s an old record missing meeting_id
+    const [nullMeeting] = await db.query(
+      `SELECT id FROM history 
+       WHERE user_id = ? AND meeting_id IS NULL 
+       AND audioUrl IS NULL 
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId]
     );
-    console.log(`🆕 Inserted new history record for meeting ${meetingId}`);
+
+    if (nullMeeting.length > 0) {
+      // 🧩 Backfill that record
+      await db.query(
+        `UPDATE history 
+         SET 
+           meeting_id = ?, 
+           audioUrl = ?, 
+           uploadedAt = ?, 
+           source = ?, 
+           title = ?,
+           isMoMGenerated = 0
+         WHERE id = ?`,
+        [meetingId, ftpUrl, formattedDate, "Live Transcript Conversion", originalName, nullMeeting[0].id]
+      );
+
+      console.log(`🔗 Linked old NULL history record with meeting_id ${meetingId}`);
+    } else {
+      // 3️⃣ Insert fresh record
+      await db.query(
+  `INSERT INTO history 
+   (user_id, meeting_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) 
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    userId,
+    meetingNumericId,
+    originalName,
+    ftpUrl,
+    formattedDate,
+    false,
+    "Live Transcript Conversion",
+    null,
+    null
+  ]
+);
+
+
+      console.log(`🆕 Inserted new history record for meeting ${meetingId}`);
+    }
   }
 } catch (historyErr) {
   console.error("⚠️ Error inserting/updating history:", historyErr);
 }
+
 
 res.status(200).json({
   success: true,

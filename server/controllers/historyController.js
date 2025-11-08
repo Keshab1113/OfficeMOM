@@ -73,8 +73,9 @@ const getHistory = async (req, res) => {
 
 const getMeetingAudios = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const hostUserId = req.user.id;
 
+    // Fetch meetings where this user is the host
     const [rows] = await db.query(
       `
       SELECT 
@@ -91,27 +92,30 @@ const getMeetingAudios = async (req, res) => {
         AND h.user_id = ?
       WHERE 
         m.host_user_id = ? 
-        AND (h.isMoMGenerated = 0 OR h.isMoMGenerated IS NULL)
+        
+        AND m.audio_url IS NOT NULL
       ORDER BY m.created_at DESC
       `,
-      [userId, userId]
+      [hostUserId, hostUserId]
     );
 
-    // Format timestamps to ISO
+    // Format timestamps safely
     const formatted = rows.map((r) => ({
       ...r,
       created_at: r.created_at
-        ? DateTime.fromSQL(r.created_at, { zone: "utc" }).toISO()
+        ? DateTime.fromJSDate(r.created_at).toISO()
         : null,
-      ended_at: r.ended_at
-        ? DateTime.fromSQL(r.ended_at, { zone: "utc" }).toISO()
-        : null,
+      ended_at: r.ended_at ? DateTime.fromJSDate(r.ended_at).toISO() : null,
     }));
 
-    res.status(200).json(formatted);
+    res.status(200).json({
+      success: true,
+      count: formatted.length,
+      meetings: formatted,
+    });
   } catch (err) {
-    console.error("Get meeting audios error:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Get meeting audios error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
