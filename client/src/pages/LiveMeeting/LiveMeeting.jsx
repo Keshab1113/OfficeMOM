@@ -48,6 +48,7 @@ const LiveMeeting = () => {
   const [participants, setParticipants] = useState(0);
   const [requests, setRequests] = useState([]);
   const timerRef = useRef(null);
+  const accumulatedTimeRef = useRef(0);
   const localMicRef = useRef(null);
   const socketRef = useRef(null);
   const peersRef = useRef(new Map());
@@ -68,6 +69,7 @@ const LiveMeeting = () => {
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
   const { token } = useSelector((state) => state.auth);
+  const meetingIdRef = useRef(null);
 
   // 🔥 NEW: Listen for backup events
   useEffect(() => {
@@ -100,8 +102,10 @@ const LiveMeeting = () => {
 
   useEffect(() => {
     if (isRecording) {
+      let start = Date.now();
       timerRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        setRecordingTime(accumulatedTimeRef.current + elapsed);
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -111,6 +115,7 @@ const LiveMeeting = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isRecording]);
+
 
   useEffect(() => {
     if (hasInitializedRef.current) return;
@@ -141,7 +146,8 @@ const LiveMeeting = () => {
 
   useEffect(() => {
     if (socketRef.current && meetingId) {
-      socketRef.current.emit("host:join-room", { roomId: meetingId });
+      socketRef.current.emit("host:join-room", { roomId: meetingIdRef.current });
+
     }
   }, [meetingId]);
 
@@ -366,67 +372,83 @@ const LiveMeeting = () => {
       mr.ondataavailable = (e) => {
         if (e.data.size) recordedChunksRef.current.push(e.data);
       };
-    mr.onstop = async () => {
-  const newBlob = new Blob(recordedChunksRef.current, {
-    type: "audio/webm",
-  });
+      mr.onstop = async () => {
+        const newBlob = new Blob(recordedChunksRef.current, {
+          type: "audio/webm",
+        });
 
-  // ✅ Merge with previous if restarting
-  let finalBlob = newBlob;
-  if (mergedPreviewBlobRef.current) {
-    const oldArrayBuffer = await mergedPreviewBlobRef.current.arrayBuffer();
-    const newArrayBuffer = await newBlob.arrayBuffer();
-    const combined = new Uint8Array(
-      oldArrayBuffer.byteLength + newArrayBuffer.byteLength
-    );
-    combined.set(new Uint8Array(oldArrayBuffer), 0);
-    combined.set(new Uint8Array(newArrayBuffer), oldArrayBuffer.byteLength);
+        // ✅ Merge with previous if restarting
+        let finalBlob = newBlob;
+        let accumulatedDuration = 0; // Track total duration
 
-    finalBlob = new Blob([combined], { type: "audio/webm" });
-  }
+        if (mergedPreviewBlobRef.current) {
+          const oldArrayBuffer = await mergedPreviewBlobRef.current.arrayBuffer();
+          const newArrayBuffer = await newBlob.arrayBuffer();
+          const combined = new Uint8Array(
+            oldArrayBuffer.byteLength + newArrayBuffer.byteLength
+          );
+          combined.set(new Uint8Array(oldArrayBuffer), 0);
+          combined.set(new Uint8Array(newArrayBuffer), oldArrayBuffer.byteLength);
 
-  mergedPreviewBlobRef.current = finalBlob; // ✅ Save merged result
+          finalBlob = new Blob([combined], { type: "audio/webm" });
 
-  const previews = new Map();
-  previews.set("mixed", URL.createObjectURL(finalBlob));
-  individualChunksRef.current.forEach((b, id) => {
-    previews.set(id, URL.createObjectURL(b));
-  });
+          // Add previous duration
+          if (lastPreview?.duration) {
+            accumulatedDuration = lastPreview.duration;
+          }
+        }
 
-  const file = new File([finalBlob], `recording_${Date.now()}.mp3`, {
-    type: "audio/mpeg",
-  });
+        mergedPreviewBlobRef.current = finalBlob; // ✅ Save merged result
 
-  const formData = new FormData();
-  formData.append("audio", file);
-  formData.append("source", "Live Transcript Conversion");
+        // ✅ Calculate new audio duration
+        const audioElement = document.createElement('audio');
+        const blobUrl = URL.createObjectURL(newBlob);
+        audioElement.src = blobUrl;
 
-  const response = await axios.post(
-    `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio-ftp`,
-    formData,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+        await new Promise((resolve) => {
+          audioElement.onloadedmetadata = () => {
+            accumulatedDuration += audioElement.duration;
+            URL.revokeObjectURL(blobUrl);
+            resolve();
+          };
+        });
 
-  if (response.data?.audioUrl) {
-    dispatch(
-      addAudioPreview({
-        audioUrl: response.data.audioUrl,
-        id: Date.now(),
-        uploadedAt: new Date().toISOString(),
-        title: file.name,
-        needToShow: true,
-      })
-    );
-    addToast("success", "Audio saved successfully!");
-  } else {
-    addToast("error", "FTP upload failed — no audio URL received.");
-  }
-};
+        const previews = new Map();
+        previews.set("mixed", URL.createObjectURL(finalBlob));
+        individualChunksRef.current.forEach((b, id) => {
+          previews.set(id, URL.createObjectURL(b));
+        });
+
+        const file = new File([finalBlob], `recording_${Date.now()}.mp3`, {
+          type: "audio/mpeg",
+        });
+
+        const formData = new FormData();
+        formData.append("audio", file);
+        formData.append("source", "Live Transcript Conversion");
+        formData.append("meetingId", meetingIdRef.current);
+formData.append("recordingTime", accumulatedTimeRef.current);
+        console.log("meeting id", meetingIdRef.current);
+
+        
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio-ftp`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        if (response.data?.audioUrl) {
+          console.log('✅ Audio chunk uploaded to FTP:', response.data.audioUrl);
+          // ❌ DON'T add to preview here - stopRecording will fetch the merged audio
+        } else {
+          console.error("❌ FTP upload failed — no audio URL received.");
+        }
+      };
       mediaRecorderRef.current = mr;
     } catch (err) {
       console.log(err);
@@ -481,71 +503,81 @@ const LiveMeeting = () => {
   };
 
   const startRecording = async () => {
-    setRecordingTime(0);
-    const someId = lastPreview?.id;
-    dispatch(updateNeedToShow({ id: someId, needToShow: false }));
-    
-    // 🔥 NEW: Ensure old backup recorder is completely stopped
-    if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
-      mediaRecorderRef.current.backupRecorder.stop();
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('🛑 Stopped lingering backup recorder before restart');
-    }
-    
-    const { data } = await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    try {
+      // setRecordingTime(0);
+      const someId = lastPreview?.id;
+      dispatch(updateNeedToShow({ id: someId, needToShow: false }));
+
+      // 🧹 Stop old lingering backup recorder if still running
+      if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
+        mediaRecorderRef.current.backupRecorder.stop();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log("🛑 Stopped lingering backup recorder before restart");
       }
-    );
 
-    await setMeetingId(data.roomId);
-    setIsRecording(true);
+      let roomIdToUse = meetingId;
 
-    // 🔥 CRITICAL: Ensure host:join-room happens first
-    if (socketRef.current) {
-      socketRef.current.emit("host:join-room", { roomId: data.roomId });
+      // ✅ Create new meeting only if no existing one
+      if (!roomIdToUse) {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/createlive`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        roomIdToUse = response.data.roomId;
+        await setMeetingId(roomIdToUse);
+        meetingIdRef.current = roomIdToUse;
+      }
 
-      // Wait for initialization
-      await new Promise(resolve => setTimeout(resolve, 200));
+      setIsRecording(true);
 
-      // Now start backup recording
-      socketRef.current.emit("start-backup-recording", {
-        roomId: data.roomId
-      });
-    }
-    // Your existing code continues...
-    if (!mediaRecorderRef.current) return;
-    recordedChunksRef.current = [];
-    individualRecordersRef.current.clear();
-    individualChunksRef.current.clear();
-    mediaRecorderRef.current.start(1000);
+      // ✅ Host joins room and starts backup using the same ID
+      if (socketRef.current) {
+        socketRef.current.emit("host:join-room", { roomId: roomIdToUse });
 
-    if (localMicRef.current) {
-      startIndividualRecording("host", localMicRef.current);
-    }
+        // Wait briefly for backend initialization
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-    peersRef.current.forEach((pc, socketId) => {
-      const remoteStream = new MediaStream();
-      pc.getReceivers().forEach((receiver) => {
-        if (receiver.track) {
-          remoteStream.addTrack(receiver.track);
+        socketRef.current.emit("start-backup-recording", {
+          roomId: roomIdToUse,
+        });
+      }
+
+      // 🧠 Start actual MediaRecorder
+      if (!mediaRecorderRef.current) return;
+      recordedChunksRef.current = [];
+      individualRecordersRef.current.clear();
+      individualChunksRef.current.clear();
+
+      mediaRecorderRef.current.start(1000);
+
+      // 🎙️ Start recording host mic
+      if (localMicRef.current) {
+        startIndividualRecording("host", localMicRef.current);
+      }
+
+      // 🎧 Start recording guest streams
+      peersRef.current.forEach((pc, socketId) => {
+        const remoteStream = new MediaStream();
+        pc.getReceivers().forEach((receiver) => {
+          if (receiver.track) remoteStream.addTrack(receiver.track);
+        });
+
+        if (remoteStream.getAudioTracks().length > 0) {
+          startIndividualRecording(socketId, remoteStream);
         }
       });
 
-      if (remoteStream.getAudioTracks().length > 0) {
-        startIndividualRecording(socketId, remoteStream);
-      }
-    });
+      // 🔥 Start sending mixed audio chunks to backend
+      startBackupStream(roomIdToUse);
 
-    // 🔥 NEW: Start sending mixed audio chunks to backend
-    startBackupStream(data.roomId);
+    } catch (err) {
+      console.error("❌ Error in startRecording:", err);
+      addToast("error", "Failed to start recording.");
+    }
   };
 
-  // 🔥 NEW FUNCTION: Send mixed audio to backend as backup
+
   const startBackupStream = (roomId) => {
     if (!mixerRef.current?.mixedStream) {
       console.warn('⚠️ No mixed stream available for backup');
@@ -568,13 +600,11 @@ const LiveMeeting = () => {
       });
 
       backupRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0 && socketRef.current?.connected) {
-          // 🔥 NEW: Only send if we're still recording this meeting
-          if (isRecording) {
-            socketRef.current.emit('audio-chunk-backup', e.data);
-          }
-        }
-      };
+  if (e.data.size > 0 && socketRef.current?.connected) {
+    // Always send chunks - backend will handle if recording stopped
+    socketRef.current.emit('audio-chunk-backup', e.data);
+  }
+};
 
       backupRecorder.onerror = (err) => {
         console.error('❌ Backup recorder error:', err);
@@ -592,87 +622,150 @@ const LiveMeeting = () => {
     }
   };
 
-  // const stopRecording = () => {
-  //   setIsRecording(false);
 
-  //   if (mediaRecorderRef.current?.state === "recording") {
-  //     mediaRecorderRef.current.stop();
+ 
+  const stopRecording = async () => {
+    accumulatedTimeRef.current = recordingTime;
+    setIsRecording(false);
 
-  //     // 🔥 NEW: Stop backup recorder
-  //     if (mediaRecorderRef.current.backupRecorder?.state === "recording") {
-  //       mediaRecorderRef.current.backupRecorder.stop();
-  //     }
+    console.log(`⏱ Saving accumulated time: ${accumulatedTimeRef.current}s`);
 
-  //     individualRecordersRef.current.forEach((recorder, socketId) => {
-  //       if (recorder.state === "recording") {
-  //         recorder.stop();
-  //         console.log(`Stopped recorder for ${socketId}`);
-  //       }
-  //     });
-  //   }
-
-  //   // 🔥 NEW: Tell backend to save backup
-  //   if (socketRef.current && meetingId) {
-  //     socketRef.current.emit("stop-backup-recording", {
-  //       roomId: meetingId,
-  //       token
-  //     });
-  //   }
-
-  //   setRecordedBlob(true);
-  //   endMeeting();
-  // };
-
-const stopRecording = async () => {
-  setIsRecording(false);
-
-  // 🔥 STEP 1: Stop backup recorder FIRST
-  if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
-    mediaRecorderRef.current.backupRecorder.stop();
-    console.log('🛑 Backup recorder stopped');
-  }
-
-  // STEP 2: Stop main recorder
-  if (mediaRecorderRef.current?.state === "recording") {
-    mediaRecorderRef.current.stop();
-  }
-
-  // STEP 3: Stop individual recorders
-  individualRecordersRef.current.forEach((recorder, socketId) => {
-    if (recorder.state === "recording") {
-      recorder.stop();
-      console.log(`Stopped recorder for ${socketId}`);
+    // 🔥 STEP 1: Stop backup recorder FIRST
+    if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
+      mediaRecorderRef.current.backupRecorder.stop();
+      console.log('🛑 Backup recorder stopped');
     }
-  });
 
-  setRecordedBlob(true);
+    // STEP 2: Stop main recorder
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
 
-  // 🔥 CRITICAL: Wait for recorders to flush completely
-  console.log('⏳ Waiting for recorders to flush...');
-  await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-
-  // STEP 4: Tell backend to save backup
-  if (socketRef.current && meetingId) {
-    socketRef.current.emit("stop-backup-recording", {
-      roomId: meetingId,
-      token
+    // STEP 3: Stop individual recorders
+    individualRecordersRef.current.forEach((recorder, socketId) => {
+      if (recorder.state === "recording") {
+        recorder.stop();
+        console.log(`Stopped recorder for ${socketId}`);
+      }
     });
-    console.log('📤 Sent stop-backup-recording to backend');
-  }
 
-  // STEP 5: Wait a bit more for backend to process
-  await new Promise(resolve => setTimeout(resolve, 500));
+    // 🔥 CRITICAL: Wait for recorders to flush completely
+    console.log('⏳ Waiting for recorders to flush...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // 🔥 NEW: Clear backup recorder reference to prevent reuse
-  if (mediaRecorderRef.current?.backupRecorder) {
-    mediaRecorderRef.current.backupRecorder = null;
-    console.log('🗑️ Cleared backup recorder reference');
-  }
+    // STEP 4: Tell backend to finalize and save
+    if (socketRef.current && meetingId) {
+      socketRef.current.emit("stop-backup-recording", {
+  roomId: meetingId,
+  token,
+  recordingTime: accumulatedTimeRef.current // ✅ Pass timer duration
+});
+      console.log('📤 Sent stop-backup-recording to backend');
+    }
 
-  // STEP 6: NOW end the meeting
-  await endMeeting();
-  console.log('✅ Meeting ended after backup saved');
-};
+    // STEP 5: Wait for backend to finish saving and merging
+    console.log('⏳ Waiting for backend to save complete audio...');
+    await new Promise(resolve => setTimeout(resolve, 3000)); // Increased wait time
+
+    // 🔥 STEP 6: Fetch the latest merged audio URL from backend
+    let audioUrl = null;
+    let actualDuration = recordingTime;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt} to fetch latest audio from backend...`);
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/latest`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const data = await res.json();
+
+        if (data?.latestMeeting?.audio_url) {
+          audioUrl = data.latestMeeting.audio_url;
+          console.log('✅ Successfully fetched latest merged audio from backend:', audioUrl);
+
+          // Calculate actual duration from the uploaded MP3 file
+          try {
+            const audioResponse = await fetch(audioUrl);
+            const audioBlob = await audioResponse.blob();
+
+            const audioElement = document.createElement('audio');
+            const blobUrl = URL.createObjectURL(audioBlob);
+            audioElement.src = blobUrl;
+
+            await new Promise((resolve) => {
+              audioElement.onloadedmetadata = () => {
+                if (audioElement.duration && isFinite(audioElement.duration)) {
+                  actualDuration = audioElement.duration;
+                  console.log(`🎵 Actual merged audio duration: ${actualDuration}s`);
+                } else {
+                  console.log('⚠️ Using timer duration:', actualDuration);
+                }
+                URL.revokeObjectURL(blobUrl);
+                resolve();
+              };
+              audioElement.onerror = () => {
+                console.log('⚠️ Error loading metadata, using timer duration');
+                URL.revokeObjectURL(blobUrl);
+                resolve();
+              };
+            });
+          } catch (err) {
+            console.log('⚠️ Could not fetch audio file, using timer duration');
+          }
+
+          break; // Success, exit retry loop
+        } else {
+          console.log(`⚠️ Attempt ${attempt}: No audio URL yet`);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Attempt ${attempt} failed:`, error);
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+        }
+      }
+    }
+
+    // Add to preview (either with backend URL or using timer duration)
+    if (audioUrl) {
+      // ✅ Always use the latest merged audio URL from backend
+      dispatch(
+        addAudioPreview({
+          audioUrl: audioUrl, // This is the merged audio URL from backend
+          id: Date.now(),
+          uploadedAt: new Date().toISOString(),
+          title: `meeting_${meetingId}.mp3`,
+          needToShow: true,
+          duration: actualDuration,
+        })
+      );
+      setRecordedBlob(true);
+
+      // 🔥 Clear merged preview blob since we have the backend URL
+      mergedPreviewBlobRef.current = null;
+
+      addToast("success", "Recording saved successfully!");
+    } else {
+      console.log('⚠️ Backend audio not ready yet, but recording was saved');
+      addToast("warning", "Recording saved, but preview may not be immediately available");
+      setRecordedBlob(false); // Don't show preview if backend URL not available
+    }
+
+    // 🔥 Clear backup recorder reference
+    if (mediaRecorderRef.current?.backupRecorder) {
+      mediaRecorderRef.current.backupRecorder = null;
+      console.log('🗑️ Cleared backup recorder reference');
+    }
+
+    // STEP 7: NOW end the meeting
+    await endMeeting();
+    console.log('✅ Meeting ended after backup saved');
+  };
 
   const endMeeting = async () => {
     try {
@@ -743,26 +836,45 @@ const stopRecording = async () => {
     return `${window.location.origin}/join-meeting/${meetingId}`;
   };
 
-  const handleStartMakingNotes = async () => {
-    // Use the last preview file instead of the blob
+
+
+ const handleStartMakingNotes = async () => {
     setIsProcessing(true);
-try {
-  // ✅ Use merged preview blob instead of lastPreview or recordedBlob
-  const blobToUse = mergedPreviewBlobRef.current || recordingBlobRef.current;
+    try {
+      // ✅ Step 1: Fetch latest meeting info (ensures newest audioUrl)
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/latest`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-  if (!blobToUse) {
-    addToast("error", "No audio available to create MOM");
-    return;
-  }
+      if (!data?.latestMeeting?.audio_url) {
+        addToast("error", "No latest audio found for this meeting");
+        return;
+      }
 
-  const file = new File([blobToUse], `meeting_${Date.now()}.mp3`, {
-    type: "audio/mpeg",
-  });
+      const audioUrl = data.latestMeeting.audio_url;
+      const meetingDurationMinutes = data.latestMeeting.duration_minutes || Math.ceil(accumulatedTimeRef.current / 60);
+      
+      console.log("📥 Fetching latest audio from:", audioUrl);
+      console.log("⏱️ Meeting duration:", meetingDurationMinutes, "minutes");
 
+      // ✅ Step 2: Fetch audio file as blob
+      const fetchResponse = await fetch(audioUrl);
+      const blob = await fetchResponse.blob();
 
+      const file = new File([blob], `meeting_${Date.now()}.mp3`, {
+        type: "audio/mpeg",
+      });
+
+      // ✅ Step 3: Upload audio for processing with correct duration
       const formData = new FormData();
       formData.append("audio", file);
       formData.append("source", "Live Transcript Conversion");
+      formData.append("meetingDuration", meetingDurationMinutes); // ✅ Pass the correct duration
 
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
@@ -774,7 +886,6 @@ try {
           },
         }
       );
-
       if (response.data) {
         const {
           audioUrl,
@@ -793,7 +904,6 @@ try {
 
         setRecordedBlob(false);
 
-        // ✅ Show success message with minutes info if present
         const successMessage = usedMinutes
           ? `${message || "Audio processed successfully!"} (${usedMinutes} minutes used, ${remainingMinutes} remaining)`
           : message || "Audio processed successfully!";
@@ -818,17 +928,14 @@ try {
     } catch (error) {
       console.error("Error processing notes:", error);
 
-      // 🚨 Handle insufficient minutes error (402)
       if (error.response?.status === 402) {
         const errorData = error.response.data;
-
         addToast(
           "error",
-          `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} remaining. Please recharge to continue.`,
+          `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} remaining.`,
           10000
         );
 
-        // Optional: trigger your recharge modal or UI flow
         if (setShowRechargeModal) {
           setShowRechargeModal(true);
           setRechargeInfo({
@@ -846,8 +953,7 @@ try {
       }
     } finally {
       setIsProcessing(false);
-      mergedPreviewBlobRef.current = null; // ✅ clear after MOM generated
-
+      mergedPreviewBlobRef.current = null;
     }
   };
 
@@ -945,22 +1051,81 @@ try {
     }
   };
 
- const handleRecordAgain = (blobUrl) => {
-  if (blobUrl) {
-    // ✅ Keep the current recording as the "base" to append onto
-    previousBlobRef.current = recordingBlobRef.current || previousBlobRef.current;
 
-    // ✅ Do NOT clear recordedBlob or previews
-    // setRecordedBlob(false); // ❌ remove this line
 
-    addToast("info", "Restarting recording — new audio will append to the previous one");
 
-    // ✅ Start a new recording session (this will merge on stop)
-    startRecording();
-  } else {
-    addToast("error", "No valid mixed blob available in audioPreviews");
-  }
-};
+  const handleRecordAgain = async () => {
+    console.log("🎙️ Restarting recording with same room:", meetingId);
+    if (!meetingId) {
+      addToast("error", "No existing meeting to resume.");
+      return;
+    }
+
+    // 🧹 Stop any leftover backup recorder before restarting
+    if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
+      mediaRecorderRef.current.backupRecorder.stop();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Reset timer and UI
+    // Fetch previous meeting duration from backend if available
+    let previousDuration = 0;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/details`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (data.success && data.meeting) {
+        const { duration_minutes, audio_url } = data.meeting;
+        previousDuration = duration_minutes || 0;
+        console.log("⏱ Previous meeting duration (minutes):", previousDuration);
+        console.log("🎧 Last meeting audio URL:", audio_url);
+      } else {
+        console.log("ℹ️ No meeting details found, starting fresh.");
+      }
+
+    } catch (err) {
+      console.error("❌ Error fetching latest meeting:", err);
+    }
+
+    accumulatedTimeRef.current = previousDuration * 60; // convert to seconds
+    setRecordingTime(accumulatedTimeRef.current);
+
+    setIsRecording(true);
+    recordedChunksRef.current = [];
+    individualRecordersRef.current.clear();
+    individualChunksRef.current.clear();
+
+    // 🔥 Resume backup stream for same meeting
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("start-backup-recording", { roomId: meetingId });
+    }
+
+    // 🔥 Restart main media recorder
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.start(1000);
+    }
+
+    // 🔥 Restart host mic and guests’ individual recorders
+    if (localMicRef.current) {
+      startIndividualRecording("host", localMicRef.current);
+    }
+
+    peersRef.current.forEach((pc, socketId) => {
+      const remoteStream = new MediaStream();
+      pc.getReceivers().forEach((receiver) => {
+        if (receiver.track) remoteStream.addTrack(receiver.track);
+      });
+      if (remoteStream.getAudioTracks().length > 0) {
+        startIndividualRecording(socketId, remoteStream);
+      }
+    });
+
+    // ✅ Continue appending audio chunks to same room
+    startBackupStream(meetingId);
+    addToast("info", "Recording resumed for the same meeting.");
+  };
 
 
   const continueNextProcess = async (audioFile) => {

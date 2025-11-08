@@ -15,14 +15,59 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
 
-  const togglePlayPause = () => {
+  // 🔥 Force audio element to reload when audioUrl changes
+  React.useEffect(() => {
+    if (audioRef.current && lastPreview?.audioUrl) {
+      console.log('🔄 Audio source updated, reloading:', lastPreview.audioUrl);
+      
+      // Stop current playback
+      audioRef.current.pause();
+      setIsPlaying(false);
+      setCurrentTime(0);
+      
+      // Reset duration to trigger fresh load
+      setDuration(0);
+      
+      // Force reload the audio
+      audioRef.current.load();
+      
+      // Try to get duration after load
+      const handleCanPlay = () => {
+        if (audioRef.current && !isNaN(audioRef.current.duration) && audioRef.current.duration !== Infinity) {
+          setDuration(audioRef.current.duration);
+          console.log('✅ Audio loaded successfully, duration:', audioRef.current.duration);
+        }
+      };
+      
+      audioRef.current.addEventListener('canplay', handleCanPlay);
+      
+      return () => {
+        audioRef.current?.removeEventListener('canplay', handleCanPlay);
+      };
+    }
+  }, [lastPreview?.audioUrl, lastPreview?.id]);
+
+  const togglePlayPause = async () => {
     if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+      try {
+        if (isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        } else {
+          // Ensure audio is loaded before playing
+          if (audioRef.current.readyState < 2) {
+            console.log('⏳ Audio not ready, loading...');
+            await audioRef.current.load();
+          }
+          
+          await audioRef.current.play();
+          setIsPlaying(true);
+          console.log('▶️ Playing audio from:', lastPreview?.audioUrl);
+        }
+      } catch (error) {
+        console.error('❌ Play error:', error);
+        setIsPlaying(false);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -31,8 +76,26 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
       const d = audioRef.current.duration;
       if (!isNaN(d) && d !== Infinity) {
         setDuration(d);
+        console.log('📊 Metadata loaded, duration:', d);
+        
+        // Update Redux store with actual duration
+        if (lastPreview?.id) {
+          dispatch(
+            updateAudioDuration({
+              id: lastPreview.id,
+              duration: d,
+            })
+          );
+        }
       } else {
-        setDuration(0); // fallback until playback starts
+        // Use duration from Redux if available
+        if (lastPreview?.duration) {
+          setDuration(lastPreview.duration);
+          console.log('📊 Using stored duration:', lastPreview.duration);
+        } else {
+          setDuration(0);
+          console.log('⚠️ Duration not available yet');
+        }
       }
     }
   };
@@ -125,20 +188,30 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
             )}
           </div>
 
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-xl p-4 border border-gray-200/70 dark:border-gray-700/70">
+         <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-xl p-4 border border-gray-200/70 dark:border-gray-700/70">
             <audio
               ref={audioRef}
               src={lastPreview?.audioUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={() => setIsPlaying(false)}
+              onError={(e) => {
+                console.error('❌ Audio playback error:', e);
+                console.error('Failed URL:', lastPreview?.audioUrl);
+                setIsPlaying(false);
+              }}
+              onLoadStart={() => console.log('📥 Loading audio from:', lastPreview?.audioUrl)}
+              onCanPlay={() => console.log('✅ Audio can play')}
               className="hidden"
+              key={lastPreview?.audioUrl} // Force re-render when URL changes
+              preload="metadata"
             />
 
             <div className="flex items-center gap-4">
-              <button
+             <button
                 onClick={togglePlayPause}
-                className="group relative w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 dark:from-blue-600 dark:to-purple-700 dark:hover:from-blue-700 dark:hover:to-purple-800 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl dark:shadow-blue-500/25 dark:hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105"
+                disabled={!lastPreview?.audioUrl}
+                className="group relative w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 dark:from-blue-600 dark:to-purple-700 dark:hover:from-blue-700 dark:hover:to-purple-800 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl dark:shadow-blue-500/25 dark:hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-white/20 dark:bg-white/30 rounded-full group-hover:bg-white/30 dark:group-hover:bg-white/40 transition-colors duration-300"></div>
                 {isPlaying ? (
@@ -165,12 +238,12 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
+             <div className="flex justify-between items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
                   <span className="font-medium tabular-nums">
                     {formatTime(currentTime)}
                   </span>
                   <span className="font-medium tabular-nums">
-                    {formatTime(lastPreview?.duration)}
+                    {formatTime(totalDuration)}
                   </span>
                 </div>
               </div>
@@ -198,7 +271,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-center gap-4 mt-6">
+          {/* <div className="flex items-center justify-center gap-4 mt-6">
             <button
               onClick={() =>
                 onRecordAgain && onRecordAgain(lastPreview?.audioUrl)
@@ -208,7 +281,7 @@ export default function StylishAudioPreview({ onRecordAgain, onRemove }) {
               <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
               <span className="font-medium">Restart Meeting</span>
             </button>
-          </div>
+          </div> */}
 
           <div className="mt-4 flex justify-center">
             <div className="w-12 h-1 bg-gradient-to-r from-blue-400 to-purple-500 dark:from-blue-500 dark:to-purple-600 rounded-full"></div>

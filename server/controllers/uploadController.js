@@ -79,9 +79,9 @@ const uploadAudio = async (req, res) => {
       });
     }
 
-    let buffer;
-    let originalName;
-    let actualSource = source || "upload";
+      let buffer;
+      let originalName;
+      let actualSource = source || "upload";
 
     // 🔥 Get audio buffer and name based on source
     if (driveUrl) {
