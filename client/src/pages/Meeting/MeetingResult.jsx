@@ -12,7 +12,7 @@ import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import { useSelector } from "react-redux";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
 
-const breadcrumbItems = [{ label: "Online Meeting" }];
+const breadcrumbItems = [{ label: "Meeting Result" }];
 
 export default function MeetingResult() {
     const { meetingId } = useParams();
@@ -75,7 +75,6 @@ export default function MeetingResult() {
 
     return (
         <section className="relative min-h-screen w-full overflow-hidden">
-            {/* Enhanced Background */}
             <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
                 {/* Animated background elements */}
                 <div className="absolute inset-0 opacity-40">
@@ -90,8 +89,9 @@ export default function MeetingResult() {
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(120,119,198,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(120,119,198,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
                 </div>
             </div>
+
             <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll">
-                <div className="min-h-screen lg:px-4 md:px-4 px-4 py-20 lg:py-28 flex flex-col md:gap-12 gap-8 container mx-auto">
+                <div className="min-h-screen lg:px-4 md:px-4 px-4 py-20 lg:py-28 flex flex-col md:gap-12 gap-8 container mx-auto lg:max-w-[70vw] xl:max-w-[80vw] w-full">
                     <Breadcrumb items={breadcrumbItems} />
                     <div className="dark:bg-gray-800/70 bg-gray-100 md:p-8 p-4 rounded-2xl border dark:border-gray-700 border-white shadow-xl">
                         <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">

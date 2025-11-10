@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
-// eslint-disable-next-line no-unused-vars
-import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Mail, MessageCircle, ArrowUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { Mail, Youtube, Linkedin, Instagram, Facebook, Twitter, Sparkles, ArrowRight } from "lucide-react";
 
 const Footer = () => {
   const footerLinks = {
@@ -13,24 +12,48 @@ const Footer = () => {
     company: [
       { name: "About Us", href: "/about-us" },
       { name: "Contact", href: "/contact-us" },
-      //   { name: "Careers", href: "/careers" },
     ],
     support: [
       { name: "Documentation", href: "/documentation" },
       { name: "Privacy Policy", href: "/privacy-policy" },
       { name: "Terms of Service", href: "/terms-of-service" },
     ],
-    connect: [
-      {
-        name: "support@officemom.me",
-        href: "mailto:support@officemom.me",
-        icon: Mail,
-      },
-      // { name: "Live Chat", href: "/support", icon: MessageCircle },
-    ],
   };
 
-  const hiddenRoutes2 = [
+  const socialLinks = [
+    { 
+      name: "YouTube", 
+      href: "https://www.youtube.com/@QuantumHashCorporation", 
+      icon: Youtube,
+      color: "hover:bg-red-500"
+    },
+    { 
+      name: "LinkedIn", 
+      href: "https://www.linkedin.com/company/quantumhash-corporation/", 
+      icon: Linkedin,
+      color: "hover:bg-blue-600"
+    },
+    { 
+      name: "Instagram", 
+      href: "https://www.instagram.com/quantumhash_corporation/", 
+      icon: Instagram,
+      color: "hover:bg-gradient-to-br hover:from-purple-500 hover:via-pink-500 hover:to-orange-500"
+    },
+    { 
+      name: "Facebook", 
+      href: "https://www.facebook.com/share/14P25GcnrTX/", 
+      icon: Facebook,
+      color: "hover:bg-blue-700"
+    },
+    { 
+      name: "X", 
+      href: "https://x.com/QuantumhashCrp", 
+      icon: Twitter,
+      color: "hover:bg-black dark:hover:bg-black"
+    },
+  ];
+
+  const hiddenRoutes = [
     "/meeting",
     "/generate-notes",
     "/live-meeting",
@@ -39,191 +62,236 @@ const Footer = () => {
     "/forgot-password",
   ];
 
-  const hideHeader = hiddenRoutes2.some((path) =>
+  const hideFooterMargin = hiddenRoutes.some((path) =>
     location.pathname.startsWith(path)
   );
 
   return (
-    <>
-      <footer
-        id="animated-footer"
-        className={`relative bg-gradient-to-br from-slate-50 via-blue-100 to-indigo-100 
-                    dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30 
-                    border-t border-white/30 dark:border-gray-700/50 overflow-hidden  ${hideHeader ? "mb-0" : "lg:mb-20 mb-16"
-          }`}
-      >
-        {/* Background with gradient and patterns */}
-        <div className="absolute inset-0">
-          {/* Animated background elements */}
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
-          </div>
-
-          {/* Grid pattern */}
-          <div className="absolute inset-0 opacity-10 dark:opacity-5">
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
-          </div>
+    <footer
+      className={`relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 
+                  dark:from-gray-950 dark:via-indigo-950/20 dark:to-gray-900 
+                  overflow-hidden ${hideFooterMargin ? "mb-0" : "lg:mb-0 mb-4 md:mb-10"}`}
+    >
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        {/* Gradient Orbs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-400/30 dark:bg-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-400/30 dark:bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-400/20 dark:bg-indigo-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
         </div>
+      </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 py-16">
-          {/* Main Footer Content */}
-          <div
-            className="grid lg:grid-cols-5 gap-8 mb-12"
-          >
-            {/* Brand Section */}
-            <div
-              className="lg:col-span-2"
+      {/* Main Content */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top Wave Divider */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+
+        {/* Newsletter Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="py-12 border-b border-gray-200/50 dark:border-gray-800/50"
+        >
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="text-center md:text-left">
+              <h3 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 flex items-center justify-center md:justify-start gap-2">
+                <Sparkles className="w-6 h-6 text-indigo-600" />
+                Stay Updated
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">Get the latest updates and AI meeting insights</p>
+            </div>
+            <Link
+              to="/contact-us"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full font-medium shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              <div className="flex items-center space-x-3 mb-6 group">
-                <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
-                  <img src="/logo.webp" alt="logo" loading="lazy" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent   duration-300">
-                    OfficeMoM
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    AI Meeting Assistant
-                  </p>
+              <Mail className="w-5 h-5" />
+              Contact Us
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Main Footer Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-10 gap-8 lg:gap-12 py-16">
+          {/* Brand Section */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="lg:col-span-4 space-y-6"
+          >
+            <Link to="/" className="inline-flex items-center space-x-3 group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-50 group-hover:opacity-75 transition-opacity"></div>
+                <div className="relative w-12 h-12 bg-gradient-to-br from-white to-blue-100 dark:from-gray-800 dark:to-indigo-900 rounded-xl flex items-center justify-center shadow-lg">
+                  <img src="/logo.webp" alt="OfficeMoM Logo" className="w-8 h-8" loading="lazy" />
                 </div>
               </div>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-lg mb-6">
-                Transform your meetings with AI-powered transcription, smart
-                summaries, and seamless collaboration tools for teams of all
-                sizes.
-              </p>
-              <div className="flex items-center space-x-4">
-                {footerLinks.connect.map((link, index) => {
-                  const IconComponent = link.icon;
+              <div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  OfficeMoM
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">AI Meeting Assistant</p>
+              </div>
+            </Link>
+            
+            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+              Transform your meetings with AI-powered transcription, smart summaries, and seamless collaboration tools for teams of all sizes.
+            </p>
+
+            {/* Social Links */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Connect With Us</h4>
+              <div className="flex flex-wrap gap-3">
+                {socialLinks.map((social, index) => {
+                  const Icon = social.icon;
                   return (
                     <motion.a
                       key={index}
-                      href={link.href}
-                      className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 
-                                                hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300 
-                                                group"
-                      whileHover={{ x: 5 }}
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`group relative w-11 h-11 flex items-center justify-center rounded-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl ${social.color}`}
+                      title={social.name}
                     >
-                      <IconComponent className="w-4 h-4" />
-                      <span className="text-sm">{link.name}</span>
+                      <Icon className="w-5 h-5 relative z-10" />
                     </motion.a>
                   );
                 })}
               </div>
             </div>
+          </motion.div>
 
-            {/* Product Links */}
-            <div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">
-                Product
-              </h4>
-              <ul className="space-y-3">
-                {footerLinks.product.map((link, index) => (
-                  <motion.li
-                    key={index}
-                  >
-                    <Link
-                      to={link.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 
-                                                 duration-300 relative group text-sm"
-                    >
-                      {link.name}
-                      <span
-                        className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 
-                                                 duration-300 group-hover:w-full"
-                      ></span>
-                    </Link>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Company Links */}
-            <div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">
-                Company
-              </h4>
-              <ul className="space-y-3">
-                {footerLinks.company.map((link, index) => (
-                  <motion.li
-                    key={index}>
-                    <Link
-                      to={link.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 
-                                                 duration-300 relative group text-sm"
-                    >
-                      {link.name}
-                      <span
-                        className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 
-                                                 duration-300 group-hover:w-full"
-                      ></span>
-                    </Link>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Support Links */}
-            <div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg">
-                Support
-              </h4>
-              <ul className="space-y-3">
-                {footerLinks.support.map((link, index) => (
-                  <motion.li
-                    key={index}>
-                    <Link
-                      to={link.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 
-                                                 duration-300 relative group text-sm"
-                    >
-                      {link.name}
-                      <span
-                        className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400 
-                                                 duration-300 group-hover:w-full"
-                      ></span>
-                    </Link>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          <div
-            className="pt-8 border-t border-gray-200 dark:border-gray-700 text-center"
+          {/* Product Links */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-2"
           >
+            <h4 className="font-bold text-gray-900 dark:text-white mb-6 text-lg flex items-center gap-2">
+              <span className="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></span>
+              Product
+            </h4>
+            <ul className="space-y-3">
+              {footerLinks.product.map((link, index) => (
+                <li key={index}>
+                  <Link
+                    to={link.href}
+                    className="group flex items-center text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300"
+                  >
+                    <span className="w-0 group-hover:w-2 h-px bg-indigo-500 transition-all duration-300 mr-0 group-hover:mr-2"></span>
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Company Links */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2"
+          >
+            <h4 className="font-bold text-gray-900 dark:text-white mb-6 text-lg flex items-center gap-2">
+              <span className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></span>
+              Company
+            </h4>
+            <ul className="space-y-3">
+              {footerLinks.company.map((link, index) => (
+                <li key={index}>
+                  <Link
+                    to={link.href}
+                    className="group flex items-center text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300"
+                  >
+                    <span className="w-0 group-hover:w-2 h-px bg-purple-500 transition-all duration-300 mr-0 group-hover:mr-2"></span>
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Support Links */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="lg:col-span-2"
+          >
+            <h4 className="font-bold text-gray-900 dark:text-white mb-6 text-lg flex items-center gap-2">
+              <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full"></span>
+              Support
+            </h4>
+            <ul className="space-y-3">
+              {footerLinks.support.map((link, index) => (
+                <li key={index}>
+                  <Link
+                    to={link.href}
+                    className="group flex items-center text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
+                  >
+                    <span className="w-0 group-hover:w-2 h-px bg-blue-500 transition-all duration-300 mr-0 group-hover:mr-2"></span>
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Contact Card */}
+          
+        </div>
+
+        {/* Bottom Bar */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="border-t border-gray-200/50 dark:border-gray-800/50 py-8"
+        >
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
             <p className="text-gray-600 dark:text-gray-400 text-sm">
-              &copy; 2025{" "}
+              © 2025{" "}
               <span className="font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 OfficeMoM
               </span>
               , a subsidiary of{" "}
-              <Link
-                to="https://quantumhash.me"
+              <a
+                href="https://quantumhash.me"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-gray-700 dark:text-gray-300"
+                className="font-semibold text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
               >
                 QuantumHash Corporation
-              </Link>
-
+              </a>
               . All rights reserved.
             </p>
-            <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
-              Powered by cross-industry expertise, perfected for productivity
+            <p className="text-gray-500 dark:text-gray-500 text-xs">
+              Powered by cross-industry expertise, perfected for productivity ✨
             </p>
           </div>
-        </div>
+        </motion.div>
+      </div>
 
-        {/* Floating elements */}
-        <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
-        <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
-        <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
-      </footer>
-    </>
+      {/* Floating Particles */}
+      <div className="absolute bottom-20 left-10 w-2 h-2 bg-indigo-400 rounded-full opacity-60 animate-pulse"></div>
+      <div className="absolute top-32 right-24 w-3 h-3 bg-purple-400 rounded-full opacity-40 animate-pulse" style={{ animationDelay: '1s' }}></div>
+      <div className="absolute top-64 left-32 w-2 h-2 bg-pink-400 rounded-full opacity-50 animate-pulse" style={{ animationDelay: '2s' }}></div>
+    </footer>
   );
 };
 

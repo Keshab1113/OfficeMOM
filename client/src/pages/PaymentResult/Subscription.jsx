@@ -16,6 +16,7 @@ import {
 import { Helmet } from "react-helmet";
 import ConfirmCancelModal from "../../components/LittleComponent/ConfirmCancelModal";
 import { useToast } from "../../components/ToastContext";
+import Footer from "../../components/Footer/Footer";
 
 const Subscription = () => {
   const [subscription, setSubscription] = useState(null);
@@ -220,7 +221,7 @@ const Subscription = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll pb-10 ">
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll  ">
           <div className="min-h-screen lg:px-0 md:px-4 px-4 py-10 lg:py-10 flex flex-col container mx-auto">
             {/* Header */}
             <div className="mb-8">
@@ -521,12 +522,14 @@ const Subscription = () => {
               </div>
             )}
           </div>
+          <Footer/>
         </div>
         <ConfirmCancelModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           onConfirm={cancelSubscription}
         />
+        
         <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>

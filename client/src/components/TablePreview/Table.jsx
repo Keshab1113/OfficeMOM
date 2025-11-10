@@ -35,10 +35,10 @@ export default function DataTable({
 
   const formatBulletPoints = (content) => {
     if (!content || content === "Click to Edit") return content;
-    
+
     // Check if content contains bullet points
     if (content?.includes("•") && content?.includes("\n")) {
-      const points = content.split("\n").filter(point => point.trim() !== "");
+      const points = content.split("\n").filter((point) => point.trim() !== "");
       return (
         <ul className="list-disc pl-5 space-y-1">
           {points.map((point, index) => (
@@ -49,10 +49,22 @@ export default function DataTable({
         </ul>
       );
     }
-    
-    // Return plain text for non-bullet content
+
+    // ✅ Bold the part before colon (e.g., "User Onboarding:")
+    if (content.includes(":")) {
+      const [boldPart, rest] = content.split(/:(.+)/); // splits only on first colon
+      return (
+        <span className="text-sm">
+          <strong>{boldPart.trim()}:</strong>
+          {rest && <span> {rest.trim()}</span>}
+        </span>
+      );
+    }
+
+    // Default plain text
     return content;
   };
+
 
   const columns = [
     { field: "id", headerName: "ID", width: 70 },
@@ -164,9 +176,8 @@ export default function DataTable({
           height: "auto",
           width: "100%",
           margin: "20px auto",
-          border: `1px solid ${
-            theme.palette.mode === "dark" ? "#0a0a0a" : "#f0ebeb"
-          }`,
+          border: `1px solid ${theme.palette.mode === "dark" ? "#0a0a0a" : "#f0ebeb"
+            }`,
           boxShadow: "none",
           borderRadius: 2,
           pt: 2,
@@ -191,9 +202,8 @@ export default function DataTable({
             color: theme.palette.mode === "dark" ? "#e0e0e0" : "#000",
 
             "& .MuiDataGrid-cell": {
-              borderBottom: `0px solid ${
-                theme.palette.mode === "dark" ? "#333" : "#e0e0e0"
-              }`,
+              borderBottom: `0px solid ${theme.palette.mode === "dark" ? "#333" : "#e0e0e0"
+                }`,
               whiteSpace: "pre-wrap", // ✅ important
               wordBreak: "break-word",
               lineHeight: "1.5",
@@ -220,6 +230,11 @@ export default function DataTable({
               backgroundColor:
                 theme.palette.mode === "dark" ? "#303030" : "#e3f2fd",
             },
+            "& .MuiDataGrid-columnHeaderTitle": {
+              fontWeight: "bold", // ✅ make header text bold
+              fontSize: "0.95rem",
+            },
+
           }}
         />
       </Paper>

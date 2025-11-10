@@ -112,7 +112,7 @@ const Login = () => {
         <link rel="canonical" href="https://officemom.me/login" />
       </Helmet>
 
-      <section className="relative w-full min-h-screen overflow-hidden flex items-center justify-center">
+      <section className="relative min-h-screen w-full overflow-hidden">
         {/* Background with gradient and patterns */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
           {/* Animated background elements */}
@@ -127,204 +127,205 @@ const Login = () => {
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
           </div>
         </div>
-
-        <div className=" z-10 overflow-y-auto max-h-screen">
-          <button
-            onClick={toggleTheme}
-            className=" absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+        <div className="relative z-20 max-h-screen overflow-hidden overflow-y-auto ">
+          <div className="min-h-screen lg:px-4 md:px-4 px-4 py-4 flex flex-col md:gap-12 gap-8 container mx-auto  justify-center items-center">
+            <div className=" ">
+              <button
+                onClick={toggleTheme}
+                className=" absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
               shadow-lg border border-white/30 dark:border-gray-700/50
               hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
               text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDarkMode ? (
-              <MdLightMode className="text-xl" />
-            ) : (
-              <MdDarkMode className="text-xl" />
-            )}
-          </button>
-          {/* Main content */}
-          <div className="max-w-7xl mx-auto px-4 py-20">
-            <div className="grid grid-cols-1 lg:grid-cols-2 md:gap-12 gap-4 items-center">
-              {/* Left side - Branding and Info */}
-              <div className="text-center lg:text-left space-y-8">
-                <div className="flex items-center justify-center lg:justify-start space-x-3">
-                  <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
-                    <img src="/logo.webp" alt="logo" loading="lazy" />
-                  </div>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                    OfficeMoM
-                  </span>
-                </div>
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDarkMode ? (
+                  <MdLightMode className="text-xl" />
+                ) : (
+                  <MdDarkMode className="text-xl" />
+                )}
+              </button>
+              {/* Main content */}
+              <div className="max-w-7xl mx-auto px-4 py-20">
+                <div className="grid grid-cols-1 lg:grid-cols-2 md:gap-12 gap-4 items-center">
+                  {/* Left side - Branding and Info */}
+                  <div className="text-center lg:text-left space-y-8">
+                    <div className="flex items-center justify-center lg:justify-start space-x-3">
+                      <div className="w-10 h-10 cursor-pointer bg-gradient-to-r from-white to-blue-400 rounded-lg flex items-center justify-center">
+                        <img src="/logo.webp" alt="logo" loading="lazy" />
+                      </div>
+                      <span className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                        OfficeMoM
+                      </span>
+                    </div>
 
-                <div className="space-y-6">
-                  <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
-                    Welcome Back to{" "}
-                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                      Productivity
-                    </span>
-                  </h1>
-                  <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Streamline your meetings with AI-powered transcription, smart
-                    summaries, and seamless collaboration tools.
-                  </p>
-                </div>
-
-                {/* Features list */}
-                <div className="md:space-y-4 space-y-2 hidden lg:block">
-                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>AI-powered meeting transcription</span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Real-time collaboration</span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Enterprise-grade security</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right side - Login Form */}
-              <div className="flex justify-center lg:justify-end">
-                <div className="w-full max-w-md">
-                  <form
-                    className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:shadow-3xl"
-                    onSubmit={handleLogin}
-                  >
-                    <div className="text-center mb-8">
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                        Sign In to Your Account
-                      </h2>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Enter your credentials to continue
+                    <div className="space-y-6">
+                      <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                        Welcome Back to{" "}
+                        <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                          Productivity
+                        </span>
+                      </h1>
+                      <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Streamline your meetings with AI-powered transcription, smart
+                        summaries, and seamless collaboration tools.
                       </p>
                     </div>
 
-                    <div className="space-y-4">
-                      {/* Email Field */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Email Address
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                          </div>
-                          <input
-                            type="email"
-                            placeholder="Enter your email"
-                            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                          />
-                        </div>
+                    {/* Features list */}
+                    <div className="md:space-y-4 space-y-2 hidden lg:block">
+                      <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>AI-powered meeting transcription</span>
                       </div>
-
-                      {/* Password Field */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Password
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                          </div>
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={togglePasswordVisibility}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
-                            ) : (
-                              <Eye className="h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
+                      <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Real-time collaboration</span>
                       </div>
-
-                      {/* Forgot Password */}
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleForgotPassword}
-                          className=" cursor-pointer text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
-                        >
-                          Forgot your password?
-                        </button>
-                      </div>
-
-                      {/* Submit Button */}
-                      <button
-                        type="submit"
-                        disabled={isProcessing}
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={() => setIsHovered(false)}
-                        className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Signing In...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Sign In</span>
-                            <ArrowRight
-                              className={`w-5 h-5 transition-transform duration-200 ${isHovered ? "translate-x-1" : ""
-                                }`}
-                            />
-                          </>
-                        )}
-                      </button>
-
-                      {/* Sign Up Link */}
-                      <div className="text-center">
-                        <p className="text-gray-600 dark:text-gray-400">
-                          Don't have an account?{" "}
-                          <button
-                            type="button"
-                            onClick={() => navigate("/signup")}
-                            className="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors duration-200 hover:underline"
-                          >
-                            Create account
-                          </button>
-                        </p>
+                      <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Enterprise-grade security</span>
                       </div>
                     </div>
-                  </form>
-
-                  <div className="mt-6 flex justify-center">
-                    <button
-                      onClick={() =>
-                      (window.location.href = `${import.meta.env.VITE_BACKEND_URL
-                        }/api/auth/google`)
-                      }
-                      className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
-                    >
-                      <img
-                        src="/Icons/google.webp"
-                        alt="Google logo"
-                        className="w-5 h-5"
-                      />
-                      <span className="text-gray-700 dark:text-gray-300 font-medium">
-                        Continue with Google
-                      </span>
-                    </button>
                   </div>
-                  {/* <div className="mt-4 flex justify-center">
+
+                  {/* Right side - Login Form */}
+                  <div className="flex justify-center lg:justify-end">
+                    <div className="w-full max-w-md">
+                      <form
+                        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:shadow-3xl"
+                        onSubmit={handleLogin}
+                      >
+                        <div className="text-center mb-8">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                            Sign In to Your Account
+                          </h2>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Enter your credentials to continue
+                          </p>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Email Field */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Email Address
+                            </label>
+                            <div className="relative group">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                              </div>
+                              <input
+                                type="email"
+                                placeholder="Enter your email"
+                                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          {/* Password Field */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Password
+                            </label>
+                            <div className="relative group">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                              </div>
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-5 w-5" />
+                                ) : (
+                                  <Eye className="h-5 w-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Forgot Password */}
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={handleForgotPassword}
+                              className=" cursor-pointer text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
+                            >
+                              Forgot your password?
+                            </button>
+                          </div>
+
+                          {/* Submit Button */}
+                          <button
+                            type="submit"
+                            disabled={isProcessing}
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                            className="w-full cursor-pointer flex items-center justify-center space-x-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Signing In...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Sign In</span>
+                                <ArrowRight
+                                  className={`w-5 h-5 transition-transform duration-200 ${isHovered ? "translate-x-1" : ""
+                                    }`}
+                                />
+                              </>
+                            )}
+                          </button>
+
+                          {/* Sign Up Link */}
+                          <div className="text-center">
+                            <p className="text-gray-600 dark:text-gray-400">
+                              Don't have an account?{" "}
+                              <button
+                                type="button"
+                                onClick={() => navigate("/signup")}
+                                className="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors duration-200 hover:underline"
+                              >
+                                Create account
+                              </button>
+                            </p>
+                          </div>
+                        </div>
+                      </form>
+
+                      <div className="mt-6 flex justify-center">
+                        <button
+                          onClick={() =>
+                          (window.location.href = `${import.meta.env.VITE_BACKEND_URL
+                            }/api/auth/google`)
+                          }
+                          className="w-full cursor-pointer flex items-center justify-center space-x-3 py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200"
+                        >
+                          <img
+                            src="/Icons/google.webp"
+                            alt="Google logo"
+                            className="w-5 h-5"
+                          />
+                          <span className="text-gray-700 dark:text-gray-300 font-medium">
+                            Continue with Google
+                          </span>
+                        </button>
+                      </div>
+                      {/* <div className="mt-4 flex justify-center">
                   <button
                     onClick={async () => {
                       try {
@@ -362,27 +363,29 @@ const Login = () => {
                   </button>
                 </div> */}
 
-                  {/* Security Notice */}
-                  <div className="mt-6 text-center">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
-                      <Lock className="w-3 h-3" />
-                      <span>Your data is securely encrypted and protected</span>
-                    </p>
+                      {/* Security Notice */}
+                      <div className="mt-6 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
+                          <Lock className="w-3 h-3" />
+                          <span>Your data is securely encrypted and protected</span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="md:space-y-4 space-y-2 lg:hidden block">
-                <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>AI-powered meeting transcription</span>
-                </div>
-                <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Real-time collaboration</span>
-                </div>
-                <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Enterprise-grade security</span>
+                  <div className="md:space-y-4 space-y-2 lg:hidden block">
+                    <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>AI-powered meeting transcription</span>
+                    </div>
+                    <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>Real-time collaboration</span>
+                    </div>
+                    <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>Enterprise-grade security</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

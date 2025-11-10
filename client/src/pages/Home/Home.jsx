@@ -31,9 +31,7 @@ const Home = () => {
           </div>
           {/* <Header/> */}
           <div className="relative z-10 ">
-
             <div className="text-center space-y-12">
-
               <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -100,7 +98,7 @@ const Home = () => {
           <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
           <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
         </section>
-        <MeetingHero/>
+        <MeetingHero />
         <CTASection />
         <FAQ />
         <Footer />

@@ -17,6 +17,7 @@ function Layout() {
     "/meeting",
     "/generate-notes", 
     "/live-meeting",
+    "/"
   ];
   
   const shouldUseFloatingHeader = floatingHeaderRoutes.some((path) =>
