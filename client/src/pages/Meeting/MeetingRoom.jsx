@@ -32,8 +32,8 @@ export default function MeetingRoom() {
     const [isScreenShared, setIsScreenShared] = useState(false);
     const [showScreenSharePrompt, setShowScreenSharePrompt] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
-const [showRechargeModal, setShowRechargeModal] = useState(false);
-const [rechargeInfo, setRechargeInfo] = useState(null);
+    const [showRechargeModal, setShowRechargeModal] = useState(false);
+    const [rechargeInfo, setRechargeInfo] = useState(null);
 
 
 
@@ -44,15 +44,56 @@ const [rechargeInfo, setRechargeInfo] = useState(null);
     const screenStreamRef = useRef(null);
     const captionsRef = useRef(null);
     const micStreamRef = useRef(null);
-
+const isEndingRef = useRef(false);
+const planTypeRef = useRef(null);
+const meetingTimeRef = useRef(0); 
     // Timer
-    useEffect(() => {
-        let interval;
-        if (timerActive) {
-            interval = setInterval(() => setMeetingTime((prev) => prev + 1), 1000);
+    // useEffect(() => {
+    //     let interval;
+    //     if (timerActive) {
+    //         interval = setInterval(() => setMeetingTime((prev) => prev + 1), 1000);
+    //     }
+    //     return () => clearInterval(interval);
+    // }, [timerActive]);
+
+useEffect(() => {
+    const fetchSubscription = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subscription`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            planTypeRef.current = res.data?.data?.plan_name?.toLowerCase().includes("free") ? "free" : "paid";
+            console.log("User Plan Type:", planTypeRef.current);
+        } catch (err) {
+            console.error("Subscription check failed:", err);
         }
-        return () => clearInterval(interval);
-    }, [timerActive]);
+    };
+
+    fetchSubscription();
+}, [token]);
+
+useEffect(() => {
+    if (!timerActive) return;
+
+    const interval = setInterval(() => {
+        setMeetingTime((prev) => {
+            const newTime = prev + 1;
+            meetingTimeRef.current = newTime; // ✅ keep live time synced
+
+            // 🧪 Auto-end after 2 minutes for free users
+            if (planTypeRef.current === "free" && newTime >= 120) {
+                addToast("info", "Free plan meeting limit reached (auto-ended after 2 minutes for testing).");
+                endMeeting();
+            }
+
+            return newTime;
+        });
+    }, 1000);
+
+    return () => clearInterval(interval);
+}, [timerActive]);
+
+
 
     // Scroll captions down automatically
     useEffect(() => {
@@ -208,116 +249,223 @@ const [rechargeInfo, setRechargeInfo] = useState(null);
         setTimerActive(false);
     };
 
- 
-
-const endMeeting = async () => {
-  if (showEndingModal) return;
-  setTimerActive(false);
-  setShowEndingModal(true);
-  setIsRecording(false);
-  stopAllMedia();
-
-  try {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      await new Promise((resolve) => {
-        mediaRecorderRef.current.onstop = resolve;
-        mediaRecorderRef.current.stop();
-      });
-    }
-
-    const finalTranscript = transcript.join(" ");
-    if (recordedChunksRef.current.length > 0) {
-      const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
-      const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
-        type: "audio/webm",
-      });
-
-      const formData = new FormData();
-      const meetingDurationInMinutes = Math.ceil(meetingTime / 60);
-formData.append("audio", file);
-formData.append("source", "Online Meeting Conversion");
-formData.append("meetingDuration", meetingDurationInMinutes);
 
 
+    // const endMeeting = async () => {
 
-      try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+    //     if (showEndingModal) return;
+    //     setTimerActive(false);
+    //     setShowEndingModal(true);
+    //     setIsRecording(false);
+    //     stopAllMedia();
 
-        const data = response.data;
+    //     try {
+    //         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+    //             await new Promise((resolve) => {
+    //                 mediaRecorderRef.current.onstop = resolve;
+    //                 mediaRecorderRef.current.stop();
+    //             });
+    //         }
 
-        // ✅ Navigate to result page after successful upload
-        navigate(`/meeting/${meetingId}/result`, {
-          state: {
-            finalTranscript: data.transcription || finalTranscript,
-            detectLanguage: data.language || "en",
-            audioID: data.audioId,
-            updatedMeetingId: data.transcriptAudioId,
-            uploadedUserId: data.userId,
-            historyID: data.id,
-            transcription: data.transcription || finalTranscript,
-          },
-        });
+    //         const finalTranscript = transcript.join(" ");
+    //         if (recordedChunksRef.current.length > 0) {
+    //             const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
+    //             const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
+    //                 type: "audio/webm",
+    //             });
 
-        // ✅ Show success toast with minutes info
-        const successMessage = data.minutesUsed
-          ? `${data.message || "Meeting processed successfully!"} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
-          : data.message || "Meeting processed successfully!";
+    //             const formData = new FormData();
+    //             const meetingDurationInMinutes = Math.ceil(meetingTime / 60);
+    //             formData.append("audio", file);
+    //             formData.append("source", "Online Meeting Conversion");
+    //             formData.append("meetingDuration", meetingDurationInMinutes);
 
-        addToast("success", successMessage);
 
-      } catch (err) {
-        console.error("Upload failed:", err);
 
-        // 🚨 Handle insufficient minutes error (402)
-        if (err.response?.status === 402) {
-          const errorData = err.response.data;
+    //             try {
+    //                 const response = await axios.post(
+    //                     `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+    //                     formData,
+    //                     {
+    //                         headers: {
+    //                             Authorization: `Bearer ${token}`,
+    //                             "Content-Type": "multipart/form-data",
+    //                         },
+    //                     }
+    //                 );
 
-          addToast(
-            "error",
-            `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge to continue.`,
-            10000
-          );
+    //                 const data = response.data;
 
-          // Optional: trigger your recharge modal or UI flow
-          if (setShowRechargeModal) {
-            setShowRechargeModal(true);
-            setRechargeInfo({
-              required: errorData.requiredMinutes,
-              remaining: errorData.remainingMinutes,
-              deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+    //                 // ✅ Navigate to result page after successful upload
+    //                 navigate(`/meeting/${meetingId}/result`, {
+    //                     state: {
+    //                         finalTranscript: data.transcription || finalTranscript,
+    //                         detectLanguage: data.language || "en",
+    //                         audioID: data.audioId,
+    //                         updatedMeetingId: data.transcriptAudioId,
+    //                         uploadedUserId: data.userId,
+    //                         historyID: data.id,
+    //                         transcription: data.transcription || finalTranscript,
+    //                     },
+    //                 });
+
+    //                 // ✅ Show success toast with minutes info
+    //                 const successMessage = data.minutesUsed
+    //                     ? `${data.message || "Meeting processed successfully!"} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
+    //                     : data.message || "Meeting processed successfully!";
+
+    //                 addToast("success", successMessage);
+
+    //             } catch (err) {
+    //                 console.error("Upload failed:", err);
+
+    //                 // 🚨 Handle insufficient minutes error (402)
+    //                 if (err.response?.status === 402) {
+    //                     const errorData = err.response.data;
+
+    //                     addToast(
+    //                         "error",
+    //                         `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge to continue.`,
+    //                         10000
+    //                     );
+
+    //                     // Optional: trigger your recharge modal or UI flow
+    //                     if (setShowRechargeModal) {
+    //                         setShowRechargeModal(true);
+    //                         setRechargeInfo({
+    //                             required: errorData.requiredMinutes,
+    //                             remaining: errorData.remainingMinutes,
+    //                             deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+    //                         });
+    //                     }
+
+    //                     // Stop here (don’t navigate)
+    //                     return;
+    //                 }
+
+    //                 // ❌ Other errors
+    //                 navigate(`/meeting/${meetingId}/result`, {
+    //                     state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+    //                 });
+    //                 addToast("error", err.response?.data?.message || err.message || "Failed to process meeting audio");
+    //             }
+    //         } else {
+    //             navigate(`/meeting/${meetingId}/result`, {
+    //                 state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+    //             });
+    //         }
+    //     } catch (error) {
+    //         console.error("Error ending meeting:", error);
+    //         addToast("error", "Failed to process meeting recording");
+    //     } finally {
+    //         setShowEndingModal(false);
+    //     }
+    // };
+
+    const endMeeting = async () => {
+    // 🧠 Prevent double uploads
+    if (isEndingRef.current) return;
+    isEndingRef.current = true;
+
+    if (showEndingModal) return;
+    setTimerActive(false);
+    setShowEndingModal(true);
+    setIsRecording(false);
+    stopAllMedia();
+
+    try {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            await new Promise((resolve) => {
+                mediaRecorderRef.current.onstop = resolve;
+                mediaRecorderRef.current.stop();
             });
-          }
-
-          // Stop here (don’t navigate)
-          return;
         }
 
-        // ❌ Other errors
-        navigate(`/meeting/${meetingId}/result`, {
-          state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
-        });
-        addToast("error", err.response?.data?.message || err.message || "Failed to process meeting audio");
-      }
-    } else {
-      navigate(`/meeting/${meetingId}/result`, {
-        state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
-      });
+        const finalTranscript = transcript.join(" ");
+        if (recordedChunksRef.current.length > 0) {
+            const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
+            const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
+                type: "audio/webm",
+            });
+
+            const formData = new FormData();
+            const durationSeconds = meetingTimeRef.current || meetingTime;
+const meetingDurationInMinutes = Math.ceil(durationSeconds / 60);
+console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", meetingDurationInMinutes, "minutes");
+
+
+            formData.append("audio", file);
+            formData.append("source", "Online Meeting Conversion");
+            formData.append("meetingDuration", meetingDurationInMinutes);
+
+            try {
+                const response = await axios.post(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+                    formData,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "multipart/form-data",
+                        },
+                    }
+                );
+
+                const data = response.data;
+                navigate(`/meeting/${meetingId}/result`, {
+                    state: {
+                        finalTranscript: data.transcription || finalTranscript,
+                        detectLanguage: data.language || "en",
+                        audioID: data.audioId,
+                        updatedMeetingId: data.transcriptAudioId,
+                        uploadedUserId: data.userId,
+                        historyID: data.id,
+                        transcription: data.transcription || finalTranscript,
+                    },
+                });
+
+                const successMessage = data.minutesUsed
+                    ? `${data.message || "Meeting processed successfully!"} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
+                    : data.message || "Meeting processed successfully!";
+
+                addToast("success", successMessage);
+            } catch (err) {
+                console.error("Upload failed:", err);
+
+                if (err.response?.status === 402) {
+                    const errorData = err.response.data;
+                    addToast(
+                        "error",
+                        `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge.`,
+                        10000
+                    );
+
+                    if (setShowRechargeModal) {
+                        setShowRechargeModal(true);
+                        setRechargeInfo({
+                            required: errorData.requiredMinutes,
+                            remaining: errorData.remainingMinutes,
+                            deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+                        });
+                    }
+                    return;
+                }
+
+                navigate(`/meeting/${meetingId}/result`, {
+                    state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+                });
+                addToast("error", err.response?.data?.message || err.message || "Failed to process meeting audio");
+            }
+        } else {
+            navigate(`/meeting/${meetingId}/result`, {
+                state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+            });
+        }
+    } catch (error) {
+        console.error("Error ending meeting:", error);
+        addToast("error", "Failed to process meeting recording");
+    } finally {
+        setShowEndingModal(false);
     }
-  } catch (error) {
-    console.error("Error ending meeting:", error);
-    addToast("error", "Failed to process meeting recording");
-  } finally {
-    setShowEndingModal(false);
-  }
 };
 
 
@@ -490,8 +638,8 @@ formData.append("meetingDuration", meetingDurationInMinutes);
                                         <button
                                             onClick={toggleMute}
                                             className={`px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 ${isMuted
-                                                    ? "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-gray-500 hover:to-gray-600"
-                                                    : "bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/25 hover:from-green-600 hover:to-emerald-700"
+                                                ? "bg-gradient-to-r from-gray-600 to-gray-700 shadow-gray-500/25 hover:from-gray-500 hover:to-gray-600"
+                                                : "bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/25 hover:from-green-600 hover:to-emerald-700"
                                                 }`}
                                         >
                                             {isMuted ? (
@@ -601,16 +749,16 @@ formData.append("meetingDuration", meetingDurationInMinutes);
                 </div>
             </section>
             {showRechargeModal && (
-                    <RechargeModal
-                      isOpen={showRechargeModal}
-                      onClose={() => setShowRechargeModal(false)}
-                      requiredMinutes={rechargeInfo?.required || 0}
-                      remainingMinutes={rechargeInfo?.remaining || 0}
-                      onRecharge={() => {
+                <RechargeModal
+                    isOpen={showRechargeModal}
+                    onClose={() => setShowRechargeModal(false)}
+                    requiredMinutes={rechargeInfo?.required || 0}
+                    remainingMinutes={rechargeInfo?.remaining || 0}
+                    onRecharge={() => {
                         window.location.href = '/recharge'; // Update with your actual pricing page route
-                      }}
-                    />
-                  )}
+                    }}
+                />
+            )}
         </>
     );
 }

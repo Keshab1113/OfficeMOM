@@ -69,6 +69,7 @@ async function downloadFromDrive(driveUrl) {
  
 const uploadAudio = async (req, res) => {
   const { source, driveUrl } = req.body;
+  console.log("Upload audio request received", req.body);
   
   try {
     const userId = req.user?.id;
@@ -144,9 +145,24 @@ if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
 }
 
 // ⏱️ STEP 2: Check if user has sufficient minutes
+// ⏱️ STEP 2: Check if user has sufficient minutes
 const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
 
   if (!minutesCheck.hasMinutes) {
+      // Check if it's a free user limit exceeded
+      if (minutesCheck.isFreeUserLimitExceeded) {
+        return res.status(403).json({
+          success: false,
+          message: minutesCheck.message,
+          requiredMinutes: minutesCheck.requiredMinutes,
+          maxFreeMinutes: minutesCheck.maxFreeMinutes,
+          isFreeUserLimitExceeded: true,
+          upgradeRequired: true,
+          upgradeUrl: "/pricing"
+        });
+      }
+      
+      // Regular insufficient minutes error
       return res.status(402).json({
         success: false,
         message: minutesCheck.message,
@@ -180,6 +196,7 @@ if (ftpUrlToUse) {
     }
 
     // Format current date
+   // Format current date
     const curDate = new Date();
     const year = curDate.getFullYear();
     const month = String(curDate.getMonth() + 1).padStart(2, "0");
@@ -189,20 +206,35 @@ if (ftpUrlToUse) {
     const seconds = String(curDate.getSeconds()).padStart(2, "0");
     const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
-    // Insert into history table
-    const [result] = await db.query(
-      "INSERT INTO history (user_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [
-        userId,
-        originalName,
-        ftpUrl,
-        formattedDate,
-        false,
-        actualSource,
-        null,
-        null,
-      ]
-    );
+    // 🔥 Check if historyId already exists (from upload-audio-to-ftp)
+    let historyId;
+    if (req.body.historyId) {
+      historyId = req.body.historyId;
+      console.log(`✅ Using existing history_id: ${historyId}`);
+      
+      // Update existing history record instead of inserting new one
+      await db.query(
+        "UPDATE history SET audioUrl = ?, isMoMGenerated = ?, source = ?, uploadedAt = ? WHERE id = ? AND user_id = ?",
+        [ftpUrl, false, actualSource, formattedDate, historyId, userId]
+      );
+    } else {
+      // Insert new history record
+      const [result] = await db.query(
+        "INSERT INTO history (user_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+          userId,
+          originalName,
+          ftpUrl,
+          formattedDate,
+          false,
+          actualSource,
+          null,
+          null,
+        ]
+      );
+      historyId = result.insertId;
+      console.log(`✅ Created new history_id: ${historyId}`);
+    }
 
     // Insert into user_audios table
     const [uploadAudioResult] = await db.query(
@@ -314,7 +346,7 @@ const [transcriptResult] = await db.query(
     res.status(200).json({
       success: true,
       message: successMessage,
-      id: result.insertId,
+      id: historyId,
       userId,
       audioId: uploadAudioResult.insertId,
       transcriptAudioId: transcriptResult.insertId,
@@ -465,11 +497,15 @@ const meetingNumericId = meetingRow[0].id;
     console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
 
 // 📝 Also update or insert into history table
+// 📝 Also update or insert into history table
+let existingHistory = [];
+let nullMeeting = [];
+
 try {
   const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
 
   // 1️⃣ Try to find any history row with this meeting_id or same audioUrl
-  const [existingHistory] = await db.query(
+  [existingHistory] = await db.query(
     `SELECT id, meeting_id FROM history 
      WHERE user_id = ? AND (meeting_id = ? OR audioUrl = ?) 
      ORDER BY uploadedAt DESC LIMIT 1`,
@@ -506,18 +542,19 @@ await db.query(
 
     if (nullMeeting.length > 0) {
       // 🧩 Backfill that record
-      await db.query(
-        `UPDATE history 
-         SET 
-           meeting_id = ?, 
-           audioUrl = ?, 
-           uploadedAt = ?, 
-           source = ?, 
-           title = ?,
-           isMoMGenerated = 0
-         WHERE id = ?`,
-        [meetingId, ftpUrl, formattedDate, "Live Transcript Conversion", originalName, nullMeeting[0].id]
-      );
+     await db.query(
+  `UPDATE history 
+   SET 
+     meeting_id = ?, 
+     audioUrl = ?, 
+     uploadedAt = ?, 
+     source = ?, 
+     title = ?,
+     isMoMGenerated = 0
+   WHERE id = ?`,
+  [meetingNumericId, ftpUrl, formattedDate, "Live Transcript Conversion", originalName, nullMeeting[0].id]
+);
+
 
       console.log(`🔗 Linked old NULL history record with meeting_id ${meetingId}`);
     } else {
@@ -547,6 +584,24 @@ await db.query(
   console.error("⚠️ Error inserting/updating history:", historyErr);
 }
 
+// ✅ Return correct history_id
+let finalHistoryId = null;
+
+if (existingHistory?.length > 0) {
+  finalHistoryId = existingHistory[0].id;
+} else if (nullMeeting?.length > 0) {
+  finalHistoryId = nullMeeting[0].id;
+} else {
+  const [insertedHistory] = await db.query(
+    `SELECT id FROM history 
+     WHERE user_id = ? AND meeting_id = ? 
+     ORDER BY uploadedAt DESC LIMIT 1`,
+    [userId, meetingNumericId]
+  );
+  if (insertedHistory.length > 0) {
+    finalHistoryId = insertedHistory[0].id;
+  }
+}
 
 res.status(200).json({
   success: true,
@@ -555,7 +610,9 @@ res.status(200).json({
   audioUrl: ftpUrl,
   fileName: originalName,
   durationMinutes: finalMinutesValue,
+  history_id: finalHistoryId, // ✅ Return history_id here
 });
+
 
   } catch (err) {
     console.error("❌ FTP upload error:", err);

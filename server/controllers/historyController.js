@@ -71,16 +71,124 @@ const getHistory = async (req, res) => {
   }
 };
 
+// const getMeetingAudios = async (req, res) => {
+//   try {
+//     const hostUserId = req.user.id;
+
+//     // Fetch meetings where this user is the host
+//     const [rows] = await db.query(
+//       `
+//       SELECT
+//         m.id AS meetingId,
+//         m.room_id AS roomId,
+//         m.audio_url AS audioUrl,
+//         m.duration_minutes AS duration,
+//         m.created_at,
+//         m.ended_at,
+//         h.isMoMGenerated
+//       FROM meetings m
+//       LEFT JOIN history h
+//         ON h.meeting_id = m.id
+//         AND h.user_id = ?
+//       WHERE
+//         m.host_user_id = ?
+//         AND m.audio_url IS NOT NULL
+//         AND m.audio_url != ''
+//         AND m.ended_at IS NOT NULL
+//       ORDER BY m.created_at DESC
+//       `,
+//       [hostUserId, hostUserId]
+//     );
+
+//     // Filter out any invalid URLs
+//     // Filter out any invalid URLs
+//     // Filter out any invalid URLs and old entries without audio
+//     const validRows = rows.filter((r) => {
+//       // Skip if no audio URL
+//       if (!r.audioUrl || r.audioUrl.trim() === "") {
+//         return false;
+//       }
+
+//       // Check if URL is valid format
+//       // Check if URL is valid format
+//       try {
+//         new URL(r.audioUrl);
+//       } catch {
+//         return false;
+//       }
+
+//       // Check if URL looks like it has proper file extension
+//       if (!r.audioUrl.match(/\.(mp3|wav|webm|m4a|ogg)(\?.*)?$/i)) {
+//         return false;
+//       }
+//       // Only include meetings that ended at least 5 seconds ago (to avoid fetching incomplete files)
+//       if (r.ended_at) {
+//         const endedDate = new Date(r.ended_at);
+//         const now = new Date();
+//         const secondsSinceEnd = (now - endedDate) / 1000;
+
+//         if (secondsSinceEnd < 5) {
+//           console.log(
+//             `Meeting ${r.meetingId} ended too recently (${secondsSinceEnd}s ago), skipping`
+//           );
+//           return false;
+//         }
+//       }
+
+//       return true;
+//     });
+
+//     // Format timestamps and add title
+//     // Format timestamps and add title
+//     // Format timestamps and add title (using native Date for simplicity)
+//     const formatted = validRows.map((r) => {
+//       // Convert MySQL dates to ISO strings
+//       const createdAt = r.created_at
+//         ? new Date(r.created_at).toISOString()
+//         : null;
+//       const endedAt = r.ended_at ? new Date(r.ended_at).toISOString() : null;
+
+//       // Generate title from room_id
+//       const title = `Meeting ${r.roomId.substring(0, 8)}`;
+
+//       // Use ended_at for uploadedAt, fallback to created_at
+//       const uploadedAt = endedAt || createdAt || new Date().toISOString();
+
+//       return {
+//         id: r.meetingId,
+//         meetingId: r.meetingId,
+//         roomId: r.roomId,
+//         audioUrl: r.audioUrl,
+//         duration: r.duration,
+//         title: title,
+//         uploadedAt: uploadedAt,
+//         created_at: createdAt,
+//         ended_at: endedAt,
+//         isMoMGenerated: r.isMoMGenerated,
+//       };
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       count: formatted.length,
+//       meetings: formatted,
+//     });
+//   } catch (err) {
+//     console.error("❌ Get meeting audios error:", err);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
+
 const getMeetingAudios = async (req, res) => {
   try {
     const hostUserId = req.user.id;
 
-    // Fetch meetings where this user is the host
     const [rows] = await db.query(
       `
       SELECT 
         m.id AS meetingId,
         m.room_id AS roomId,
+        m.title,
         m.audio_url AS audioUrl,
         m.duration_minutes AS duration,
         m.created_at,
@@ -92,20 +200,59 @@ const getMeetingAudios = async (req, res) => {
         AND h.user_id = ?
       WHERE 
         m.host_user_id = ? 
-        
         AND m.audio_url IS NOT NULL
+        AND m.audio_url != ''
+        AND m.ended_at IS NOT NULL
+        AND (h.isMoMGenerated = 0 OR h.isMoMGenerated IS NULL)
       ORDER BY m.created_at DESC
       `,
       [hostUserId, hostUserId]
     );
 
-    // Format timestamps safely
-    const formatted = rows.map((r) => ({
-      ...r,
-      created_at: r.created_at
-        ? DateTime.fromJSDate(r.created_at).toISO()
-        : null,
-      ended_at: r.ended_at ? DateTime.fromJSDate(r.ended_at).toISO() : null,
+    // Filter invalid URLs
+    const validRows = rows.filter((r) => {
+      if (!r.audioUrl?.trim()) return false;
+      try {
+        new URL(r.audioUrl);
+      } catch {
+        return false;
+      }
+      if (!r.audioUrl.match(/\.(mp3|wav|webm|m4a|ogg)(\?.*)?$/i)) return false;
+
+      if (r.ended_at) {
+        const secondsSinceEnd =
+          (new Date() - new Date(r.ended_at)) / 1000;
+        if (secondsSinceEnd < 5) return false;
+      }
+      return true;
+    });
+
+    // 🧠 Generate title if missing and save it
+    for (const row of validRows) {
+      if (!row.title) {
+        const newTitle = `Meeting ${row.roomId.substring(0, 8)}`;
+        await db.query("UPDATE meetings SET title = ? WHERE id = ?", [
+          newTitle,
+          row.meetingId,
+        ]);
+        row.title = newTitle; // update in memory too
+      }
+    }
+
+    // Format and send response
+    const formatted = validRows.map((r) => ({
+      id: r.meetingId,
+      meetingId: r.meetingId,
+      roomId: r.roomId,
+      audioUrl: r.audioUrl,
+       duration: parseFloat(r.duration) || 0,
+      title: r.title, // now saved to DB
+      uploadedAt: r.ended_at
+        ? new Date(r.ended_at).toISOString()
+        : new Date(r.created_at).toISOString(),
+      created_at: r.created_at ? new Date(r.created_at).toISOString() : null,
+      ended_at: r.ended_at ? new Date(r.ended_at).toISOString() : null,
+      isMoMGenerated: r.isMoMGenerated,
     }));
 
     res.status(200).json({

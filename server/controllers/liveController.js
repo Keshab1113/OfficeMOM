@@ -112,6 +112,34 @@ const endMeeting = async (req, res) => {
 };
 
 // ✅ Get the latest meeting record for a given meetingId (room_id)
+// const getLatestMeeting = async (req, res) => {
+//   try {
+//     const { meetingId } = req.params;
+//     const hostUserId = req.user?.id; // ✅ extracted from authMiddleware
+
+//     // Fetch the most recent meeting record for this room_id
+//     const [rows] = await db.query(
+//       `SELECT * FROM meetings 
+//        WHERE room_id = ? AND host_user_id = ? 
+//        ORDER BY id DESC LIMIT 1`,
+//       [meetingId, hostUserId]
+//     );
+
+//     if (rows.length === 0) {
+//       return res.status(404).json({ message: "Meeting not found for this user" });
+//     }
+
+//     res.json({
+//       success: true,
+//       latestMeeting: rows[0],
+//     });
+//   } catch (error) {
+//     console.error("❌ Error fetching latest meeting:", error);
+//     res.status(500).json({ message: "Server error fetching latest meeting" });
+//   }
+// };
+
+// ✅ Get the latest meeting record for a given meetingId (room_id)
 const getLatestMeeting = async (req, res) => {
   try {
     const { meetingId } = req.params;
@@ -129,9 +157,25 @@ const getLatestMeeting = async (req, res) => {
       return res.status(404).json({ message: "Meeting not found for this user" });
     }
 
+    const latestMeeting = rows[0];
+
+    // 🔥 NEW: Fetch the associated history_id from history table
+    const [historyRows] = await db.query(
+      `SELECT id FROM history 
+       WHERE user_id = ? AND audioUrl = ? 
+       ORDER BY id DESC LIMIT 1`,
+      [hostUserId, latestMeeting.audio_url]
+    );
+
+    // Add history_id to the response
+    const historyId = historyRows.length > 0 ? historyRows[0].id : null;
+
     res.json({
       success: true,
-      latestMeeting: rows[0],
+      latestMeeting: {
+        ...latestMeeting,
+        history_id: historyId, // 🔥 Include history_id in response
+      },
     });
   } catch (error) {
     console.error("❌ Error fetching latest meeting:", error);
@@ -183,7 +227,31 @@ const getMeetingDetails = async (req, res) => {
 };
 
 
+const updateMeetingTitle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+    const userId = req.user.id;
 
+    if (!title?.trim()) {
+      return res.status(400).json({ success: false, message: "Title required" });
+    }
+
+    const [result] = await db.query(
+      `UPDATE meetings SET title = ? WHERE id = ? AND host_user_id = ?`,
+      [title.trim(), id, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: "Meeting not found" });
+    }
+
+    res.json({ success: true, message: "Title updated successfully" });
+  } catch (err) {
+    console.error("❌ Error updating title:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
 
 const getAllAudios = async (req, res) => {
@@ -304,5 +372,6 @@ module.exports = {
   transcribeAudioFromURL,
   transcribeAudio,
   getLatestMeeting,
-  getMeetingDetails
+  getMeetingDetails,
+  updateMeetingTitle,
 };

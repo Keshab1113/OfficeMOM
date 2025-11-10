@@ -37,7 +37,7 @@ const sections = [
     title: "Uploading Audio & Video",
     icon: Upload,
     content: `To upload audio, navigate to the Upload page and select your file. 
-    Supported formats: MP3, WAV, M4A, MP4, and MOV. The system will securely store your media and generate transcripts.`,
+    Supported formats: MP3, WAV, M4A, MP4, and  MPEG. The system will securely store your media and generate transcripts.`,
     features: [
       "Drag & drop file upload",
       "Supports multiple formats",
