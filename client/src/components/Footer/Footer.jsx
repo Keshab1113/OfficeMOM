@@ -66,6 +66,8 @@ const Footer = () => {
     location.pathname.startsWith(path)
   );
 
+  const MotionLink = motion(Link);
+
   return (
     <footer
       className={`relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 
@@ -105,7 +107,7 @@ const Footer = () => {
               </h3>
               <p className="text-gray-600 dark:text-gray-400">Get the latest updates and AI meeting insights</p>
             </div>
-            <Link
+            <MotionLink
               to="/contact-us"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -114,7 +116,7 @@ const Footer = () => {
               <Mail className="w-5 h-5" />
               Contact Us
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </MotionLink>
           </div>
         </motion.div>
 

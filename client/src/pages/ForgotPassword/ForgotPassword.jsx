@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Helmet } from "react-helmet";
 import {
   Eye,
@@ -219,7 +220,7 @@ const ForgotPassword = () => {
         <div className="relative z-20 max-h-screen overflow-hidden overflow-y-auto ">
           <div className="min-h-screen lg:px-4 md:px-4 px-4 py-4 flex flex-col md:gap-12 gap-8 container mx-auto  justify-center items-center">
             <div className=" ">
-              <button
+              <motion.button
                 onClick={toggleTheme}
                 className="absolute top-4 right-4 p-2 ml-4 rounded-xl cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
               shadow-lg border border-white/30 dark:border-gray-700/50
@@ -234,7 +235,7 @@ const ForgotPassword = () => {
                 ) : (
                   <MdDarkMode className="text-xl" />
                 )}
-              </button>
+              </motion.button>
               {/* Main content */}
               <div className="max-w-7xl mx-auto px-4 py-20">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
