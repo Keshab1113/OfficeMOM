@@ -15,6 +15,7 @@ import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeature
 import Footer from "../../components/Footer/Footer";
 import RechargeModal from "../../components/RechargeModal/RechargeModal";
 import { DateTime } from "luxon";
+import FreePlanLimitModal from "../../components/LittleComponent/FreePlanLimitModal";
 
 const breadcrumbItems = [{ label: "Generate Notes" }];
 
@@ -31,18 +32,40 @@ const GenerateNotesHome = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [showRechargeModal, setShowRechargeModal] = useState(false);
     const [rechargeInfo, setRechargeInfo] = useState(null);
+const [showFreePlanModal, setShowFreePlanModal] = useState(false);
+const [freePlanMessage, setFreePlanMessage] = useState("");
 
-    const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const validTypes = ["audio/mp3", "audio/wav", "audio/mpeg", "video/mp4", "video/webm"];
-        if (!validTypes.includes(file.type)) {
-            setError("Invalid file type. Please upload audio or video file.");
-            return;
-        }
-        setSelectedFile(file);
-        setError(null);
-    };
+
+   const handleFileSelect = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const validExtensions = [".mp3", ".wav", ".mp4", ".webm", ".mpeg", ".m4a"];
+  const validMimeTypes = [
+    "audio/mpeg", // .mp3, .mpeg
+    "audio/mp3",
+    "audio/wav",
+    "audio/mp4",  // .m4a
+    "video/mp4",
+    "video/webm",
+    "video/mpeg",
+  ];
+
+  const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+  const isValidType = validMimeTypes.includes(file.type);
+  const isValidExtension = validExtensions.includes(fileExtension);
+
+  if (!isValidType && !isValidExtension) {
+    setError("Invalid file type. Please upload an MP3, WAV, M4A, MP4, WebM, or MPEG file.");
+    setSelectedFile(null);
+    return;
+  }
+
+  setSelectedFile(file);
+  setError(null);
+};
+
+
 
     const handleStartMakingNotes = async () => {
         try {
@@ -89,27 +112,41 @@ const GenerateNotesHome = () => {
                 },
             });
         } catch (err) {
-            console.error(err);
-            if (err.response?.status === 402) {
-                const errorData = err.response.data;
-                setShowRechargeModal(true);
-                setRechargeInfo({
-                    required: errorData.requiredMinutes,
-                    remaining: errorData.remainingMinutes,
-                    deficit: errorData.requiredMinutes - errorData.remainingMinutes,
-                });
-                // addToast("error", "Insufficient Minutes! Please recharge.");
-                addToast(
-                    "error",
-                    `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining.Please recharge to continue.`,
-                    10000 // Show for 10 seconds
-                );
-            } else {
-                addToast("error", "Upload failed. Please try again.");
-            }
-        } finally {
-            setIsProcessing(false);
-        }
+    console.error(err);
+
+    const status = err.response?.status;
+    const errorData = err.response?.data;
+
+    if (status === 402) {
+        // ⏱️ Regular insufficient minutes
+        setShowRechargeModal(true);
+        setRechargeInfo({
+            required: errorData.requiredMinutes,
+            remaining: errorData.remainingMinutes,
+            deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+        });
+        addToast(
+            "error",
+            `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge to continue.`,
+            10000
+        );
+
+    } else if (status === 403 && errorData?.isFreeUserLimitExceeded) {
+    setFreePlanMessage(
+        errorData.message ||
+        "You're on the free plan — uploads are limited to 30 minutes. Upgrade your plan to enjoy longer recordings."
+    );
+    setShowFreePlanModal(true);
+
+
+    } else {
+        // 🧱 Default error handler
+        addToast("error", err.response?.data?.message || "Upload failed. Please try again.");
+    }
+} finally {
+    setIsProcessing(false);
+}
+
     };
 
     return (
@@ -133,7 +170,7 @@ const GenerateNotesHome = () => {
                     <div className="min-h-screen container mx-auto px-4">
                         <div className="text-center mb-8 mt-10 px-4">
                             <h1 className="text-3xl md:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 pb-1 lg:pb-3">
-                                Generate Actions from Audio / video files 
+                                Generate Actions from Audio / video files
                             </h1>
                             <p className="text-gray-600 dark:text-gray-300 mt-2">
                                 Upload your recording and get structured notes instantly.
@@ -144,38 +181,38 @@ const GenerateNotesHome = () => {
                             <div className="w-full"><Timing /></div>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
                                 <div className="lg:col-span-2">
-                                   <div
-    className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/20 animate-fade-in-up relative ${isProcessing ? "pointer-events-none opacity-60" : ""}`}
->
-    {isProcessing && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/40 dark:bg-black/40 rounded-2xl z-50">
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 font-semibold">
-                <svg
-                    className="animate-spin -ml-1 mr-2 h-5 w-5 text-blue-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                    ></circle>
-                    <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
+                                    <div
+                                        className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/20 animate-fade-in-up relative ${isProcessing ? "pointer-events-none opacity-60" : ""}`}
+                                    >
+                                        {isProcessing && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-white/40 dark:bg-black/40 rounded-2xl z-50">
+                                                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 font-semibold">
+                                                    <svg
+                                                        className="animate-spin -ml-1 mr-2 h-5 w-5 text-blue-600"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <circle
+                                                            className="opacity-25"
+                                                            cx="12"
+                                                            cy="12"
+                                                            r="10"
+                                                            stroke="currentColor"
+                                                            strokeWidth="4"
+                                                        ></circle>
+                                                        <path
+                                                            className="opacity-75"
+                                                            fill="currentColor"
+                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
                         5.291A7.962 7.962 0 014 12H0c0 
                         3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                </svg>
-                <span>Processing...</span>
-            </div>
-        </div>
-    )}
+                                                        ></path>
+                                                    </svg>
+                                                    <span>Processing...</span>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 mb-4">
                                             <button
@@ -275,21 +312,23 @@ const GenerateNotesHome = () => {
                                                                 Drag your file here or click to select
                                                             </p>
                                                             <p className="text-xs text-gray-400 mt-1">
-                                                                Supported: MP3, WAV, MP4, WebM
+                                                                Supported: MP3, WAV, MP4, WebM, MPEG
                                                             </p>
                                                             <p className="text-xs text-gray-400">
                                                                 Max size: 2 GB
                                                             </p>
                                                         </>
                                                     )}
-                                                    <input
-                                                        id="file-upload"
-                                                        type="file"
-                                                        accept=".mp3,.wav,.mp4,.webm,audio/*,video/*"
-                                                        className="hidden"
-                                                        onChange={handleFileSelect}
-                                                        ref={fileInputRef}
-                                                    />
+                                                        <input
+  id="file-upload"
+  type="file"
+  accept=".mp3,.wav,.m4a,.mp4,.webm,.mpeg,audio/mpeg,audio/wav,audio/mp4,video/mp4,video/webm,video/mpeg"
+  className="hidden"
+  onChange={handleFileSelect}
+  ref={fileInputRef}
+/>
+
+
                                                 </label>
                                             )}
                                             {activeTab === "drive" && (
@@ -429,6 +468,14 @@ const GenerateNotesHome = () => {
                     onRecharge={() => (window.location.href = "/recharge")}
                 />
             )}
+            {showFreePlanModal && (
+  <FreePlanLimitModal
+    isOpen={showFreePlanModal}
+    message={freePlanMessage}
+    onClose={() => setShowFreePlanModal(false)}
+  />
+)}
+
         </>
     );
 };

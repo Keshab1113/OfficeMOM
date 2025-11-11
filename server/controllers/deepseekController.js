@@ -1,5 +1,3 @@
- 
-
 const axios = require("axios");
 const db = require("../config/db.js");
 const { semanticChunkTranscript } = require("../utils/semanticChunker");
@@ -41,7 +39,6 @@ async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 2000) {
 // =====================
 // Helper: Chunk Transcript Text
 // =====================
- 
 
 // =====================
 // Build Summary Prompt
@@ -94,11 +91,11 @@ Return only the detailed summary. No preamble or additional commentary.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // **RULE 1: Header-Specific Formatting**
-// - **First Header Only** (typically "Discussion Summary" or similar): 
+// - **First Header Only** (typically "Discussion Summary" or similar):
 //   • Format: "[Topic Category]: [Concise description]"
 //   • Example: "Budget Approval: Finance team presented Q4 budget projections"
 //   • Keep under 100 characters when possible
-  
+
 // - **All Other Headers**:
 //   • Use plain, direct content without prefixes or labels
 //   • Be specific and actionable
@@ -392,8 +389,6 @@ Generate the JSON array now:
 `;
 };
 
-
-
 // =====================
 // Enhanced API Configuration
 // =====================
@@ -525,8 +520,14 @@ async function processSingleChunk(
 // Main Processing
 // =====================
 const processTranscript = async (req, res) => {
-  const { transcript, headers, audio_id, userId, transcript_audio_id, history_id } =
-    req.body;
+  const {
+    transcript,
+    headers,
+    audio_id,
+    userId,
+    transcript_audio_id,
+    history_id,
+  } = req.body;
 
   console.log("📥 request.body from deepseekController:", req.body);
 
@@ -556,7 +557,10 @@ const processTranscript = async (req, res) => {
 
   try {
     // STEP 1: Chunk transcript
-    const chunks = await semanticChunkTranscript(transcript, process.env.OPENAI_API_KEY);
+    const chunks = await semanticChunkTranscript(
+      transcript,
+      process.env.OPENAI_API_KEY
+    );
 
     console.log(`🧠 Chunking transcript into ${chunks.length} parts`);
 
@@ -795,11 +799,14 @@ const processTranscript = async (req, res) => {
     let finalData;
     try {
       // Remove markdown code blocks if present
-      let cleaned = finalRaw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-      
+      let cleaned = finalRaw
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+
       finalData = JSON.parse(cleaned);
       console.log("✅ Final MoM parsed successfully as JSON");
-      
+
       // If it's a single object, wrap in array
       if (!Array.isArray(finalData)) {
         console.log("⚠️ Response is object, wrapping in array");
@@ -807,7 +814,7 @@ const processTranscript = async (req, res) => {
       }
     } catch {
       console.log("⚠️ Attempting to extract JSON from response...");
-      
+
       // Try to match array first
       let match = finalRaw.match(/\[[\s\S]*\]/);
       if (match) {
@@ -843,29 +850,35 @@ const processTranscript = async (req, res) => {
 
       // Convert local time to UTC before saving to database
       // Convert local time to UTC before saving to database
-let formattedDate;
+      let formattedDate;
 
-if (req.body.date) {
-  // Treat incoming date as already UTC
-  const utcDate = DateTime.fromFormat(req.body.date, "yyyy-LL-dd HH:mm:ss", { zone: "utc" });
-  if (utcDate.isValid) {
-    formattedDate = utcDate.toFormat("yyyy-LL-dd HH:mm:ss");
-    console.log(`🕒 Using provided UTC date: "${formattedDate}"`);
-  } else {
-    formattedDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
-    console.warn(`⚠️ Invalid format, fallback to current UTC: "${formattedDate}"`);
-  }
-} else {
-  formattedDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
-  console.log(`🕒 No date provided, defaulting to current UTC: "${formattedDate}"`);
-}
-
-
+      if (req.body.date) {
+        // Treat incoming date as already UTC
+        const utcDate = DateTime.fromFormat(
+          req.body.date,
+          "yyyy-LL-dd HH:mm:ss",
+          { zone: "utc" }
+        );
+        if (utcDate.isValid) {
+          formattedDate = utcDate.toFormat("yyyy-LL-dd HH:mm:ss");
+          console.log(`🕒 Using provided UTC date: "${formattedDate}"`);
+        } else {
+          formattedDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
+          console.warn(
+            `⚠️ Invalid format, fallback to current UTC: "${formattedDate}"`
+          );
+        }
+      } else {
+        formattedDate = DateTime.utc().toFormat("yyyy-LL-dd HH:mm:ss");
+        console.log(
+          `🕒 No date provided, defaulting to current UTC: "${formattedDate}"`
+        );
+      }
 
       // Use the provided history_id directly to update the existing record
       if (history_id) {
         console.log(`📝 Updating existing history ID: ${history_id}`);
-        
+
         // Fetch existing record details first to preserve them
         const [existingHistory] = await db.query(
           `SELECT title, audioUrl, source FROM history WHERE id = ? AND user_id = ?`,
@@ -891,7 +904,14 @@ if (req.body.date) {
                date = ?,
                uploadedAt = ?
            WHERE id = ? AND user_id = ?`,
-          [JSON.stringify(finalData), "english", formattedDate, formattedDate, history_id, userId]
+          [
+            JSON.stringify(finalData),
+            "english",
+            formattedDate,
+            formattedDate,
+            history_id,
+            userId,
+          ]
         );
 
         console.log(`✅ Updated existing history record ID: ${history_id}`);
@@ -930,7 +950,6 @@ if (req.body.date) {
     } catch (saveErr) {
       console.error("⚠️ Error saving final MoM to history:", saveErr.message);
     }
-
 
     // STEP 7: Return final MoM
     console.log("\n✅ ALL STEPS COMPLETE - Sending response to frontend");

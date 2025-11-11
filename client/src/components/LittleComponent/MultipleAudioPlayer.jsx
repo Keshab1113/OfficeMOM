@@ -16,6 +16,7 @@ import {
   removeAudioPreview,
   updateAudioDuration,
 } from "../../redux/audioSlice";
+import { DateTime } from "luxon";
 
 export default function MultipleAudioPlayer({
   onContinue,
@@ -31,6 +32,8 @@ export default function MultipleAudioPlayer({
   const audioRefs = useRef({});
   const { addToast } = useToast();
   const dispatch = useDispatch();
+  const [editingId, setEditingId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const { token } = useSelector((state) => state.auth);
   const { previews } = useSelector((state) => state.audio);
@@ -39,25 +42,23 @@ export default function MultipleAudioPlayer({
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        // const res = await axios.get(
-        //   `${import.meta.env.VITE_BACKEND_URL}/api/history`,
-        //   { headers: { Authorization: `Bearer ${token}` } }
-        // );
         const res = await axios.get(
-  `${import.meta.env.VITE_BACKEND_URL}/api/history/meeting-audios`,
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+          `${import.meta.env.VITE_BACKEND_URL}/api/history/meeting-audios`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
         const allMeetings = res.data.meetings || [];
-setAudioData(allMeetings);
-
+        setAudioData(allMeetings);
         setLoading(false);
       } catch (err) {
         console.error("Get history error:", err);
+        setLoading(false);
       }
     };
+
+    // Only fetch on mount, not when previews change during recording
     fetchHistory();
-  }, [token, previews]);
+  }, [token]); // Removed 'previews' dependency
 
   useEffect(() => {
     if (!isPreviewProcessing) {
@@ -110,6 +111,11 @@ setAudioData(allMeetings);
     }
   };
 
+  const handleError = (e, audioId) => {
+    // Silently remove the failed audio from the list
+    setAudioData((prev) => prev.filter((_, idx) => idx !== audioId));
+  };
+
   const handleProgressClick = (e, audioId) => {
     const audio = audioRefs.current[audioId];
     if (audio) {
@@ -122,24 +128,36 @@ setAudioData(allMeetings);
   };
 
   const getTimeAgo = (dateString) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    const intervals = {
-      year: 31536000,
-      month: 2592000,
-      week: 604800,
-      day: 86400,
-      hour: 3600,
-      minute: 60,
-    };
-    for (const [unit, seconds] of Object.entries(intervals)) {
-      const interval = Math.floor(diffInSeconds / seconds);
-      if (interval >= 1)
-        return `${interval} ${unit}${interval > 1 ? "s" : ""} ago`;
+    if (!dateString) return "Unknown date";
+
+    try {
+      const now = DateTime.now();
+      const date = DateTime.fromISO(dateString, { zone: 'utc' });
+
+      if (!date.isValid) {
+        return "Unknown date";
+      }
+
+      // Get the difference in different units
+      const diffYears = now.diff(date, 'years').years;
+      const diffMonths = now.diff(date, 'months').months;
+      const diffDays = now.diff(date, 'days').days;
+      const diffHours = now.diff(date, 'hours').hours;
+      const diffMinutes = now.diff(date, 'minutes').minutes;
+
+      if (diffYears >= 1) return `${Math.floor(diffYears)} year${Math.floor(diffYears) > 1 ? 's' : ''} ago`;
+      if (diffMonths >= 1) return `${Math.floor(diffMonths)} month${Math.floor(diffMonths) > 1 ? 's' : ''} ago`;
+      if (diffDays >= 7) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+      if (diffDays >= 1) return `${Math.floor(diffDays)} day${Math.floor(diffDays) > 1 ? 's' : ''} ago`;
+      if (diffHours >= 1) return `${Math.floor(diffHours)} hour${Math.floor(diffHours) > 1 ? 's' : ''} ago`;
+      if (diffMinutes >= 1) return `${Math.floor(diffMinutes)} minute${Math.floor(diffMinutes) > 1 ? 's' : ''} ago`;
+
+      return "Just now";
+    } catch (error) {
+      return "Unknown date";
     }
-    return "Just now";
   };
+
 
   const formatTime = (time) => {
     if (!time || !isFinite(time)) return "0:00";
@@ -170,6 +188,31 @@ setAudioData(allMeetings);
       addToast("error", `Error deleting audio: ${err}`);
     }
   };
+
+  const handleTitleUpdate = async (audioId, newTitle) => {
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${audioId}/title`,
+        { title: newTitle },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setAudioData((prev) =>
+        prev.map((a) =>
+          a.id === audioId ? { ...a, title: newTitle } : a
+        )
+      );
+
+      setEditingId(null);
+      setEditingTitle("");
+      addToast("success", "Title updated successfully");
+    } catch (err) {
+      addToast("error", "Error updating title");
+      setEditingId(null);
+      setEditingTitle("");
+    }
+  };
+
 
   const handleClear = () => {
     dispatch(clearAudioPreviews());
@@ -202,17 +245,15 @@ setAudioData(allMeetings);
               {showAllAudio ? "Hide" : "Show"} All
             </span>
             <ChevronDown
-              className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${
-                showAllAudio ? "rotate-180" : ""
-              }`}
+              className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${showAllAudio ? "rotate-180" : ""
+                }`}
             />
           </button>
         </div>
         {/* <button onClick={handleClear}>Clear Previews</button> */}
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden  ${
-            audioData.length > 2 && "overflow-y-scroll"
-          }`}
+          className={`transition-all duration-500 ease-in-out overflow-hidden  ${audioData.length > 2 && "overflow-y-scroll"
+            }`}
           style={{ maxHeight: showAllAudio ? "300px" : "0" }}
         >
           <div className="space-y-4">
@@ -227,11 +268,73 @@ setAudioData(allMeetings);
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex-1 md:max-w-[60%] max-w-[70%] overflow-hidden">
-                      <p className="text-base text-gray-800 dark:text-gray-300 font-medium truncate max-w-[90%]">
-                        {audio.title || "Unknown Meeting"}
-                      </p>
+                  <div className="flex items-center gap-2">
+  {editingId === audio.id ? (
+    <input
+      type="text"
+      value={editingTitle}
+      onChange={(e) => setEditingTitle(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const finalTitle = editingTitle.trim() || audio.title;
+          if (finalTitle !== audio.title) {
+            handleTitleUpdate(audio.id, finalTitle);
+          } else {
+            setEditingId(null);
+            setEditingTitle("");
+          }
+        } else if (e.key === "Escape") {
+          setEditingId(null);
+          setEditingTitle("");
+        }
+      }}
+      onBlur={() => {
+        const finalTitle = editingTitle.trim() || audio.title;
+        if (finalTitle !== audio.title) {
+          handleTitleUpdate(audio.id, finalTitle);
+        } else {
+          setEditingId(null);
+          setEditingTitle("");
+        }
+      }}
+      className="bg-transparent border-b border-gray-400 dark:border-gray-500 text-gray-800 dark:text-gray-200 outline-none text-base w-full"
+      autoFocus
+    />
+  ) : (
+    <>
+      <p
+        className="text-base text-gray-800 dark:text-gray-300 font-medium truncate max-w-[90%] cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditingId(audio.id);
+          setEditingTitle(audio.title || "");
+        }}
+      >
+        {audio.title || "Unknown Meeting"}
+      </p>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditingId(audio.id);
+          setEditingTitle(audio.title || "");
+        }}
+        className="text-gray-500 hover:text-blue-500 transition"
+      >
+        {/* ✏️ */}
+      </button>
+    </>
+  )}
+</div>
+
+
+
+
                       <span className="text-[12px] text-gray-600 dark:text-gray-300">
-                        {getTimeAgo(audio.uploadedAt)}
+                        {audio.uploadedAt || audio.created_at || audio.ended_at
+                          ? getTimeAgo(audio.uploadedAt || audio.created_at || audio.ended_at)
+                          : 'Unknown date'}
                       </span>
                     </div>
 
@@ -273,7 +376,7 @@ setAudioData(allMeetings);
                     src={audio.audioUrl}
                     onTimeUpdate={() => handleTimeUpdate(index)}
                     onLoadedMetadata={() => handleLoadedMetadata(index)}
-                    onError={(e) => console.error("Audio load error:", e)}
+                    onError={(e) => handleError(e, index)}
                     onEnded={() =>
                       setPlayingStates((prev) => ({ ...prev, [index]: false }))
                     }

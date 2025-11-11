@@ -35,6 +35,7 @@ const breadcrumbItems = [
 ];
 
 const LiveMeeting = () => {
+  const planTypeRef = useRef("paid");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
@@ -72,6 +73,26 @@ const LiveMeeting = () => {
   const { token } = useSelector((state) => state.auth);
   const meetingIdRef = useRef(null);
 
+
+  // 🆕 Fetch subscription type (free or paid)
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subscription`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        planTypeRef.current = res.data?.data?.plan_name?.toLowerCase().includes("free")
+          ? "free"
+          : "paid";
+        console.log("User Plan Type:", planTypeRef.current);
+      } catch (err) {
+        console.error("Subscription check failed:", err);
+      }
+    };
+    if (token) fetchSubscription();
+  }, [token]);
+
+
   // 🔥 NEW: Listen for backup events
   useEffect(() => {
     if (!socketRef.current) return;
@@ -101,21 +122,48 @@ const LiveMeeting = () => {
     };
   }, [socketRef.current, addToast]);
 
-  useEffect(() => {
-    if (isRecording) {
-      let start = Date.now();
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - start) / 1000);
-        setRecordingTime(accumulatedTimeRef.current + elapsed);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+// 🕒 Recording timer with auto-end for free users (30 min)
+// 🕒 Recording timer with auto-end for free users (30 min)
+useEffect(() => {
+  if (!isRecording) {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    return;
+  }
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRecording]);
+  // Save the timestamp when recording started
+  const startTimestamp = Date.now() - accumulatedTimeRef.current * 1000;
+
+  timerRef.current = setInterval(() => {
+    const elapsedSeconds = Math.floor((Date.now() - startTimestamp) / 1000);
+    const totalSeconds = elapsedSeconds;
+
+    setRecordingTime(totalSeconds);
+    accumulatedTimeRef.current = totalSeconds; // ✅ Keep synced
+
+    // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
+   // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
+    if (planTypeRef.current === "free" && totalSeconds >= 60) {
+      console.log(`⏹️ Auto-ending after ${totalSeconds}s (free plan)`);
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+
+      addToast("info", "Free plan limit reached — meeting auto-ended after 1 minute.");
+      stopRecording();
+    }
+  }, 1000);
+
+  return () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+}, [isRecording]);
+
+
 
 
   useEffect(() => {
@@ -429,6 +477,7 @@ const LiveMeeting = () => {
         formData.append("source", "Live Transcript Conversion");
         formData.append("meetingId", meetingIdRef.current);
         formData.append("recordingTime", accumulatedTimeRef.current);
+        console.log("⏱ Saving accumulated time:", accumulatedTimeRef.current);
         console.log("meeting id", meetingIdRef.current);
 
 
@@ -626,147 +675,227 @@ const LiveMeeting = () => {
 
 
   const stopRecording = async () => {
-    accumulatedTimeRef.current = recordingTime;
-    setIsRecording(false);
-    setIsAudioPreviewProcessing(true);
+    try {
+      // accumulatedTimeRef.current = recordingTime;
+      setIsRecording(false);
+      setIsAudioPreviewProcessing(true);
 
-    console.log(`⏱ Saving accumulated time: ${accumulatedTimeRef.current}s`);
+      console.log(`⏱ Saving accumulated time: ${accumulatedTimeRef.current}s`);
 
-    // 🔥 STEP 1: Stop backup recorder FIRST
-    if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
-      mediaRecorderRef.current.backupRecorder.stop();
-      console.log('🛑 Backup recorder stopped');
-    }
-
-    // STEP 2: Stop main recorder
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
-
-    // STEP 3: Stop individual recorders
-    individualRecordersRef.current.forEach((recorder, socketId) => {
-      if (recorder.state === "recording") {
-        recorder.stop();
-        console.log(`Stopped recorder for ${socketId}`);
+      // 🔥 STEP 1: Stop backup recorder FIRST
+      if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
+        mediaRecorderRef.current.backupRecorder.stop();
+        console.log('🛑 Backup recorder stopped');
       }
-    });
 
-    // 🔥 CRITICAL: Wait for recorders to flush completely
-    console.log('⏳ Waiting for recorders to flush...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+      // STEP 2: Stop main recorder
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
 
-    // STEP 4: Tell backend to finalize and save
-    if (socketRef.current && meetingId) {
-      socketRef.current.emit("stop-backup-recording", {
-        roomId: meetingId,
-        token,
-        recordingTime: accumulatedTimeRef.current // ✅ Pass timer duration
+      // STEP 3: Stop individual recorders
+      individualRecordersRef.current.forEach((recorder, socketId) => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+          console.log(`Stopped recorder for ${socketId}`);
+        }
       });
-      console.log('📤 Sent stop-backup-recording to backend');
+
+      // 🔥 CRITICAL: Wait for recorders to flush completely
+      console.log('⏳ Waiting for recorders to flush...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // STEP 4: Tell backend to finalize and save
+      if (socketRef.current && meetingId) {
+        socketRef.current.emit("stop-backup-recording", {
+          roomId: meetingId,
+          token,
+          recordingTime: accumulatedTimeRef.current
+        });
+        console.log('📤 Sent stop-backup-recording to backend');
+      }
+
+      // STEP 5: Initial wait for backend processing
+      console.log('⏳ Waiting for backend to process audio...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 🔥 STEP 6: Robust polling with exponential backoff
+      let audioUrl = null;
+      let actualDuration = accumulatedTimeRef.current;
+      const maxAttempts = 20; // Poll up to 20 times
+      const maxWaitTime = 60000; // Max 60 seconds total
+      const startTime = Date.now();
+
+      addToast("info", "Processing recording... This may take a moment.");
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Check if we've exceeded max wait time
+        if (Date.now() - startTime > maxWaitTime) {
+          console.log('⚠️ Exceeded maximum wait time');
+          break;
+        }
+
+        try {
+          console.log(`🔄 Attempt ${attempt}/${maxAttempts} - Checking for audio URL...`);
+
+          const res = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/latest`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          if (!res.ok) {
+            console.log(`⚠️ API returned ${res.status}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+
+          const data = await res.json();
+
+          if (data?.latestMeeting?.audio_url) {
+            audioUrl = data.latestMeeting.audio_url;
+            console.log('✅ Successfully fetched merged audio from backend:', audioUrl);
+
+            // Calculate actual duration from the uploaded file
+            try {
+              const audioResponse = await fetch(audioUrl);
+              const audioBlob = await audioResponse.blob();
+
+              const audioElement = document.createElement('audio');
+              const blobUrl = URL.createObjectURL(audioBlob);
+              audioElement.src = blobUrl;
+
+              await new Promise((resolve) => {
+                audioElement.onloadedmetadata = () => {
+                  if (audioElement.duration && isFinite(audioElement.duration)) {
+                    actualDuration = audioElement.duration;
+                    console.log(`🎵 Actual audio duration: ${actualDuration}s`);
+                  } else {
+                    console.log('⚠️ Using timer duration:', actualDuration);
+                  }
+                  URL.revokeObjectURL(blobUrl);
+                  resolve();
+                };
+                audioElement.onerror = () => {
+                  console.log('⚠️ Error loading metadata, using timer duration');
+                  URL.revokeObjectURL(blobUrl);
+                  resolve();
+                };
+              });
+            } catch (err) {
+              console.log('⚠️ Could not validate audio file, using timer duration');
+            }
+
+            break; // Success! Exit polling loop
+          } else {
+            console.log(`⏳ Attempt ${attempt}: Audio not ready yet, waiting...`);
+
+            // Exponential backoff: 2s, 3s, 4s, 5s, then cap at 5s
+            const waitTime = Math.min(2000 + (attempt * 500), 5000);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        } catch (error) {
+          console.error(`❌ Attempt ${attempt} failed:`, error);
+
+          // Don't give up on errors, just wait and retry
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+
+      // STEP 7: Add preview if we successfully got the audio URL
+      if (audioUrl) {
+        dispatch(
+          addAudioPreview({
+            audioUrl: audioUrl,
+            id: Date.now(),
+            uploadedAt: new Date().toISOString(),
+            title: `meeting_${meetingId}.mp3`,
+            needToShow: true,
+            duration: actualDuration,
+          })
+        );
+        setRecordedBlob(true);
+        mergedPreviewBlobRef.current = null;
+
+        addToast("success", "Recording saved successfully!");
+        console.log('✅ Preview added to Redux store');
+      } else {
+        // Backend processing is taking longer than expected
+        console.log('⚠️ Audio processing still in progress');
+        addToast("warning", "Recording is being processed. Please check back in a moment.", 8000);
+        setRecordedBlob(false);
+
+        // 🔥 Continue polling in background (non-blocking)
+        continuePollingInBackground(meetingId, token, actualDuration);
+      }
+
+      // Clear backup recorder reference
+      if (mediaRecorderRef.current?.backupRecorder) {
+        mediaRecorderRef.current.backupRecorder = null;
+        console.log('🗑️ Cleared backup recorder reference');
+      }
+
+      // STEP 8: Stop processing indicator
+      setIsAudioPreviewProcessing(false);
+
+      // Small delay for UI update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // STEP 9: End the meeting
+      await endMeeting();
+      console.log('✅ Meeting ended');
+
+    } catch (error) {
+      console.error('❌ Error in stopRecording:', error);
+      setIsAudioPreviewProcessing(false);
+      addToast("error", "Failed to stop recording properly");
     }
+  };
 
-    // STEP 5: Wait for backend to finish saving and merging
-    console.log('⏳ Waiting for backend to save complete audio...');
-    await new Promise(resolve => setTimeout(resolve, 3000)); // Increased wait time
+  // 🔥 NEW: Background polling function that doesn't block UI
+  const continuePollingInBackground = async (meetingId, token, duration) => {
+    console.log('🔄 Starting background polling for audio URL...');
+    const maxBackgroundAttempts = 30; // Poll for up to 5 more minutes
 
-    // 🔥 STEP 6: Fetch the latest merged audio URL from backend
-    let audioUrl = null;
-    let actualDuration = recordingTime;
+    for (let attempt = 1; attempt <= maxBackgroundAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 10000)); // Check every 10 seconds
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        console.log(`🔄 Attempt ${attempt} to fetch latest audio from backend...`);
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/latest`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
+
         const data = await res.json();
 
         if (data?.latestMeeting?.audio_url) {
-          audioUrl = data.latestMeeting.audio_url;
-          console.log('✅ Successfully fetched latest merged audio from backend:', audioUrl);
+          console.log('✅ Background polling found audio URL:', data.latestMeeting.audio_url);
 
-          // Calculate actual duration from the uploaded MP3 file
-          try {
-            const audioResponse = await fetch(audioUrl);
-            const audioBlob = await audioResponse.blob();
+          // Add preview now that audio is ready
+          dispatch(
+            addAudioPreview({
+              audioUrl: data.latestMeeting.audio_url,
+              id: Date.now(),
+              uploadedAt: new Date().toISOString(),
+              title: `meeting_${meetingId}.mp3`,
+              needToShow: true,
+              duration: duration,
+            })
+          );
+          setRecordedBlob(true);
 
-            const audioElement = document.createElement('audio');
-            const blobUrl = URL.createObjectURL(audioBlob);
-            audioElement.src = blobUrl;
-
-            await new Promise((resolve) => {
-              audioElement.onloadedmetadata = () => {
-                if (audioElement.duration && isFinite(audioElement.duration)) {
-                  actualDuration = audioElement.duration;
-                  console.log(`🎵 Actual merged audio duration: ${actualDuration}s`);
-                } else {
-                  console.log('⚠️ Using timer duration:', actualDuration);
-                }
-                URL.revokeObjectURL(blobUrl);
-                resolve();
-              };
-              audioElement.onerror = () => {
-                console.log('⚠️ Error loading metadata, using timer duration');
-                URL.revokeObjectURL(blobUrl);
-                resolve();
-              };
-            });
-          } catch (err) {
-            console.log('⚠️ Could not fetch audio file, using timer duration');
-          }
-
-          break; // Success, exit retry loop
+          addToast("success", "Your recording is now ready!");
+          break; // Stop polling
         } else {
-          console.log(`⚠️ Attempt ${attempt}: No audio URL yet`);
-          if (attempt < 3) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
-          }
+          console.log(`🔄 Background attempt ${attempt}: Still processing...`);
         }
       } catch (error) {
-        console.error(`❌ Attempt ${attempt} failed:`, error);
-        if (attempt < 3) {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
-        }
+        console.error(`❌ Background polling error:`, error);
       }
     }
-
-    // Add to preview (either with backend URL or using timer duration)
-    if (audioUrl) {
-      // ✅ Always use the latest merged audio URL from backend
-      dispatch(
-        addAudioPreview({
-          audioUrl: audioUrl, // This is the merged audio URL from backend
-          id: Date.now(),
-          uploadedAt: new Date().toISOString(),
-          title: `meeting_${meetingId}.mp3`,
-          needToShow: true,
-          duration: actualDuration,
-        })
-      );
-      setRecordedBlob(true);
-
-      // 🔥 Clear merged preview blob since we have the backend URL
-      mergedPreviewBlobRef.current = null;
-
-      addToast("success", "Recording saved successfully!");
-    } else {
-      console.log('⚠️ Backend audio not ready yet, but recording was saved');
-      addToast("warning", "Recording saved, but preview may not be immediately available");
-      setRecordedBlob(false); // Don't show preview if backend URL not available
-    }
-
-    // 🔥 Clear backup recorder reference
-    if (mediaRecorderRef.current?.backupRecorder) {
-      mediaRecorderRef.current.backupRecorder = null;
-      console.log('🗑️ Cleared backup recorder reference');
-    }
-
-    // STEP 7: NOW end the meeting
-    await endMeeting();
-    console.log('✅ Meeting ended after backup saved');
   };
 
   const endMeeting = async () => {
@@ -843,7 +972,7 @@ const LiveMeeting = () => {
   const handleStartMakingNotes = async () => {
     setIsProcessing(true);
     try {
-      // ✅ Step 1: Fetch latest meeting info (ensures newest audioUrl)
+      // ✅ Step 1: Fetch latest meeting info (ensures newest audioUrl and history_id)
       const { data } = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/latest`,
         {
@@ -860,16 +989,18 @@ const LiveMeeting = () => {
 
       const audioUrl = data.latestMeeting.audio_url;
       const meetingDurationMinutes = data.latestMeeting.duration_minutes || Math.ceil(accumulatedTimeRef.current / 60);
+      const existingHistoryId = data.latestMeeting.history_id; // 🔥 Get history_id from API response
 
       console.log("📥 Fetching latest audio from:", audioUrl);
       console.log("⏱️ Meeting duration:", meetingDurationMinutes, "minutes");
+      console.log("🆔 Using existing history_id from database:", existingHistoryId);
 
-      // ✅ Step 2: Fetch audio file as blob
-      // ✅ Step 3: Send audio URL directly for processing
+      // ✅ Step 2: Send audio URL directly for processing with existing history_id
       const payload = {
         audioUrl, // Use existing FTP/hosted URL
         source: "Live Transcript Conversion",
         meetingDuration: meetingDurationMinutes,
+        historyId: existingHistoryId, // 🔥 Pass existing history_id from database
       };
 
       const response = await axios.post(
@@ -1033,6 +1164,8 @@ const LiveMeeting = () => {
     setRequests((r) => r.filter((x) => x.socketId !== id));
     // Don't update participant count for rejected requests
   };
+
+
   const handleDelete = async (audioId) => {
     try {
       await axios.delete(
@@ -1329,34 +1462,36 @@ const LiveMeeting = () => {
                       )}
                     </div>
                   </div>
-                  {lastPreview?.needToShow === true && meetingId ? (
+                  {/* Show loading spinner while processing */}
+                  {isAudioPreviewProcessing && (
+                    <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
+                      <Loader2 className="w-10 h-10 animate-spin" />
+                      Meeting Preview Processing...
+                    </div>
+                  )}
+
+                  {/* Show preview when ready */}
+                  {lastPreview?.needToShow === true && lastPreview?.audioUrl && !isAudioPreviewProcessing && (
                     <StylishAudioPreview
                       onRecordAgain={handleRecordAgain}
                       onRemove={onRemove}
                     />
-                  ) : (
-                    isAudioPreviewProcessing && (
-                      <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
-                        <Loader2 className="w-10 h-10 animate-spin" />
-                        Meeting Preview Processing...
-                      </div>
-                    )
                   )}
 
                   <button
                     onClick={handleStartMakingNotes}
                     disabled={
-                      !meetingId ||
+                      !lastPreview?.audioUrl ||
                       lastPreview?.needToShow === false ||
                       isProcessing ||
                       previews.length === 0
                     }
-                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${!meetingId ||
-                        lastPreview?.needToShow === false ||
-                        isProcessing ||
-                        previews.length === 0
-                        ? "bg-gray-500/20 cursor-not-allowed"
-                        : "bg-blue-400/20 hover:bg-blue-500 hover:text-white cursor-pointer"
+                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${!lastPreview?.audioUrl ||
+                      lastPreview?.needToShow === false ||
+                      isProcessing ||
+                      previews.length === 0
+                      ? "bg-gray-500/20 cursor-not-allowed"
+                      : "bg-blue-400/20 hover:bg-blue-500 hover:text-white cursor-pointer"
                       }`}
 
                   >
