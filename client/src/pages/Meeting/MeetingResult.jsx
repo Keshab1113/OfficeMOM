@@ -94,13 +94,21 @@ export default function MeetingResult() {
                 <div className="min-h-screen lg:px-4 md:px-4 px-4 py-20 lg:py-28 flex flex-col md:gap-12 gap-8 container mx-auto lg:max-w-[70vw] xl:max-w-[80vw] w-full">
                     <Breadcrumb items={breadcrumbItems} />
                     <div className="dark:bg-gray-800/70 bg-gray-100 md:p-8 p-4 rounded-2xl border dark:border-gray-700 border-white shadow-xl">
-                        <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                             Meeting Summary
                         </h1>
-
+                        {!showRealTable ?
+                            <p className="text-sm md:text-base font-semibold mb-6 text-center bg-gradient-to-r from-blue-900 to-purple-950 dark:from-blue-100 dark:to-blue-200 bg-clip-text text-transparent">
+                                You can now customize the headings for your Minutes of the Meeting (MOM) columns on this page. If you provide specific headings, your MOM will be generated accordingly. If no headings are provided, the default headings (as shown) will be used automatically.
+                            </p>
+                            :
+                            <p className="text-sm md:text-base font-semibold mb-6 text-center bg-gradient-to-r from-blue-900 to-purple-950 dark:from-blue-100 dark:to-blue-200 bg-clip-text text-transparent">
+                                You can now customize the Minutes of the Meeting (MOM) on this page and also can download.
+                            </p>
+                        }
                         {!showRealTable ? (
 
-                            <div className="mt-6  w-full">
+                            <div className="mt-6 w-full">
                                 <TablePreview onSaveHeaders={(headers) => handleSaveHeaders(headers, audioID, updatedMeetingId, uploadedUserId)} isSending={isSending} />
                             </div>
                         ) : (

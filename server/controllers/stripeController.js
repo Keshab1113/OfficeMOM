@@ -504,6 +504,54 @@ exports.handleStripeWebhook = async (req, res) => {
 };
 
 
+// async function handleCheckoutSessionCompleted(session, connection) {
+//   const safeValue = (v) => (v === undefined ? null : v);
+//   console.log(`🔄 Processing session: ${session.id}, mode: ${session.mode}`);
+
+//   try {
+//     const paymentStatus = safeValue(session.payment_status);
+
+//     // Atomic: only update if it wasn't paid already
+//     const [updateResult] = await connection.execute(
+//       `UPDATE stripe_payments
+//        SET payment_status = ?, updated_at = CURRENT_TIMESTAMP
+//        WHERE stripe_session_id = ? AND payment_status <> 'paid'`,
+//       [paymentStatus, session.id]
+//     );
+
+//     // If this update didn't change a row, someone already processed it
+//     if (updateResult.affectedRows === 0) {
+//       console.log(`⚠️ Session ${session.id} already processed. Skipping...`);
+//       return;
+//     }
+
+//     // Fetch stripe_payment_id now and pass along to avoid NULLs later
+//     const [rows] = await connection.execute(
+//       `SELECT id FROM stripe_payments WHERE stripe_session_id = ? LIMIT 1`,
+//       [session.id]
+//     );
+//     const stripePaymentId = rows?.[0]?.id || null;
+
+//     if (session.mode === "subscription" && session.subscription) {
+//       await handleSubscriptionSession(session, connection, paymentStatus);
+//     } else if (session.mode === "payment") {
+//       // Attach ids for de-dupe downstream
+//       session.metadata = {
+//         ...(session.metadata || {}),
+//         session_id: session.id,
+//         stripe_payment_id: stripePaymentId,
+//       };
+//       await handleOneTimePaymentSession(session, connection, paymentStatus);
+//     }
+
+//     console.log(`🎯 Completed session handling for ${session.id}`);
+//   } catch (error) {
+//     console.error("❌ Error in handleCheckoutSessionCompleted:", error);
+//     throw error;
+//   }
+// }
+
+
 async function handleCheckoutSessionCompleted(session, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
   console.log(`🔄 Processing session: ${session.id}, mode: ${session.mode}`);
@@ -532,6 +580,7 @@ async function handleCheckoutSessionCompleted(session, connection) {
     );
     const stripePaymentId = rows?.[0]?.id || null;
 
+    // Handle subscription or one-time payment
     if (session.mode === "subscription" && session.subscription) {
       await handleSubscriptionSession(session, connection, paymentStatus);
     } else if (session.mode === "payment") {
@@ -542,6 +591,33 @@ async function handleCheckoutSessionCompleted(session, connection) {
         stripe_payment_id: stripePaymentId,
       };
       await handleOneTimePaymentSession(session, connection, paymentStatus);
+
+      // ✅ NEW: Save Stripe receipt URL for one-time (payment) sessions
+      if (paymentStatus === "paid") {
+        try {
+          // Get Payment Intent to find Charge
+          const paymentIntent = await stripe.paymentIntents.retrieve(
+            session.payment_intent,
+            { expand: ["charges"] }
+          );
+          const charge = paymentIntent.charges?.data?.[0];
+          const receiptUrl = charge?.receipt_url || null;
+
+          if (receiptUrl) {
+            await connection.execute(
+              `UPDATE stripe_payments 
+               SET receipt_url = ?, updated_at = CURRENT_TIMESTAMP 
+               WHERE stripe_session_id = ?`,
+              [receiptUrl, session.id]
+            );
+            console.log(`✅ Saved Stripe receipt URL for session: ${session.id}`);
+          } else {
+            console.warn(`⚠️ No receipt URL found for session: ${session.id}`);
+          }
+        } catch (err) {
+          console.error("⚠️ Failed to fetch Stripe receipt URL:", err.message);
+        }
+      }
     }
 
     console.log(`🎯 Completed session handling for ${session.id}`);

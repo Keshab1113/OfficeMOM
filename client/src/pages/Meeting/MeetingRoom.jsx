@@ -508,26 +508,32 @@ console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", m
                                         </div>
                                     </div>
 
-                                    <h2 className="text-2xl font-bold text-white mb-4">
+                                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
                                         Ready to Start Transcription
                                     </h2>
 
                                     <div className="text-left mb-6 space-y-3">
                                         <div className="flex items-start gap-3">
                                             <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                                            <p className="text-gray-200">
+                                            <p className=" text-gray-800 dark:text-white">
                                                 <strong>Step 1:</strong> First, join your meeting on {activePlatform || "your meeting platform"}
                                             </p>
                                         </div>
                                         <div className="flex items-start gap-3">
                                             <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                                            <p className="text-gray-200">
+                                            <p className="text-gray-800 dark:text-white">
                                                 <strong>Step 2:</strong> Then come back here and click "Start Screen Sharing" below
                                             </p>
                                         </div>
                                         <div className="flex items-start gap-3">
                                             <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                                            <p className="text-gray-200">
+                                            <p className="text-gray-800 dark:text-white">
+                                                <strong>Step 3:</strong> Only share the meeting tab
+                                            </p>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                                            <p className="text-gray-800 dark:text-white">
                                                 <strong>Important:</strong> When sharing, make sure to check <strong>"Share audio"</strong> or <strong>"Share tab audio"</strong>
                                             </p>
                                         </div>

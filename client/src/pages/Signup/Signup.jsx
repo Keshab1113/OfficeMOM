@@ -11,6 +11,7 @@ import {
   ArrowRight,
   CheckCircle,
   Shield,
+  Eye, EyeOff
 } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { MdDarkMode, MdLightMode } from "react-icons/md";
@@ -29,6 +30,8 @@ const Signup = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
 
   const handleSignupForm = async (e) => {
     e.preventDefault();
@@ -348,62 +351,78 @@ const Signup = () => {
                               </div>
 
                               {/* Password Field */}
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  Password
-                                </label>
-                                <div className="relative group">
-                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                                  </div>
-                                  <input
-                                    type="password"
-                                    placeholder="Create a strong password"
-                                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                  />
-                                </div>
+<div className="space-y-2">
+  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+    Password
+  </label>
+  <div className="relative group">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+    </div>
 
-                                {/* Password Strength Indicator */}
-                                {password && (
-                                  <div className="space-y-2 mt-3">
-                                    <div className="flex justify-between text-xs">
-                                      <span className="text-gray-600 dark:text-gray-400">
-                                        Password strength
-                                      </span>
-                                      <span
-                                        className={`font-medium ${strengthScore >= 4
-                                          ? "text-green-600"
-                                          : strengthScore >= 3
-                                            ? "text-yellow-600"
-                                            : "text-red-600"
-                                          }`}
-                                      >
-                                        {strengthScore >= 4
-                                          ? "Strong"
-                                          : strengthScore >= 3
-                                            ? "Medium"
-                                            : "Weak"}
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                      <div
-                                        className={`h-2 rounded-full transition-all duration-300 ${strengthScore >= 4
-                                          ? "bg-green-500"
-                                          : strengthScore >= 3
-                                            ? "bg-yellow-500"
-                                            : "bg-red-500"
-                                          }`}
-                                        style={{
-                                          width: `${(strengthScore / 5) * 100}%`,
-                                        }}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+    {/* Password Input */}
+    <input
+      type={showPassword ? "text" : "password"}
+      placeholder="Create a strong password"
+      className="w-full pl-10 pr-10 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 group-hover:border-gray-400 dark:group-hover:border-gray-500"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+    />
+
+    {/* Eye Icon Button */}
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 focus:outline-none"
+    >
+      {showPassword ? (
+        <EyeOff className="h-5 w-5" />
+      ) : (
+        <Eye className="h-5 w-5" />
+      )}
+    </button>
+  </div>
+
+  {/* Password Strength Indicator */}
+  {password && (
+    <div className="space-y-2 mt-3">
+      <div className="flex justify-between text-xs">
+        <span className="text-gray-600 dark:text-gray-400">
+          Password strength
+        </span>
+        <span
+          className={`font-medium ${
+            strengthScore >= 4
+              ? "text-green-600"
+              : strengthScore >= 3
+              ? "text-yellow-600"
+              : "text-red-600"
+          }`}
+        >
+          {strengthScore >= 4
+            ? "Strong"
+            : strengthScore >= 3
+            ? "Medium"
+            : "Weak"}
+        </span>
+      </div>
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div
+          className={`h-2 rounded-full transition-all duration-300 ${
+            strengthScore >= 4
+              ? "bg-green-500"
+              : strengthScore >= 3
+              ? "bg-yellow-500"
+              : "bg-red-500"
+          }`}
+          style={{ width: `${(strengthScore / 5) * 100}%` }}
+        ></div>
+      </div>
+    </div>
+  )}
+</div>
+
 
                               {/* Submit Button */}
                               <button

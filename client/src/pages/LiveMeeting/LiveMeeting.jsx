@@ -1419,7 +1419,7 @@ const LiveMeeting = () => {
                               </h3>
                               <p className="text-sm text-gray-600 text-center mb-3">
                                 In large meetings (25+ attendees), one device may not capture all voices clearly. Others can scan this QR code to join as
-                                <span className="font-medium text-gray-800">Voice Contributors</span>,
+                                <span className="font-medium text-gray-800">{" "}Voice Contributors</span>,
                                 turning their devices into additional microphones for better meeting accuracy.
                               </p>
                               <div className="flex flex-col items-center">
@@ -1441,8 +1441,10 @@ const LiveMeeting = () => {
                                   )}
                                 </div>
                               </div>
+                              <p className="text-sm text-gray-600 text-center mt-3">
+                                Devices joined via QR code will function only as microphones. All captured data will be securely stored under the <span className="font-medium text-gray-800">{" "}meeting organizer’s{" "}</span> recording timeline.
+                              </p>
                             </div>
-
                             <button
                               className={`px-4 py-2 mt-4 cursor-pointer rounded flex items-center gap-2 ${isMuted
                                 ? "bg-gray-600"
@@ -1462,7 +1464,6 @@ const LiveMeeting = () => {
                       )}
                     </div>
                   </div>
-                  {/* Show loading spinner while processing */}
                   {isAudioPreviewProcessing && (
                     <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
                       <Loader2 className="w-10 h-10 animate-spin" />

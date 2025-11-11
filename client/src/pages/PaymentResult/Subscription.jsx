@@ -65,6 +65,7 @@ const Subscription = () => {
       ]);
 
       console.log("Subscription response:", subscriptionRes);
+      console.log("Billing response:", billingRes.data.data);
 
       if (subscriptionRes.data.success) {
         setSubscription(subscriptionRes.data.data);
@@ -85,7 +86,7 @@ const Subscription = () => {
   };
 
   const cancelSubscription = async () => {
-    
+
     try {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/stripe/cancel-subscription`,
@@ -431,12 +432,10 @@ const Subscription = () => {
                                 {payment.payment_status}
                               </span>
 
-                              {payment.invoice_pdf && (
+                              {(payment.receipt_url || payment.invoice_pdf) && (
                                 <>
                                   <button
-                                    onClick={() =>
-                                      viewInvoice(payment.invoice_pdf)
-                                    }
+                                    onClick={() => viewInvoice(payment.receipt_url || payment.invoice_pdf)}
                                     className="p-2 cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                     title="View Invoice"
                                   >
@@ -464,7 +463,6 @@ const Subscription = () => {
                   </div>
                 </div>
 
-                {/* Sidebar - Quick Actions */}
                 <div className="space-y-6">
                   {/* Account Summary */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -522,14 +520,14 @@ const Subscription = () => {
               </div>
             )}
           </div>
-          <Footer/>
+          <Footer />
         </div>
         <ConfirmCancelModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           onConfirm={cancelSubscription}
         />
-        
+
         <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
         <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>

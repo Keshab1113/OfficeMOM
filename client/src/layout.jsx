@@ -83,7 +83,7 @@ function Layout() {
           id="scrollableMain"
         >
           <Outlet />
-          <ChatBot/>
+          {/* <ChatBot/> */}
         </main>
       </div>
     </section>

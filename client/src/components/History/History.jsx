@@ -194,10 +194,9 @@ const AllHistory = ({ title, NeedFor, height }) => {
           </div>
         </div>
         {!isLoading && allData.length > 0 && (
-          <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-            <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-              {allData.length} {allData.length === 1 ? 'item' : 'items'}
-            </span>
+          <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full  text-xs font-semibold text-purple-700 dark:text-purple-300 flex justify-center items-center whitespace-nowrap">
+            
+              {allData.length}{" "}{allData.length === 1 ? 'item' : 'items'}
           </div>
         )}
       </div>
