@@ -367,7 +367,7 @@ const [transcriptResult] = await db.query(
     console.error("Upload audio error:", err);
     
     // Better error messages
-    let errorMessage = "Server error while processing audio";
+    let errorMessage = "Unable to determine audio ";
     let statusCode = 500;
     
     if (err.message.includes("Unable to determine audio duration")) {
