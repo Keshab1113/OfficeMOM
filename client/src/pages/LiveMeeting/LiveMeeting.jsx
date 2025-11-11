@@ -122,46 +122,46 @@ const LiveMeeting = () => {
     };
   }, [socketRef.current, addToast]);
 
-// 🕒 Recording timer with auto-end for free users (30 min)
-// 🕒 Recording timer with auto-end for free users (30 min)
-useEffect(() => {
-  if (!isRecording) {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  // 🕒 Recording timer with auto-end for free users (30 min)
+  // 🕒 Recording timer with auto-end for free users (30 min)
+  useEffect(() => {
+    if (!isRecording) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
     }
-    return;
-  }
 
-  // Save the timestamp when recording started
-  const startTimestamp = Date.now() - accumulatedTimeRef.current * 1000;
+    // Save the timestamp when recording started
+    const startTimestamp = Date.now() - accumulatedTimeRef.current * 1000;
 
-  timerRef.current = setInterval(() => {
-    const elapsedSeconds = Math.floor((Date.now() - startTimestamp) / 1000);
-    const totalSeconds = elapsedSeconds;
+    timerRef.current = setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startTimestamp) / 1000);
+      const totalSeconds = elapsedSeconds;
 
-    setRecordingTime(totalSeconds);
-    accumulatedTimeRef.current = totalSeconds; // ✅ Keep synced
+      setRecordingTime(totalSeconds);
+      accumulatedTimeRef.current = totalSeconds; // ✅ Keep synced
 
-    // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
-   // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
-    if (planTypeRef.current === "free" && totalSeconds >= 60) {
-      console.log(`⏹️ Auto-ending after ${totalSeconds}s (free plan)`);
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+      // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
+      // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
+      if (planTypeRef.current === "free" && totalSeconds >= 60) {
+        console.log(`⏹️ Auto-ending after ${totalSeconds}s (free plan)`);
+        clearInterval(timerRef.current);
+        timerRef.current = null;
 
-      addToast("info", "Free plan limit reached — meeting auto-ended after 1 minute.");
-      stopRecording();
-    }
-  }, 1000);
+        addToast("info", "Free plan limit reached — meeting auto-ended after 1 minute.");
+        stopRecording();
+      }
+    }, 1000);
 
-  return () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-}, [isRecording]);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isRecording]);
 
 
 
@@ -1417,15 +1417,14 @@ useEffect(() => {
                               <h3 className="text-lg font-semibold mb-2 text-center">
                                 Invite others to join this meeting
                               </h3>
+                              <p className="text-sm text-gray-600 text-center mb-3">
+                                In large meetings (25+ attendees), one device may not capture all voices clearly. Others can scan this QR code to join as
+                                <span className="font-medium text-gray-800">Voice Contributors</span>,
+                                turning their devices into additional microphones for better meeting accuracy.
+                              </p>
                               <div className="flex flex-col items-center">
-                                <QRCodeCanvas
-                                  value={getMeetingUrl()}
-                                  size={128}
-                                  level="H"
-                                />
-                                <p className="mt-2 text-sm text-gray-500">
-                                  Scan to join this meeting
-                                </p>
+                                <QRCodeCanvas value={getMeetingUrl()} size={128} level="H" />
+                                <p className="mt-2 text-sm text-gray-500">Scan to join this meeting</p>
                                 <button
                                   onClick={copyMeetingLink}
                                   className="mt-2 text-blue-500 hover:text-blue-700 text-sm flex items-center gap-1"
@@ -1433,7 +1432,7 @@ useEffect(() => {
                                   <Copy className="w-4 h-4" />
                                   Copy meeting link
                                 </button>
-                                <div className="mt-2 text-xs text-gray-400">
+                                <div className="mt-2 text-xs text-gray-400 text-center">
                                   {participants} participant(s) connected
                                   {requests.length > 0 && (
                                     <div className="text-orange-500">
@@ -1443,6 +1442,7 @@ useEffect(() => {
                                 </div>
                               </div>
                             </div>
+
                             <button
                               className={`px-4 py-2 mt-4 cursor-pointer rounded flex items-center gap-2 ${isMuted
                                 ? "bg-gray-600"
