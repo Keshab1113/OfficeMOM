@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import axios from "axios";
 
 const initialState = {
   fullName: null,
@@ -21,7 +22,7 @@ const authSlice = createSlice({
       state.fullName = action.payload.fullName;
       state.email = action.payload.email;
       state.token = action.payload.token;
-      const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // ✅ 1 day
       state.tokenExpiration = expirationTime;
       state.totalTimes = action.payload.totalTimes;
       state.totalRemainingTime = action.payload.totalRemainingTime;
@@ -57,19 +58,59 @@ const authSlice = createSlice({
       });
     },
 
-    // eslint-disable-next-line no-unused-vars
-    setLogoutTimer: (state, action) => {},
+    setLogoutTimer: (state, action) => { },
   },
 });
 
-export const { setUser, logout, setProfileImage, updateUser } =
-  authSlice.actions;
+export const { setUser, logout, setProfileImage, updateUser } = authSlice.actions;
 
-export const startLogoutTimer = (timeLeft) => (dispatch) => {
+// ✅ Auto refresh token before expiration
+export const checkAndRefreshToken = () => async (dispatch, getState) => {
+  const { token, tokenExpiration } = getState().auth;
+
+  if (!token || !tokenExpiration) return;
+
+  const timeLeft = tokenExpiration - Date.now();
+
+  // Refresh if less than 10 minutes left
+  if (timeLeft < 10 * 60 * 1000) {
+    try {
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/refresh-token`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      dispatch(updateUser({
+        token: data.token,
+        tokenExpiration: Date.now() + 24 * 60 * 60 * 1000, // reset 1 day
+      }));
+    } catch (err) {
+      console.error("Token refresh failed:", err);
+      dispatch(logout());
+    }
+  }
+};
+
+export const startLogoutTimer = (timeLeft, token) => (dispatch) => {
   if (logoutTimer) clearTimeout(logoutTimer);
-  logoutTimer = setTimeout(() => {
-    dispatch(logout());
+
+  logoutTimer = setTimeout(async () => {
+    try {
+      if (token) {
+        await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+    } catch (error) {
+      console.warn("⚠️ Backend logout failed:", error.message);
+    } finally {
+      dispatch(logout());
+    }
   }, timeLeft);
 };
+
 
 export default authSlice.reducer;

@@ -9,6 +9,8 @@ const {
   sendPasswordResetOtp,
   resetPasswordWithOtp,
   resetPasswordWithoutOtp,
+  logout,
+  refreshToken,
 } = require("../controllers/authController.js");
 const authMiddleware = require("../middlewares/authMiddleware.js");
 const multer = require("multer");
@@ -22,6 +24,8 @@ require("../config/passport");
 
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/logout", authMiddleware, logout);
+router.post("/refresh-token", refreshToken);
 router.put("/update-user", authMiddleware, updateUserProfile);
 router.post("/verify-otp", verifyOtp);
 router.post("/resend-otp", resendOtp);
@@ -81,8 +85,8 @@ router.get(
 
       const totalCreatedMoMs = momCount[0]?.totalCreatedMoMs || 0;
 
-      const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "15d" });
-
+      const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
+      await db.query("UPDATE users SET active_token = ? WHERE id = ?", [token, user.id]);
       const redirectURL = `${process.env.FRONTEND_URL}/oauth-success?token=${token}&id=${user.id}&name=${encodeURIComponent(
         user.fullName
       )}&email=${encodeURIComponent(user.email)}&profilePic=${encodeURIComponent(
@@ -156,7 +160,7 @@ router.get(
       res.redirect(`${process.env.FRONTEND_URL}/login?error=facebook_auth_failed`);
     }
   }
-  
+
 );
 router.get("/facebook/health", (req, res) => {
   if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {

@@ -135,7 +135,10 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   }, [token]);
 
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     dispatch(logout());
     persistor.purge();
     if (isMobile) setIsSidebarOpen(false);
@@ -532,7 +535,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                 </span>
               </div>
 
-              
+
             </div>
             {/* Menu Items with Colorful Hover Effects */}
             <Link

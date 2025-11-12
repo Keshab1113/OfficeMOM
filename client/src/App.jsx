@@ -30,8 +30,20 @@ import MeetingRoom from "./pages/Meeting/MeetingRoom";
 import MeetingResult from "./pages/Meeting/MeetingResult";
 import GenerateNotesHome from "./pages/GenerateNotes/GenerateNotesHome";
 import Recharge from "./pages/Recharge/Recharge";
+import { useEffect } from "react";
+import { checkAndRefreshToken } from "./redux/authSlice";
+import { useDispatch } from "react-redux";
 
 function App() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch(checkAndRefreshToken());
+    }, 30 * 60 * 1000); // every 15 minutes
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
+
   return (
     <>
       <Routes>
@@ -61,7 +73,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/live-meeting"
             element={
@@ -88,7 +100,7 @@ function App() {
           />
 
           <Route path="/join-meeting/:id" element={<JoinMeeting />} />
-          
+
           <Route path="/generate-notes" element={<ProtectedRoute><GenerateNotesHome /></ProtectedRoute>} />
           <Route path="/generate-notes/:audioId/result" element={<ProtectedRoute><MeetingResult /></ProtectedRoute>} />
           <Route

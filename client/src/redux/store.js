@@ -1,10 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./authSlice";
+import authReducer, { checkAndRefreshToken } from "./authSlice";
 import meetingReducer from "./meetingSlice";
 import audioReducer from "./audioSlice";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { logout } from "./authSlice";
+import axios from "axios";
 
 const authPersistConfig = {
   key: "auth",
@@ -25,17 +26,40 @@ const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
 const persistedMeetingReducer = persistReducer(meetingPersistConfig, meetingReducer);
 const persistedAudioReducer = persistReducer(audioPersistConfig, audioReducer);
 
-const tokenExpirationMiddleware = (store) => (next) => (action) => {
-  const state = store.getState();
-  if (action.type !== "auth/logout" && state.auth.token && state.auth.tokenExpiration) {
+const tokenExpirationMiddleware = (store) => { // to prevent multiple refreshes
+  return (next) => async (action) => {
+    // Always let the action continue first to avoid recursive dispatching
+    const result = next(action);
+
+    const state = store.getState();
+    const { token, tokenExpiration } = state.auth;
     const currentTime = Date.now();
-    if (currentTime > state.auth.tokenExpiration) {
+
+    if (!token || !tokenExpiration) return result;
+
+    // --- Handle token expiration ---
+    if (currentTime > tokenExpiration) {
+      try {
+        // Call backend logout to clear active_token
+        await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (error) {
+        console.warn("Backend logout failed (probably already expired):", error.message);
+      }
+
+      // Clear Redux state
       store.dispatch(logout());
-      return;
+      return result;
     }
-  }
-  return next(action);
+    return result;
+  };
 };
+
+ 
+
 
 export const store = configureStore({
   reducer: {

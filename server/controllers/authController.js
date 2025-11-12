@@ -136,7 +136,7 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
-
+    await db.query("UPDATE users SET active_token = ? WHERE id = ?", [token, user[0].id]);
     const [subscription] = await db.query(
       "SELECT * FROM user_subscription_details WHERE user_id = ?",
       [user[0].id]
@@ -162,12 +162,54 @@ const login = async (req, res) => {
         totalCreatedMoMs: totalCreatedMoMs,
       },
     });
-    
+
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Login Failed" });
   }
 };
+
+const logout = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Remove token from DB
+    await db.query("UPDATE users SET active_token = NULL WHERE id = ?", [userId]);
+
+    res.status(200).json({ message: "Logout successful" });
+  } catch (err) {
+    console.error("Logout error:", err);
+    res.status(500).json({ message: "Server error during logout" });
+  }
+};
+
+const refreshToken = async (req, res) => {
+  try {
+    const oldToken = req.headers.authorization?.split(" ")[1];
+    if (!oldToken) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
+
+    // ✅ Ensure old token is still active
+    const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
+    if (!user.length || user[0].active_token !== oldToken) {
+      return res.status(401).json({ message: "Session expired. Please login again." });
+    }
+
+    const newToken = jwt.sign(
+      { id: decoded.id, email: decoded.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    await db.query("UPDATE users SET active_token = ? WHERE id = ?", [newToken, decoded.id]);
+    res.json({ token: newToken });
+  } catch (err) {
+    console.error("Refresh token error:", err);
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
 
 const verifyOtp = async (req, res) => {
   try {
@@ -525,5 +567,7 @@ module.exports = {
   uploadProfilePicture,
   sendPasswordResetOtp,
   resetPasswordWithOtp,
-  resetPasswordWithoutOtp
+  resetPasswordWithoutOtp,
+  logout,
+  refreshToken,
 };
