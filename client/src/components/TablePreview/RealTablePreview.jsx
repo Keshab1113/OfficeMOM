@@ -146,6 +146,7 @@ const RealTablePreview = ({
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+            <DownloadOptions onChange={setDownloadOptions} />
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setIsModalOpen(false)}
