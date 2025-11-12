@@ -140,10 +140,9 @@ const RealTablePreview = ({
               isSubmitting ? "animate-spin" : "group-hover:scale-110"
             } transition-transform duration-300`}
           />
-          {isSubmitting ? "Submitting..." : "Submit & Export"}
+          {isSubmitting ? "Submitting..." : "Save & Export"}
         </button>
       </div>
-
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
