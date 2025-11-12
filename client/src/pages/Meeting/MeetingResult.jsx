@@ -2,7 +2,7 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import TablePreview from "../../components/TablePreview/TablePreview";
 import RealTablePreview from "../../components/TablePreview/RealTablePreview";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "../../components/ToastContext";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import { DateTime } from "luxon";
@@ -33,6 +33,25 @@ export default function MeetingResult() {
     const [showFullData, setShowFullData] = useState(null);
     const [showRealTable, setShowRealTable] = useState(false);
 
+    // Create a unique key for this meeting's data
+    const storageKey = `meeting_${meetingId || audioID || 'current'}`;
+
+    // Load saved state on component mount
+    useEffect(() => {
+        const savedData = localStorage.getItem(storageKey);
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                if (parsed.showFullData && parsed.showRealTable) {
+                    setShowFullData(parsed.showFullData);
+                    setShowRealTable(true);
+                }
+            } catch (error) {
+                console.error("Error loading saved meeting data:", error);
+            }
+        }
+    }, [storageKey]);
+
     const handleSaveHeaders = async (headers, audioIdFromUpload, transcriptAudioIdFromUpload, userIdFromUpload) => {
         setIsSending(true);
         try {
@@ -50,6 +69,15 @@ export default function MeetingResult() {
                 setIsSending(false);
                 return;
             }
+            
+            // Save to localStorage
+            const dataToSave = {
+                showFullData: tableData.final_mom,
+                showRealTable: true,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+            
             setShowFullData(tableData.final_mom);
             setShowRealTable(true);
             setIsSending(false);
@@ -71,6 +99,9 @@ export default function MeetingResult() {
             audio_id: audioID,
         };
         addToast("success", "Saved/Downloaded meeting notes");
+        
+        // Optional: Clear localStorage after successful save
+        // localStorage.removeItem(storageKey);
     };
 
     return (

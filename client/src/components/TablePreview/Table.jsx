@@ -2,7 +2,7 @@ import * as React from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import Paper from "@mui/material/Paper";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { Plus, Trash2, Download } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import TextField from "@mui/material/TextField";
 
 const paginationModel = { page: 0, pageSize: 5 };
@@ -16,10 +16,6 @@ export default function DataTable({
 }) {
   const [tableData, setTableData] = React.useState(data || []);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
-
-  // console.log("header: ", header);
-  // console.log("translatedColumns: ", translatedColumns);
-  // console.log("data: ", data);
 
   React.useEffect(() => {
     setTableData(data);
@@ -36,7 +32,6 @@ export default function DataTable({
   const formatBulletPoints = (content) => {
     if (!content || content === "Click to Edit") return content;
 
-    // Check if content contains bullet points
     if (content?.includes("•") && content?.includes("\n")) {
       const points = content.split("\n").filter((point) => point.trim() !== "");
       return (
@@ -50,9 +45,8 @@ export default function DataTable({
       );
     }
 
-    // ✅ Bold the part before colon (e.g., "User Onboarding:")
     if (content.includes(":")) {
-      const [boldPart, rest] = content.split(/:(.+)/); // splits only on first colon
+      const [boldPart, rest] = content.split(/:(.+)/);
       return (
         <span className="text-sm">
           <strong>{boldPart.trim()}:</strong>
@@ -61,34 +55,45 @@ export default function DataTable({
       );
     }
 
-    // Default plain text
     return content;
   };
 
+  // Handle cell edit commit
+  const handleProcessRowUpdate = (newRow, oldRow) => {
+    const updatedRow = { ...newRow };
+    
+    // Find which field changed and update via onEditRow
+    header.forEach((h) => {
+      const field = toCamelCase(h);
+      if (newRow[field] !== oldRow[field]) {
+        const value = newRow[field] === "Click to Edit" ? "" : newRow[field];
+        onEditRow(newRow.id, h, value);
+      }
+    });
+
+    return updatedRow;
+  };
+
+  const handleProcessRowUpdateError = (error) => {
+    console.error("Row update error:", error);
+  };
 
   const columns = [
     { field: "id", headerName: "ID", width: 70 },
 
     ...header.map((h, index) => {
-      const field = toCamelCase(h); // internal field
+      const field = toCamelCase(h);
       return {
         field,
-        headerName: translatedColumns[index] || h, // ✅ use translated name
+        headerName: translatedColumns[index] || h,
         width: 250,
         editable: true,
         renderCell: (params) => {
           const value = params.value || "";
-          return (
-            <div className="w-full">
-              {formatBulletPoints(value)}
-            </div>
-          );
+          return <div className="w-full">{formatBulletPoints(value)}</div>;
         },
         renderEditCell: (params) => {
-          const originalColumn = header.find(
-            (h) => toCamelCase(h) === params.field
-          );
-          const value = params.value === "Click to Edit" ? "" : params.value;
+          const value = params.value === "Click to Edit" ? "" : params.value || "";
 
           return (
             <TextField
@@ -102,10 +107,17 @@ export default function DataTable({
                   field: params.field,
                   value: e.target.value,
                 });
-                onEditRow(params.id, originalColumn, e.target.value);
+              }}
+              onKeyDown={(e) => {
+                // Prevent default DataGrid keyboard behavior
+                e.stopPropagation();
               }}
               variant="standard"
               placeholder="Click to Edit"
+              autoFocus
+              InputProps={{
+                disableUnderline: false,
+              }}
             />
           );
         },
@@ -134,8 +146,8 @@ export default function DataTable({
   const rows = tableData.map((item, index) => {
     const row = { id: index + 1 };
     header.forEach((h) => {
-      const field = toCamelCase(h); // match column field
-      row[field] = item[h] || "Click to Edit"; // use original data
+      const field = toCamelCase(h);
+      row[field] = item[h] || "Click to Edit";
     });
     return row;
   });
@@ -144,7 +156,6 @@ export default function DataTable({
     const currentTheme = localStorage.getItem("theme");
     setIsDarkMode(currentTheme === "dark");
 
-    // Listen for theme changes (when user toggles theme)
     const observer = new MutationObserver(() => {
       const newTheme = localStorage.getItem("theme");
       setIsDarkMode(newTheme === "dark");
@@ -176,14 +187,15 @@ export default function DataTable({
           height: "auto",
           width: "100%",
           margin: "20px auto",
-          border: `1px solid ${theme.palette.mode === "dark" ? "#0a0a0a" : "#f0ebeb"
-            }`,
+          border: `1px solid ${
+            theme.palette.mode === "dark" ? "#0a0a0a" : "#f0ebeb"
+          }`,
           boxShadow: "none",
           borderRadius: 2,
           pt: 2,
           backgroundColor: theme.palette.mode === "dark" ? "#0a0a0a" : "#fff",
           transition: "background-color 0.3s ease",
-          overflowX: "auto", // ✅ Allow horizontal scrolling
+          overflowX: "auto",
         }}
         elevation={3}
       >
@@ -193,18 +205,22 @@ export default function DataTable({
           columns={columns}
           initialState={{ pagination: { paginationModel } }}
           pageSizeOptions={[5, 10]}
-          columnHeaderHeight={56} // optional, default header height
+          columnHeaderHeight={56}
           disableRowSelectionOnClick
           checkboxSelection
-          getRowHeight={() => "auto"} // ✅ important: allow multiline
+          getRowHeight={() => "auto"}
+          processRowUpdate={handleProcessRowUpdate}
+          onProcessRowUpdateError={handleProcessRowUpdateError}
+          editMode="cell"
           sx={{
             border: 0,
             color: theme.palette.mode === "dark" ? "#e0e0e0" : "#000",
 
             "& .MuiDataGrid-cell": {
-              borderBottom: `0px solid ${theme.palette.mode === "dark" ? "#333" : "#e0e0e0"
-                }`,
-              whiteSpace: "pre-wrap", // ✅ important
+              borderBottom: `0px solid ${
+                theme.palette.mode === "dark" ? "#333" : "#e0e0e0"
+              }`,
+              whiteSpace: "pre-wrap",
               wordBreak: "break-word",
               lineHeight: "1.5",
               alignItems: "flex-start",
@@ -231,10 +247,9 @@ export default function DataTable({
                 theme.palette.mode === "dark" ? "#303030" : "#e3f2fd",
             },
             "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: "bold", // ✅ make header text bold
+              fontWeight: "bold",
               fontSize: "0.95rem",
             },
-
           }}
         />
       </Paper>

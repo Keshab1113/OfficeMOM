@@ -188,7 +188,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
               <div className="flex dark:bg-gray-900   animate-slide-down">
                 <div className="w-16 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 sm:w-20 p-3 sm:p-4 flex items-center justify-center flex-shrink-0  transition-colors duration-200">
                   <h3 className="dark:text-white text-gray-700 text-sm sm:text-lg font-bold animate-fade-in">
-                    S No
+                    ID
                   </h3>
                 </div>
                 {columns.map((column, index) => (
