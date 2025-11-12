@@ -1,120 +1,337 @@
- 
+// const ftp = require("basic-ftp");
+// const { Readable } = require("stream");
+// const { v4: uuidv4 } = require("uuid");
+// const path = require("path");
+
+// async function uploadToFTP(buffer, originalName, subDir = "") {
+//   const client = new ftp.Client();
+
+//   // 🚀 Performance optimizations
+//   client.ftp.verbose = false;
+//   client.ftp.timeout = 0;
+//   client.ftp.socketTimeout = 20 * 60 * 1000;
+//   client.ftp.ipFamily = 4;
+
+//   const uniqueName = `${Date.now()}-${uuidv4()}-${originalName}`;
+//   let keepAliveInterval = null;
+//   let isUploading = false;
+
+//   console.log(`\n📁 Starting upload: ${originalName}`);
+//   console.log(`📦 File size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+//   try {
+//     await client.access({
+//       host: process.env.FTP_HOST,
+//       user: process.env.FTP_USER,
+//       password: process.env.FTP_PASS,
+//       secure: process.env.FTP_SECURE === "true",
+//       port: parseInt(process.env.FTP_PORT || 21),
+//       secureOptions: {
+//         rejectUnauthorized: false,
+//         keepAlive: true,
+//         keepAliveInitialDelay: 10000,
+//       },
+//     });
+
+//     console.log(`✅ Connected to FTP server: ${process.env.FTP_HOST}`);
+
+//     const targetDir = path.posix.join(
+//       process.env.FTP_REMOTE_DIR || "/",
+//       subDir || ""
+//     );
+
+//     await client.ensureDir(targetDir);
+//     await client.cd(targetDir);
+//     console.log(`📂 Target directory: ${targetDir}`);
+
+//     await client.sendIgnoringError("TYPE I");
+
+//     keepAliveInterval = setInterval(async () => {
+//       if (!client.closed && !isUploading) {
+//         try {
+//           await client.send("NOOP");
+//         } catch (err) {
+//           // Ignore errors
+//         }
+//       }
+//     }, 45000);
+
+//     isUploading = true;
+//     console.log(`🚀 Upload started...`);
+
+//     const stream = Readable.from(buffer, {
+//       highWaterMark: 1024 * 1024 * 4,
+//     });
+
+//     // 📊 Track progress with better logging
+//     let lastLoggedPercentage = 0;
+//     const startTime = Date.now();
+
+//     client.trackProgress((info) => {
+//       const percentage = Math.round((info.bytes / buffer.length) * 100);
+//       const uploadedMB = (info.bytes / 1024 / 1024).toFixed(2);
+//       const totalMB = (buffer.length / 1024 / 1024).toFixed(2);
+
+//       // Log every 10% or when complete
+//       if (percentage >= lastLoggedPercentage + 10 || percentage === 100) {
+//         const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
+//         const speed = (info.bytes / 1024 / 1024 / (elapsedSeconds || 1)).toFixed(2);
+
+//         console.log(
+//           `📤 Progress: ${percentage}% | ` +
+//           `${uploadedMB}/${totalMB} MB | ` +
+//           `Speed: ${speed} MB/s | ` +
+//           `Time: ${elapsedSeconds}s`
+//         );
+
+//         lastLoggedPercentage = percentage;
+//       }
+//     });
+
+//     await client.uploadFrom(stream, uniqueName);
+
+//     client.trackProgress();
+//     isUploading = false;
+
+//     clearInterval(keepAliveInterval);
+//     client.close();
+
+//     const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+//     const avgSpeed = (buffer.length / 1024 / 1024 / totalTime).toFixed(2);
+//     const fileUrl = `${process.env.FTP_BASE_URL}/${subDir ? subDir + "/" : ""}${uniqueName}`;
+
+//     console.log(`\n✅ Upload complete!`);
+//     console.log(`⏱️  Total time: ${totalTime}s`);
+//     console.log(`⚡ Average speed: ${avgSpeed} MB/s`);
+//     console.log(`📎 File URL: ${fileUrl}`);
+//     console.log(`─────────────────────────────────────────────────────\n`);
+
+//     return fileUrl;
+//   } catch (err) {
+//     console.error(`\n❌ Upload failed: ${err.message}`);
+//     console.error(`📁 File: ${originalName}`);
+//     console.error(`─────────────────────────────────────────────────────\n`);
+
+//     if (keepAliveInterval) clearInterval(keepAliveInterval);
+//     client.close();
+//     throw err;
+//   }
+// }
+
+// module.exports = uploadToFTP;
+
 const ftp = require("basic-ftp");
 const { Readable } = require("stream");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 
-async function uploadToFTP(buffer, originalName, subDir = "") {
+async function uploadToFTP(buffer, originalName, subDir = "", retries = 3) {
+  let attempt = 0;
+  let lastError = null;
+
+  while (attempt < retries) {
+    attempt++;
+
+    try {
+      console.log(`\n📁 Upload attempt ${attempt}/${retries}: ${originalName}`);
+      console.log(
+        `📦 File size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`
+      );
+
+      const result = await performFTPUpload(buffer, originalName, subDir);
+
+      console.log(`✅ Upload successful on attempt ${attempt}`);
+      return result;
+    } catch (err) {
+      lastError = err;
+      console.error(`❌ Attempt ${attempt} failed: ${err.message}`);
+
+      // Don't retry on certain errors
+      if (
+        err.message.includes("Authentication") ||
+        err.message.includes("Permission denied")
+      ) {
+        throw err;
+      }
+
+      // Wait before retry (exponential backoff)
+      if (attempt < retries) {
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Upload failed after ${retries} attempts: ${lastError.message}`
+  );
+}
+
+async function performFTPUpload(buffer, originalName, subDir) {
   const client = new ftp.Client();
-  
-  // 🚀 Performance optimizations
+
+  // ⚡ Optimized timeouts for large files
   client.ftp.verbose = false;
-  client.ftp.timeout = 0;
-  client.ftp.socketTimeout = 20 * 60 * 1000;
+  client.ftp.timeout = 0; // No command timeout
+  client.ftp.socketTimeout = 30 * 60 * 1000; // 30 minutes for socket
   client.ftp.ipFamily = 4;
 
   const uniqueName = `${Date.now()}-${uuidv4()}-${originalName}`;
   let keepAliveInterval = null;
   let isUploading = false;
-
-  console.log(`\n📁 Starting upload: ${originalName}`);
-  console.log(`📦 File size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
+  let uploadStartTime = null;
 
   try {
+    // Connect with retry logic
     await client.access({
       host: process.env.FTP_HOST,
       user: process.env.FTP_USER,
       password: process.env.FTP_PASS,
       secure: process.env.FTP_SECURE === "true",
       port: parseInt(process.env.FTP_PORT || 21),
-      secureOptions: { 
+      secureOptions: {
         rejectUnauthorized: false,
         keepAlive: true,
         keepAliveInitialDelay: 10000,
       },
     });
 
-    console.log(`✅ Connected to FTP server: ${process.env.FTP_HOST}`);
+    console.log(`✅ Connected to FTP: ${process.env.FTP_HOST}`);
 
     const targetDir = path.posix.join(
-      process.env.FTP_REMOTE_DIR || "/", 
+      process.env.FTP_REMOTE_DIR || "/",
       subDir || ""
     );
-    
+
     await client.ensureDir(targetDir);
     await client.cd(targetDir);
-    console.log(`📂 Target directory: ${targetDir}`);
+    console.log(`📂 Directory: ${targetDir}`);
 
+    // Set binary mode
     await client.sendIgnoringError("TYPE I");
 
+    // Keep-alive to prevent timeout
     keepAliveInterval = setInterval(async () => {
       if (!client.closed && !isUploading) {
         try {
           await client.send("NOOP");
         } catch (err) {
-          // Ignore errors
+          // Ignore
         }
       }
-    }, 45000);
+    }, 30000); // Every 30 seconds
 
     isUploading = true;
+    uploadStartTime = Date.now();
     console.log(`🚀 Upload started...`);
 
+    // Create stream with larger buffer for big files
     const stream = Readable.from(buffer, {
-      highWaterMark: 1024 * 1024 * 4,
+      highWaterMark: 1024 * 1024 * 8, // 8MB chunks for large files
     });
 
-    // 📊 Track progress with better logging
-    let lastLoggedPercentage = 0;
-    const startTime = Date.now();
+    // Progress tracking
+    let lastLogTime = Date.now();
+    let lastLoggedBytes = 0;
 
     client.trackProgress((info) => {
-      const percentage = Math.round((info.bytes / buffer.length) * 100);
-      const uploadedMB = (info.bytes / 1024 / 1024).toFixed(2);
-      const totalMB = (buffer.length / 1024 / 1024).toFixed(2);
-      
-      // Log every 10% or when complete
-      if (percentage >= lastLoggedPercentage + 10 || percentage === 100) {
-        const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
-        const speed = (info.bytes / 1024 / 1024 / (elapsedSeconds || 1)).toFixed(2);
-        
+      const now = Date.now();
+      const timeSinceLastLog = now - lastLogTime;
+
+      // Log every 5 seconds or when complete
+      if (timeSinceLastLog >= 5000 || info.bytes === buffer.length) {
+        const percentage = Math.round((info.bytes / buffer.length) * 100);
+        const uploadedMB = (info.bytes / 1024 / 1024).toFixed(2);
+        const totalMB = (buffer.length / 1024 / 1024).toFixed(2);
+
+        const elapsedSeconds = (now - uploadStartTime) / 1000;
+
+        // Calculate current speed (MB/s)
+        const bytesSinceLastLog = info.bytes - lastLoggedBytes;
+        const currentSpeed =
+          bytesSinceLastLog / 1024 / 1024 / (timeSinceLastLog / 1000);
+
+        // Calculate ETA
+        const remainingBytes = buffer.length - info.bytes;
+        const eta =
+          remainingBytes / (bytesSinceLastLog / (timeSinceLastLog / 1000));
+        const etaMinutes = Math.floor(eta / 60);
+        const etaSeconds = Math.floor(eta % 60);
+
         console.log(
-          `📤 Progress: ${percentage}% | ` +
-          `${uploadedMB}/${totalMB} MB | ` +
-          `Speed: ${speed} MB/s | ` +
-          `Time: ${elapsedSeconds}s`
+          `📤 ${percentage}% | ${uploadedMB}/${totalMB} MB | ` +
+            `Speed: ${currentSpeed.toFixed(2)} MB/s | ` +
+            `ETA: ${etaMinutes}m ${etaSeconds}s`
         );
-        
-        lastLoggedPercentage = percentage;
+
+        lastLogTime = now;
+        lastLoggedBytes = info.bytes;
       }
     });
 
-    await client.uploadFrom(stream, uniqueName);
-    
-    client.trackProgress();
+    // Upload with timeout protection
+    await Promise.race([
+      client.uploadFrom(stream, uniqueName),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Upload timeout (30 minutes exceeded)")),
+          30 * 60 * 1000
+        )
+      ),
+    ]);
+
+    client.trackProgress(); // Stop tracking
     isUploading = false;
 
-    clearInterval(keepAliveInterval);
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+    }
+
+    // Verify upload
+    const fileList = await client.list();
+    const uploadedFile = fileList.find((f) => f.name === uniqueName);
+
+    if (!uploadedFile) {
+      throw new Error("File not found on server after upload");
+    }
+
+    if (uploadedFile.size !== buffer.length) {
+      console.warn(
+        `⚠️ Size mismatch: expected ${buffer.length}, got ${uploadedFile.size}`
+      );
+    }
+
     client.close();
 
-    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    const totalTime = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
     const avgSpeed = (buffer.length / 1024 / 1024 / totalTime).toFixed(2);
-    const fileUrl = `${process.env.FTP_BASE_URL}/${subDir ? subDir + "/" : ""}${uniqueName}`;
+    const fileUrl = `${process.env.FTP_BASE_URL}/${
+      subDir ? subDir + "/" : ""
+    }${uniqueName}`;
 
     console.log(`\n✅ Upload complete!`);
-    console.log(`⏱️  Total time: ${totalTime}s`);
+    console.log(
+      `⏱️  Total time: ${totalTime}s (${(totalTime / 60).toFixed(2)} min)`
+    );
     console.log(`⚡ Average speed: ${avgSpeed} MB/s`);
-    console.log(`📎 File URL: ${fileUrl}`);
+    console.log(`📎 URL: ${fileUrl}`);
     console.log(`─────────────────────────────────────────────────────\n`);
 
     return fileUrl;
   } catch (err) {
-    console.error(`\n❌ Upload failed: ${err.message}`);
+    console.error(`\n❌ Upload error: ${err.message}`);
     console.error(`📁 File: ${originalName}`);
     console.error(`─────────────────────────────────────────────────────\n`);
-    
-    if (keepAliveInterval) clearInterval(keepAliveInterval);
-    client.close();
+
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+    }
+
+    if (!client.closed) {
+      client.close();
+    }
+
     throw err;
   }
 }
