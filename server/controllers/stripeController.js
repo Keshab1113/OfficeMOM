@@ -41,8 +41,10 @@ exports.createCheckoutSession = async (req, res) => {
     if (!stripePriceId) {
       // Search for existing recurring prices for this plan
       const searchParams = new URLSearchParams({
-        query: `active:'true' AND metadata['plan_name']:'${plan}' AND recurring interval:'${billingCycle === 'yearly' ? 'year' : 'month'}'`,
-        limit: '1'
+        query: `active:'true' AND metadata['plan_name']:'${plan}' AND recurring interval:'${
+          billingCycle === "yearly" ? "year" : "month"
+        }'`,
+        limit: "1",
       });
 
       const searchResponse = await axios.get(
@@ -63,7 +65,7 @@ exports.createCheckoutSession = async (req, res) => {
         // First, find or create the product
         const productSearchParams = new URLSearchParams({
           query: `active:'true' AND metadata['plan_name']:'${plan}'`,
-          limit: '1'
+          limit: "1",
         });
 
         const productSearchResponse = await axios.get(
@@ -103,7 +105,10 @@ exports.createCheckoutSession = async (req, res) => {
         priceParams.append("product", productId);
         priceParams.append("unit_amount", Math.round(price * 100)); // Convert to cents
         priceParams.append("currency", "usd");
-        priceParams.append("recurring[interval]", billingCycle === 'yearly' ? 'year' : 'month');
+        priceParams.append(
+          "recurring[interval]",
+          billingCycle === "yearly" ? "year" : "month"
+        );
         priceParams.append("metadata[plan_name]", plan);
         priceParams.append("metadata[billing_cycle]", billingCycle);
 
@@ -136,10 +141,11 @@ exports.createCheckoutSession = async (req, res) => {
       const priceData = priceRes.data;
 
       // Check if this is a recurring price
-      if (priceData.type !== 'recurring') {
+      if (priceData.type !== "recurring") {
         return res.status(400).json({
           error: "Invalid price type for subscription",
-          details: "The provided price is not a recurring price. Please use a subscription price."
+          details:
+            "The provided price is not a recurring price. Please use a subscription price.",
         });
       }
 
@@ -154,7 +160,6 @@ exports.createCheckoutSession = async (req, res) => {
       );
 
       productData = productRes.data;
-
     } catch (stripeError) {
       return res.status(500).json({
         error: "Failed to fetch Stripe product details",
@@ -201,8 +206,6 @@ exports.createCheckoutSession = async (req, res) => {
     params.append("customer", customerId);
     params.append("line_items[0][price]", stripePriceId);
     params.append("line_items[0][quantity]", "1");
-
-
 
     params.append("metadata[user_id]", userId);
     params.append("metadata[plan_name]", plan);
@@ -304,7 +307,7 @@ exports.createRechargeSession = async (req, res) => {
     if (!amount || amount < 5) {
       return res.status(400).json({
         error: "Invalid recharge amount",
-        details: "Minimum recharge amount is $5"
+        details: "Minimum recharge amount is $5",
       });
     }
 
@@ -356,9 +359,18 @@ exports.createRechargeSession = async (req, res) => {
 
     // Line item for minutes recharge
     params.append("line_items[0][price_data][currency]", "usd");
-    params.append("line_items[0][price_data][product_data][name]", `Minutes Recharge - ${minutes} minutes`);
-    params.append("line_items[0][price_data][product_data][description]", `Top-up ${minutes} minutes to your account`);
-    params.append("line_items[0][price_data][unit_amount]", Math.round(amount * 100)); // Convert to cents
+    params.append(
+      "line_items[0][price_data][product_data][name]",
+      `Minutes Recharge - ${minutes} minutes`
+    );
+    params.append(
+      "line_items[0][price_data][product_data][description]",
+      `Top-up ${minutes} minutes to your account`
+    );
+    params.append(
+      "line_items[0][price_data][unit_amount]",
+      Math.round(amount * 100)
+    ); // Convert to cents
     params.append("line_items[0][quantity]", "1");
 
     params.append("metadata[user_id]", userId);
@@ -406,26 +418,24 @@ exports.createRechargeSession = async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         safeValue(session.id),
-        'Minutes Recharge',
-        'one_time', // One-time payment, not recurring
+        "Minutes Recharge",
+        "one_time", // One-time payment, not recurring
         safeValue(amount),
         "usd",
         "pending", // Initial status, will be updated by webhook
         safeValue(userEmail),
         safeValue(userName),
-        JSON.stringify(['card']),
+        JSON.stringify(["card"]),
         safeValue(userId),
         safeValue(customerId),
-        'recharge', // Type to distinguish from subscriptions
+        "recharge", // Type to distinguish from subscriptions
         JSON.stringify({
           minutes: minutes,
           original_amount: amount,
-          rate: 0.01 // $0.01 per minute
-        })
+          rate: 0.01, // $0.01 per minute
+        }),
       ]
     );
-
-
 
     // Release connection and send response
     connection.release();
@@ -435,20 +445,20 @@ exports.createRechargeSession = async (req, res) => {
       sessionId: session.id,
       type: "recharge",
       amount: amount,
-      minutes: minutes
+      minutes: minutes,
     });
-
-
   } catch (error) {
     if (connection) connection.release();
-    console.error("Recharge session error:", error.response?.data || error.message);
+    console.error(
+      "Recharge session error:",
+      error.response?.data || error.message
+    );
     res.status(500).json({
       error: "Failed to create recharge session",
       details: error.response?.data || error.message,
     });
   }
 };
-
 
 exports.handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
@@ -493,7 +503,6 @@ exports.handleStripeWebhook = async (req, res) => {
         console.log(`⚡ Unhandled event type: ${event.type}`);
     }
 
-
     connection.release();
     return res.status(200).json({ received: true });
   } catch (error) {
@@ -502,7 +511,6 @@ exports.handleStripeWebhook = async (req, res) => {
     return res.status(500).json({ error: "Webhook handler failed" });
   }
 };
-
 
 // async function handleCheckoutSessionCompleted(session, connection) {
 //   const safeValue = (v) => (v === undefined ? null : v);
@@ -550,7 +558,6 @@ exports.handleStripeWebhook = async (req, res) => {
 //     throw error;
 //   }
 // }
-
 
 async function handleCheckoutSessionCompleted(session, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
@@ -610,7 +617,9 @@ async function handleCheckoutSessionCompleted(session, connection) {
                WHERE stripe_session_id = ?`,
               [receiptUrl, session.id]
             );
-            console.log(`✅ Saved Stripe receipt URL for session: ${session.id}`);
+            console.log(
+              `✅ Saved Stripe receipt URL for session: ${session.id}`
+            );
           } else {
             console.warn(`⚠️ No receipt URL found for session: ${session.id}`);
           }
@@ -627,15 +636,23 @@ async function handleCheckoutSessionCompleted(session, connection) {
   }
 }
 
-
-
 async function handleOneTimePaymentSession(session, connection, paymentStatus) {
   console.log(`💰 Processing one-time payment session: ${session.id}`);
 
   // If payment is successful and this is a recharge, add minutes to user's account
-  if (paymentStatus === 'paid' && session.metadata && session.metadata.type === 'recharge') {
-    console.log(`🔋 Adding recharge minutes for user: ${session.metadata.user_id}`);
-    await addRechargeMinutes(session.metadata.user_id, session.metadata, connection);
+  if (
+    paymentStatus === "paid" &&
+    session.metadata &&
+    session.metadata.type === "recharge"
+  ) {
+    console.log(
+      `🔋 Adding recharge minutes for user: ${session.metadata.user_id}`
+    );
+    await addRechargeMinutes(
+      session.metadata.user_id,
+      session.metadata,
+      connection
+    );
   }
 }
 
@@ -683,7 +700,9 @@ async function handleSubscriptionSession(session, connection, paymentStatus) {
       }
       currentPeriodEnd = Math.floor(endDate.getTime() / 1000);
 
-      console.log(`🧮 Manually set current_period_start=${createdAt}, current_period_end=${endDate}`);
+      console.log(
+        `🧮 Manually set current_period_start=${createdAt}, current_period_end=${endDate}`
+      );
     }
   }
 
@@ -703,31 +722,47 @@ async function handleSubscriptionSession(session, connection, paymentStatus) {
       subscriptionStatus,
       currentPeriodStart,
       currentPeriodEnd,
-      session.id
+      session.id,
     ]
   );
 
-  console.log(`✅ Subscription updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`);
+  console.log(
+    `✅ Subscription updated for session: ${session.id}, rows affected: ${updateResult.affectedRows}`
+  );
 
-  if (session.metadata && session.metadata.user_id && session.metadata.plan_name) {
-    await updateUserSubscriptionDetails(session.metadata.user_id, session.metadata.plan_name, connection);
+  if (
+    session.metadata &&
+    session.metadata.user_id &&
+    session.metadata.plan_name
+  ) {
+    await updateUserSubscriptionDetails(
+      session.metadata.user_id,
+      session.metadata.plan_name,
+      connection
+    );
   } else {
-    console.warn('⚠️ No user_id or plan_name in session metadata');
+    console.warn("⚠️ No user_id or plan_name in session metadata");
   }
 }
-
 
 async function handleInvoicePaymentSucceeded(invoice, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
 
-  console.log(`🔄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`);
+  console.log(
+    `🔄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`
+  );
 
   let subscriptionId = safeValue(invoice.subscription);
 
   // ✅ If invoice has no subscription, fetch using customer
   if (!subscriptionId && invoice.customer) {
-    console.log("⚠️ Invoice missing subscription, fetching customer subscriptions...");
-    const customerSubs = await stripe.subscriptions.list({ customer: invoice.customer, limit: 1 });
+    console.log(
+      "⚠️ Invoice missing subscription, fetching customer subscriptions..."
+    );
+    const customerSubs = await stripe.subscriptions.list({
+      customer: invoice.customer,
+      limit: 1,
+    });
     if (customerSubs.data.length > 0) {
       subscriptionId = customerSubs.data[0].id;
       console.log(`✅ Found subscription via customer: ${subscriptionId}`);
@@ -749,7 +784,7 @@ async function handleInvoicePaymentSucceeded(invoice, connection) {
     invoiceNumber,
     invoicePdf,
     subscriptionId,
-    customerId
+    customerId,
   });
 
   // ✅ Try updating by subscription_id first
@@ -768,7 +803,9 @@ async function handleInvoicePaymentSucceeded(invoice, connection) {
 
   if (updateBySub.affectedRows === 0) {
     // ✅ If subscription row not found yet, fallback to updating by customer_id
-    console.log("⚠️ No row matched subscription_id, updating by customer_id instead...");
+    console.log(
+      "⚠️ No row matched subscription_id, updating by customer_id instead..."
+    );
     const [updateByCustomer] = await connection.execute(
       `UPDATE stripe_payments 
        SET stripe_invoice_id = ?,
@@ -783,16 +820,21 @@ async function handleInvoicePaymentSucceeded(invoice, connection) {
       [invoiceId, invoiceNumber, invoicePdf, subscriptionId, customerId]
     );
     await stripe.invoices.update(invoice.id, {
-      footer: "Thank you for subscribing to QuantumHash — your trusted AI meeting assistant!",
+      footer:
+        "Thank you for subscribing to QuantumHash — your trusted AI meeting assistant!",
       custom_fields: [
         { name: "Customer ID", value: `User-${invoice.customer}` },
         { name: "Plan", value: invoice.lines.data[0]?.description || "N/A" },
       ],
     });
 
-    console.log(`✅ Invoice updated by customer_id, rows affected: ${updateByCustomer.affectedRows}`);
+    console.log(
+      `✅ Invoice updated by customer_id, rows affected: ${updateByCustomer.affectedRows}`
+    );
   } else {
-    console.log(`✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateBySub.affectedRows}`);
+    console.log(
+      `✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateBySub.affectedRows}`
+    );
   }
 }
 
@@ -828,9 +870,13 @@ async function handleSubscriptionUpdated(subscription, connection) {
       }
       currentPeriodEnd = Math.floor(endDate.getTime() / 1000);
 
-      console.log(`🧮 Manually set current_period_start=${createdAt}, current_period_end=${endDate}`);
+      console.log(
+        `🧮 Manually set current_period_start=${createdAt}, current_period_end=${endDate}`
+      );
     } else {
-      console.warn("⚠️ No matching payment record found to calculate manually.");
+      console.warn(
+        "⚠️ No matching payment record found to calculate manually."
+      );
     }
   }
 
@@ -849,18 +895,18 @@ async function handleSubscriptionUpdated(subscription, connection) {
       currentPeriodStart,
       currentPeriodEnd,
       subscriptionId,
-      customerId
+      customerId,
     ]
   );
 
   if (update.affectedRows > 0) {
-    console.log(`✅ Subscription period updated successfully (${update.affectedRows} row)`);
+    console.log(
+      `✅ Subscription period updated successfully (${update.affectedRows} row)`
+    );
   } else {
     console.warn(`⚠️ No rows updated for subscription ${subscriptionId}`);
   }
 }
-
-
 
 async function handleSubscriptionDeleted(subscription, connection) {
   const subscriptionId = safeValue(subscription.id);
@@ -991,13 +1037,7 @@ async function downgradeToFreePlan(userId, connection) {
          monthly_used = 0,
          monthly_remaining = ?
      WHERE user_id = ?`,
-    [
-      freePlanMinutes,
-      freePlanMinutes,
-      freePlanMinutes,
-      freePlanMinutes,
-      userId
-    ]
+    [freePlanMinutes, freePlanMinutes, freePlanMinutes, freePlanMinutes, userId]
   );
 }
 
@@ -1010,9 +1050,7 @@ async function addRechargeMinutes(userId, metadata, connection) {
       const parsed = JSON.parse(metadata);
       minutes = parseInt(parsed.minutes) || 0;
       amount =
-        parseFloat(parsed.amount) ||
-        parseFloat(parsed.original_amount) ||
-        0;
+        parseFloat(parsed.amount) || parseFloat(parsed.original_amount) || 0;
       sessionId = parsed.session_id || null;
       stripePaymentId = parsed.stripe_payment_id || null;
     } catch (e) {
@@ -1022,9 +1060,7 @@ async function addRechargeMinutes(userId, metadata, connection) {
   } else {
     minutes = parseInt(metadata.minutes) || 0;
     amount =
-      parseFloat(metadata.amount) ||
-      parseFloat(metadata.original_amount) ||
-      0;
+      parseFloat(metadata.amount) || parseFloat(metadata.original_amount) || 0;
     sessionId = metadata.session_id || null;
     stripePaymentId = metadata.stripe_payment_id || null;
   }
@@ -1109,10 +1145,11 @@ async function addRechargeMinutes(userId, metadata, connection) {
   );
 
   console.log(
-    `✅ Recharge logged for user ${userId} (stripe_payment_id=${stripePaymentId || "null"})`
+    `✅ Recharge logged for user ${userId} (stripe_payment_id=${
+      stripePaymentId || "null"
+    })`
   );
 }
-
 
 exports.getUserMinutes = async (req, res) => {
   let connection;
@@ -1141,8 +1178,8 @@ exports.getUserMinutes = async (req, res) => {
           monthly_limit: 0,
           monthly_used: 0,
           monthly_remaining: 0,
-          plan_name: "Free"
-        }
+          plan_name: "Free",
+        },
       });
     }
 
@@ -1159,10 +1196,9 @@ exports.getUserMinutes = async (req, res) => {
         monthly_limit: details.monthly_limit || 0,
         monthly_used: details.monthly_used || 0,
         monthly_remaining: details.monthly_remaining || 0,
-        plan_name: details.plan_name || "Free"
-      }
+        plan_name: details.plan_name || "Free",
+      },
     });
-
   } catch (error) {
     if (connection) connection.release();
     console.error("Get user minutes error:", error);
@@ -1354,7 +1390,6 @@ exports.getBillingHistory = async (req, res) => {
   }
 };
 
-
 exports.cancelSubscription = async (req, res) => {
   let connection;
   try {
@@ -1375,7 +1410,11 @@ exports.cancelSubscription = async (req, res) => {
     const request = requestedCancellations[0];
     if (request) {
       connection.release();
-      return res.status(400).json({ error: "Cancellation request already submitted for this subscription" });
+      return res
+        .status(400)
+        .json({
+          error: "Cancellation request already submitted for this subscription",
+        });
     }
 
     // 1️⃣ Verify subscription belongs to user
@@ -1410,16 +1449,23 @@ exports.cancelSubscription = async (req, res) => {
         connection.release();
         return res.status(403).json({
           error: "Cancellation period expired",
-          details: "Subscriptions can only be cancelled within 7 days of purchase.",
+          details:
+            "Subscriptions can only be cancelled within 7 days of purchase.",
         });
       }
     }
     // console.log("subscriptions: ", subscription);
     // console.log("user_subscription: ", user_subscription);
 
-    const total_remaining_time = user_subscription ? user_subscription.total_remaining_time : 0;
-    const total_used_time = user_subscription ? user_subscription.total_used_time : 0;
-    const total_minutes = user_subscription ? user_subscription.total_minutes : 0;
+    const total_remaining_time = user_subscription
+      ? user_subscription.total_remaining_time
+      : 0;
+    const total_used_time = user_subscription
+      ? user_subscription.total_used_time
+      : 0;
+    const total_minutes = user_subscription
+      ? user_subscription.total_minutes
+      : 0;
     const total_used_balance = total_used_time * 0.01;
 
     // 2️⃣ Insert cancel request into table
@@ -1439,7 +1485,7 @@ exports.cancelSubscription = async (req, res) => {
         total_minutes,
         total_remaining_time,
         total_used_time,
-        total_used_balance
+        total_used_balance,
       ]
     );
 
@@ -1468,12 +1514,20 @@ exports.cancelSubscription = async (req, res) => {
           <tr>
             <td style="padding:30px; color:#333;">
               <p>Hello,</p>
-              <p>Your subscription for <b>${subscription.product_name}</b> has been scheduled for cancellation.</p>
+              <p>Your subscription for <b>${
+                subscription.product_name
+              }</b> has been scheduled for cancellation.</p>
               <p><b>Plan:</b> ${subscription.plan_name}<br/>
                  <b>Billing Cycle:</b> ${subscription.billing_cycle}<br/>
-                 <b>Amount:</b> $${subscription.amount} ${subscription.currency}<br/>
-                 <b>Subscription ID:</b> ${subscription.stripe_subscription_id}<br/>
-                 <b>Valid Until:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+                 <b>Amount:</b> $${subscription.amount} ${
+      subscription.currency
+    }<br/>
+                 <b>Subscription ID:</b> ${
+                   subscription.stripe_subscription_id
+                 }<br/>
+                 <b>Valid Until:</b> ${new Date(
+                   subscription.current_period_end
+                 ).toLocaleString()}</p>
                  <b>Total Used Time:</b> ${total_used_time}<br/>
                  <b>Total Used Balance:</b> ${total_used_balance}<br/>
               <p>You’ll retain access until the end of your current billing period.</p>
@@ -1503,12 +1557,20 @@ exports.cancelSubscription = async (req, res) => {
           <tr>
             <td style="padding:30px; color:#333;">
               <p><b>User Email:</b> ${userEmail}</p>
-              <p><b>Subscription ID:</b> ${subscription.stripe_subscription_id}</p>
+              <p><b>Subscription ID:</b> ${
+                subscription.stripe_subscription_id
+              }</p>
               <p><b>Plan:</b> ${subscription.plan_name}</p>
-              <p><b>Amount:</b> $${subscription.amount} ${subscription.currency}</p>
+              <p><b>Amount:</b> $${subscription.amount} ${
+      subscription.currency
+    }</p>
               <p><b>Billing Cycle:</b> ${subscription.billing_cycle}</p>
-              <p><b>Current Period End:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
-              <p><b>Invoice:</b> <a href="${subscription.invoice_pdf}" target="_blank">View PDF</a></p>
+              <p><b>Current Period End:</b> ${new Date(
+                subscription.current_period_end
+              ).toLocaleString()}</p>
+              <p><b>Invoice:</b> <a href="${
+                subscription.invoice_pdf
+              }" target="_blank">View PDF</a></p>
               <p>Status: <b>Pending Refund</b></p>
               <b>Total Used Time:</b> ${total_used_time}<br/>
               <b>Total Used Balance:</b> ${total_used_balance}<br/>
@@ -1542,12 +1604,15 @@ exports.cancelSubscription = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Subscription cancellation request saved and email notifications sent",
+      message:
+        "Subscription cancellation request saved and email notifications sent",
     });
-
   } catch (error) {
     if (connection) connection.release();
-    console.error("Cancel subscription error:", error.response?.data || error.message);
+    console.error(
+      "Cancel subscription error:",
+      error.response?.data || error.message
+    );
     res.status(500).json({
       error: "Failed to cancel subscription",
       details: error.response?.data?.error?.message || error.message,

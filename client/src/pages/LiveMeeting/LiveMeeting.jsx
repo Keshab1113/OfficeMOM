@@ -145,14 +145,15 @@ const LiveMeeting = () => {
 
       // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
       // ⏱ Auto-end for free plan after 1 min (change 60 → 1800 for 30 min)
-      if (planTypeRef.current === "free" && totalSeconds >= 60) {
-        console.log(`⏹️ Auto-ending after ${totalSeconds}s (free plan)`);
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+     if (planTypeRef.current === "free" && totalSeconds >= 1800) {
+      console.log(`⏹️ Auto-ending after ${totalSeconds}s (free plan)`);
 
-        addToast("info", "Free plan limit reached — meeting auto-ended after 1 minute.");
-        stopRecording();
-      }
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+
+      addToast("info", "Free plan limit reached — meeting auto-ended after 30 minutes.");
+      stopRecording();
+    }
     }, 1000);
 
     return () => {

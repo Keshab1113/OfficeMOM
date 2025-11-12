@@ -111,33 +111,7 @@ const endMeeting = async (req, res) => {
   res.json({ ok: true });
 };
 
-// ✅ Get the latest meeting record for a given meetingId (room_id)
-// const getLatestMeeting = async (req, res) => {
-//   try {
-//     const { meetingId } = req.params;
-//     const hostUserId = req.user?.id; // ✅ extracted from authMiddleware
-
-//     // Fetch the most recent meeting record for this room_id
-//     const [rows] = await db.query(
-//       `SELECT * FROM meetings 
-//        WHERE room_id = ? AND host_user_id = ? 
-//        ORDER BY id DESC LIMIT 1`,
-//       [meetingId, hostUserId]
-//     );
-
-//     if (rows.length === 0) {
-//       return res.status(404).json({ message: "Meeting not found for this user" });
-//     }
-
-//     res.json({
-//       success: true,
-//       latestMeeting: rows[0],
-//     });
-//   } catch (error) {
-//     console.error("❌ Error fetching latest meeting:", error);
-//     res.status(500).json({ message: "Server error fetching latest meeting" });
-//   }
-// };
+ 
 
 // ✅ Get the latest meeting record for a given meetingId (room_id)
 const getLatestMeeting = async (req, res) => {
@@ -274,38 +248,74 @@ const getAllAudios = async (req, res) => {
   }
 };
 
+// const deleteAudio = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const { id } = req.params;
+
+//     // First check if the record exists for this user
+//     const [audio] = await db.query(
+//       "SELECT audioUrl FROM history WHERE id = ? AND user_id = ?",
+//       [id, userId]
+//     );
+
+//     if (audio.length === 0) {
+//       return res.status(404).json({ message: "Audio not found" });
+//     }
+
+//     const audioUrl = audio[0].audioUrl;
+
+//     // Now delete the record
+//     await db.query("DELETE FROM history WHERE id = ? AND user_id = ?", [
+//       id,
+//       userId,
+//     ]);
+
+//     res.status(200).json({
+//       message: "Audio deleted successfully",
+//       id,
+//     });
+//   } catch (err) {
+//     console.error("❌ [Audio Delete] Error:", err);
+//     res.status(500).json({ message: "Server error while deleting audio" });
+//   }
+// };
+
 const deleteAudio = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
 
-    // First check if the record exists for this user
-    const [audio] = await db.query(
-      "SELECT audioUrl FROM history WHERE id = ? AND user_id = ?",
+    // 🧩 Step 1: Check if the meeting exists for this user
+    const [meeting] = await db.query(
+      "SELECT audio_url FROM meetings WHERE id = ? AND host_user_id = ?",
       [id, userId]
     );
 
-    if (audio.length === 0) {
-      return res.status(404).json({ message: "Audio not found" });
+    if (meeting.length === 0) {
+      return res.status(404).json({ message: "Meeting not found or unauthorized" });
     }
 
-    const audioUrl = audio[0].audioUrl;
+    const audioUrl = meeting[0].audio_url;
 
-    // Now delete the record
-    await db.query("DELETE FROM history WHERE id = ? AND user_id = ?", [
+    // 🧩 Step 2: Delete the meeting record
+    await db.query("DELETE FROM meetings WHERE id = ? AND host_user_id = ?", [
       id,
       userId,
     ]);
 
     res.status(200).json({
-      message: "Audio deleted successfully",
-      id,
+      success: true,
+      message: "Audio deleted successfully from meetings table",
+      deletedMeetingId: id,
+      audioUrl,
     });
   } catch (err) {
     console.error("❌ [Audio Delete] Error:", err);
-    res.status(500).json({ message: "Server error while deleting audio" });
+    res.status(500).json({ message: "Server error while deleting meeting audio" });
   }
 };
+
 
 const updateAudioHistory = async (req, res) => {
   try {
