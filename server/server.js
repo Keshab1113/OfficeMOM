@@ -29,9 +29,13 @@ const session = require("express-session");
 const audioBackup = require('./services/audioBackup');
 const stripeController = require("./controllers/stripeController.js");
 
-
-
 const app = express();
+// ⚠️ ADD THIS RIGHT AFTER app = express()
+app.use((req, res, next) => {
+  req.setTimeout(7200000); // 2 hours
+  res.setTimeout(7200000);
+  next();
+});
 app.post(
   "/webhooks/stripe",
   express.raw({ type: "application/json" }),
@@ -47,8 +51,11 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// app.use(express.json({ limit: "50mb" }));
+// app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.json({ limit: "2000mb" })); // 2 GB
+app.use(express.urlencoded({ extended: true, limit: "2000mb" })); // 2 GB
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "mysecret",
@@ -559,5 +566,17 @@ socket.on("host:end-meeting", ({ roomId }) => {
     console.log(`Client disconnected: ${socket.id}`);
   });
 });
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// const PORT = process.env.PORT || 3000;
+// server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 3001;
+const httpServer = server.listen(PORT, () => {
+  console.log(`\n🚀 Server started successfully`);
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`⏱️ Timeout: 7200s (2 hours)`);
+  console.log(`📦 Max upload: 2500 MB\n`);
+});
+
+// ⚠️ ADD THESE CRITICAL TIMEOUT SETTINGS
+httpServer.timeout = 7200000; // 2 hours
+httpServer.keepAliveTimeout = 65000;
+httpServer.headersTimeout = 66000;
