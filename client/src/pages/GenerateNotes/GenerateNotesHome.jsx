@@ -287,7 +287,7 @@ const [freePlanMessage, setFreePlanMessage] = useState("");
                                                                 {selectedFile.name}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
-                                                                File Uploaded Successfully •{" "}
+                                                                File Size •{" "}
                                                                 {(selectedFile.size / (1024 * 1024)).toFixed(2)}{" "}
                                                                 MB • {selectedFile.type}
                                                             </p>
@@ -312,7 +312,7 @@ const [freePlanMessage, setFreePlanMessage] = useState("");
                                                                 Drag your file here or click to select
                                                             </p>
                                                             <p className="text-xs text-gray-400 mt-1">
-                                                                Supported: MP3, WAV, MP4, WebM, MPEG
+                                                                Supported: MP3, WAV, MP4, WebM, MPEG, M4A
                                                             </p>
                                                             <p className="text-xs text-gray-400">
                                                                 Max size: 2 GB

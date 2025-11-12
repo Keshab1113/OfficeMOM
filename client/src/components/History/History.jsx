@@ -134,8 +134,8 @@ const AllHistory = ({ title, NeedFor, height }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this history item?"))
-      return;
+    // if (!window.confirm("Are you sure you want to delete this history item?"))
+    //   return;
     try {
       await axios.delete(
         `${import.meta.env.VITE_BACKEND_URL}/api/history/${id}`,

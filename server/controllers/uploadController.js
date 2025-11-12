@@ -7,7 +7,7 @@ const {
   getAudioDuration,
   checkUserMinutes, 
   deductUserMinutes, 
-  logMinutesUsage,
+  getQuickDurationEstimate,
   secondsToMinutes
 } = require("./../middlewares/minutesManager");
 
@@ -66,6 +66,36 @@ async function downloadFromDrive(driveUrl) {
   return Buffer.from(fileRes.data);
 }
 
+function sanitizeFileName(fileName) {
+  if (!fileName) fileName = `file_${Date.now()}.bin`;
+
+  // Remove path components if present
+  fileName = fileName.split("/").pop().split("\\").pop();
+
+  // Trim spaces from start/end and replace inner spaces with underscores
+  fileName = fileName.trim().replace(/\s+/g, "_");
+
+  // Split into name + extension
+  const lastDot = fileName.lastIndexOf(".");
+  let namePart = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+  let extPart = lastDot > 0 ? fileName.substring(lastDot) : "";
+
+  // Remove any unsafe/special characters
+  namePart = namePart.replace(/[^a-zA-Z0-9_-]/g, "");
+
+  // Prevent empty names
+  if (!namePart.trim()) {
+    namePart = `file_${Date.now()}`;
+  }
+
+  // Default extension if missing
+  if (!extPart || !/^\.[a-zA-Z0-9]+$/.test(extPart)) {
+    extPart = ".bin";
+  }
+
+  return `${namePart}${extPart}`;
+}
+
  
 const uploadAudio = async (req, res) => {
   const { source, driveUrl } = req.body;
@@ -109,6 +139,20 @@ if (req.body.audioUrl) {
   buffer = req.file.buffer;
   originalName = req.file.originalname;
 
+  // 🎵 Auto-convert MP4 to MP3 before uploading
+  if (originalName.toLowerCase().endsWith(".mp4")) {
+    console.log(`🎬 Detected MP4 file, converting to MP3 before upload...`);
+    const { convertMp4ToMp3 } = require("../utils/convertToMp3");
+    try {
+      buffer = await convertMp4ToMp3(buffer);
+      originalName = originalName.replace(/\.mp4$/i, ".mp3");
+      console.log(`✅ Conversion complete: ${originalName}`);
+    } catch (convErr) {
+      console.error("❌ MP4 to MP3 conversion failed:", convErr);
+      throw new Error("Unable to convert video file to audio");
+    }
+  }
+
   if (!source) {
     if (originalName.includes("recorded_audio")) {
       actualSource = "Live Transcript Conversion";
@@ -116,8 +160,8 @@ if (req.body.audioUrl) {
       actualSource = "Generate Notes Conversion";
     }
   }
-
-} else {
+}
+ else {
   return res.status(400).json({ 
     success: false,
     message: "No audio file uploaded, URL or Google Drive link provided" 
@@ -177,6 +221,9 @@ const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
 
     // If we already have a URL, no need to upload
 let ftpUrl;
+// 🧼 Sanitize filename before uploading
+originalName = sanitizeFileName(originalName);
+
 if (ftpUrlToUse) {
   ftpUrl = ftpUrlToUse;
   console.log(`✅ Using existing audio URL: ${ftpUrl}`);
@@ -184,6 +231,7 @@ if (ftpUrlToUse) {
   ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
   console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
 }
+
 
 
     // Verify user exists
@@ -409,7 +457,8 @@ const recordingTime = recordingTimeRaw ? parseInt(recordingTimeRaw, 10) : 0; // 
     }
 
     const buffer = req.file.buffer;
-    const originalName = req.file.originalname;
+    const originalName = sanitizeFileName(req.file.originalname);
+
 
     console.log(`📤 Uploading meeting audio for meetingId: ${meetingId}`);
 
@@ -484,16 +533,7 @@ const meetingNumericId = meetingRow[0].id;
       });
     }
 
-    // console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
-
-    // res.status(200).json({
-    //   success: true,
-    //   message: "Audio uploaded and meeting updated successfully",
-    //   meetingId,
-    //   audioUrl: ftpUrl,
-    //   fileName: originalName,
-    //   durationMinutes: finalMinutesValue,
-    // });
+   
     console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
 
 // 📝 Also update or insert into history table
