@@ -142,17 +142,17 @@ if (req.body.audioUrl) {
   originalName = req.file.originalname;
 
   // Remove the MP4 conversion entirely
-  if (originalName.toLowerCase().endsWith(".mp4")) {
-  console.log("🎬 Detected MP4 file, converting to MP3 before upload...");
-  try {
-    buffer = await convertMp4ToMp3(buffer);
-    originalName = originalName.replace(/\.mp4$/i, ".mp3");
-    console.log("✅ MP4 successfully converted to MP3");
-  } catch (convErr) {
-    console.error("❌ MP4→MP3 conversion failed:", convErr.message);
-    throw new Error("FFmpeg conversion failed");
-  }
-}
+//   if (originalName.toLowerCase().endsWith(".mp4")) {
+//   console.log("🎬 Detected MP4 file, converting to MP3 before upload...");
+//   try {
+//     buffer = await convertMp4ToMp3(buffer);
+//     originalName = originalName.replace(/\.mp4$/i, ".mp3");
+//     console.log("✅ MP4 successfully converted to MP3");
+//   } catch (convErr) {
+//     console.error("❌ MP4→MP3 conversion failed:", convErr.message);
+//     throw new Error("FFmpeg conversion failed");
+//   }
+// }
 
 
   if (!source) {
