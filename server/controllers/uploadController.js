@@ -10,7 +10,7 @@ const {
   getQuickDurationEstimate,
   secondsToMinutes
 } = require("./../middlewares/minutesManager");
-
+const { convertMp4ToMp3 } = require("../utils/convertToMp3"); 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
 const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
@@ -134,24 +134,26 @@ if (req.body.audioUrl) {
   originalName = `drive_audio_${Date.now()}.mp3`;
   actualSource = source || "google_drive";
 
+// Replace the MP4 conversion section with this:
+
 } else if (req.file) {
   // Direct file upload
   buffer = req.file.buffer;
   originalName = req.file.originalname;
 
-  // 🎵 Auto-convert MP4 to MP3 before uploading
+  // Remove the MP4 conversion entirely
   if (originalName.toLowerCase().endsWith(".mp4")) {
-    console.log(`🎬 Detected MP4 file, converting to MP3 before upload...`);
-    const { convertMp4ToMp3 } = require("../utils/convertToMp3");
-    try {
-      buffer = await convertMp4ToMp3(buffer);
-      originalName = originalName.replace(/\.mp4$/i, ".mp3");
-      console.log(`✅ Conversion complete: ${originalName}`);
-    } catch (convErr) {
-      console.error("❌ MP4 to MP3 conversion failed:", convErr);
-      throw new Error("Unable to convert video file to audio");
-    }
+  console.log("🎬 Detected MP4 file, converting to MP3 before upload...");
+  try {
+    buffer = await convertMp4ToMp3(buffer);
+    originalName = originalName.replace(/\.mp4$/i, ".mp3");
+    console.log("✅ MP4 successfully converted to MP3");
+  } catch (convErr) {
+    console.error("❌ MP4→MP3 conversion failed:", convErr.message);
+    throw new Error("FFmpeg conversion failed");
   }
+}
+
 
   if (!source) {
     if (originalName.includes("recorded_audio")) {
@@ -160,8 +162,8 @@ if (req.body.audioUrl) {
       actualSource = "Generate Notes Conversion";
     }
   }
-}
- else {
+
+} else {
   return res.status(400).json({ 
     success: false,
     message: "No audio file uploaded, URL or Google Drive link provided" 
