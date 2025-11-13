@@ -406,6 +406,23 @@ const PricingOptions = () => {
 
                     {/* Features List */}
                     <ul className="space-y-3 mb-8 flex-1">
+                      {billingCycle === "yearly" && <li className="flex items-start gap-3">
+                        <Check
+                          size={18}
+                          className={`flex-shrink-0 mt-0.5 ${plan.isHighlighted
+                            ? "text-green-300"
+                            : "text-green-500"
+                            }`}
+                        />
+                        <span
+                          className={`text-sm ${plan.isHighlighted
+                            ? "text-indigo-100"
+                            : "text-gray-600 dark:text-gray-300"
+                            }`}
+                        >
+                          Total {plan?.monthlyMinutes*12} minutes
+                        </span>
+                      </li>}
                       {plan.features &&
                         plan.features.map((feature, i) => (
                           <li key={i} className="flex items-start gap-3">

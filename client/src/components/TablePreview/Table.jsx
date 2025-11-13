@@ -20,6 +20,7 @@ export default function DataTable({
   React.useEffect(() => {
     setTableData(data);
   }, [data]);
+console.log("tableData: ",tableData);
 
   const toCamelCase = (str) =>
     str
@@ -79,7 +80,7 @@ export default function DataTable({
   };
 
   const columns = [
-    { field: "id", headerName: "ID", width: 70 },
+    { field: "id", headerName: "S. No.", width: 70 },
 
     ...header.map((h, index) => {
       const field = toCamelCase(h);

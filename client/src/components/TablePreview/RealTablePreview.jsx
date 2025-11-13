@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Download, Undo2, Redo2 } from "lucide-react";
 import DownloadOptions from "../DownloadOptions/DownloadOptions";
 import DataTable from "./Table";
+import { useNavigate } from "react-router-dom";
 
 const RealTablePreview = ({
   showFullData = [],
@@ -18,6 +19,7 @@ const RealTablePreview = ({
     word: false,
     excel: false,
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     setTableData(showFullData || []);
@@ -80,6 +82,7 @@ const RealTablePreview = ({
     }
     setIsModalOpen(false);
     setIsSubmitting(false);
+    navigate(-1);
   };
 
   const confirmDownloadOptions = () => setIsModalOpen(true);

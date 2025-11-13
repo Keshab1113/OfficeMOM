@@ -22,5 +22,4 @@ router.post("/cancel-subscription", authMiddleware, cancelSubscription);
 // Recharge
 router.post("/create-recharge-session", authMiddleware, createRechargeSession);
 router.get("/user-minutes", authMiddleware, getUserMinutes);
-
 module.exports = router;

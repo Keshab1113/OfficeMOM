@@ -17,10 +17,12 @@ import { Helmet } from "react-helmet";
 import ConfirmCancelModal from "../../components/LittleComponent/ConfirmCancelModal";
 import { useToast } from "../../components/ToastContext";
 import Footer from "../../components/Footer/Footer";
+import CancelReasonModal from "../../components/LittleComponent/CancelReasonModal";
 
 const Subscription = () => {
   const [subscription, setSubscription] = useState(null);
   const [billingHistory, setBillingHistory] = useState([]);
+  const [cancelHistory, setCancelHistory] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,6 +30,10 @@ const Subscription = () => {
   const nav = useNavigate();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [loadingCancel, setLoadingCancel] = useState(false);
+
 
   useEffect(() => {
     if (token) {
@@ -74,7 +80,8 @@ const Subscription = () => {
       }
 
       if (billingRes.data.success) {
-        setBillingHistory(billingRes.data.data);
+        setBillingHistory(billingRes.data.data.billing_history);
+        setCancelHistory(billingRes.data.data.cancel_requests);
       }
 
     } catch (err) {
@@ -86,20 +93,29 @@ const Subscription = () => {
   };
 
   const cancelSubscription = async () => {
-
+    setLoadingCancel(true);
     try {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/stripe/cancel-subscription`,
-        { subscriptionId: subscription.stripe_subscription_id },
+        {
+          subscriptionId: subscription.stripe_subscription_id,
+          stripe_session_id: subscription.stripe_session_id,
+          stripe_price_id: subscription.stripe_price_id,
+          stripe_customer_id: subscription.stripe_customer_id,
+          reason: selectedReason
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // fetchSubscriptionData();
+      fetchSubscriptionData();
+      setLoadingCancel(false);
       setShowModal(false);
       addToast("success", "Subscription cancellation requested successfully!");
 
     } catch (err) {
       console.error("Failed to cancel subscription", err);
       const errorMsg = err.response?.data?.error || "Failed to cancel subscription";
+      setShowModal(false);
+      setLoadingCancel(false);
       addToast("error", errorMsg || "Failed to cancel subscription");
     }
   };
@@ -117,6 +133,13 @@ const Subscription = () => {
       window.open(invoicePdf, "_blank");
     }
   };
+
+  const handleReasonSelect = (reason) => {
+    setSelectedReason(reason);
+    setShowReasonModal(false);
+    setShowModal(true);   // now open final confirmation
+  };
+
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -366,7 +389,7 @@ const Subscription = () => {
                     <div className="flex md:flex-row flex-col gap-3">
                       {(subscription.subscription_status === "active" && subscription.plan_name != "Free") && (
                         <button
-                          onClick={() => setShowModal(true)}
+                          onClick={() => setShowReasonModal(true)}
                           className="px-4 cursor-pointer py-2 border border-red-300 text-red-600 dark:text-red-400 
                         hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         >
@@ -516,17 +539,106 @@ const Subscription = () => {
                       Contact Support
                     </button>
                   </div>
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800 p-6">
+                    <h3 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 mb-4">
+                      Cancel History
+                    </h3>
+
+                    {cancelHistory.length === 0 ? (
+                      <p className="text-gray-600 dark:text-gray-300 text-sm">
+                        No cancellation requests found.
+                      </p>
+                    ) : (
+                      <div className="space-y-4 max-h-[16rem] overflow-y-auto overflow-hidden">
+                        {cancelHistory.map((item) => (
+                          <div
+                            key={item.id}
+                            className="
+            p-4 rounded-xl border bg-white dark:bg-gray-800
+            border-gray-200 dark:border-gray-700 shadow-sm
+          "
+                          >
+                            {/* Top Row */}
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="text-md font-semibold text-gray-900 dark:text-white">
+                                  {item.plan_name}
+                                </h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {item.billing_cycle.charAt(0).toUpperCase() + item.billing_cycle.slice(1)} Plan
+                                </p>
+                              </div>
+
+                              {/* Status Badge */}
+                              <span
+                                className={`
+                px-3 py-1 text-xs rounded-full font-medium
+                ${item.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                                    : item.status === "processed"
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                      : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"}
+              `}
+                              >
+                                {item.status}
+                              </span>
+                            </div>
+
+                            {/* Reason */}
+                            <div className="mb-2">
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-medium">Reason:</span> {item.reason}
+                              </p>
+                            </div>
+
+                            {/* Refund Estimate */}
+                            <div className="mb-2">
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-medium">Refund Estimate:</span>{" "}
+                                {item.refund_estimate}
+                              </p>
+                            </div>
+
+                            {/* Amount */}
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              <span className="font-medium">Amount:</span> ${item.amount} {item.currency}
+                            </p>
+
+                            {/* Date */}
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                              Requested on:{" "}
+                              {new Date(item.created_at).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </div>
             )}
           </div>
           <Footer />
         </div>
+        <CancelReasonModal
+          isOpen={showReasonModal}
+          onClose={() => setShowReasonModal(false)}
+          onSelectReason={handleReasonSelect}
+        />
+
         <ConfirmCancelModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           onConfirm={cancelSubscription}
+          nextBillingDate={new Date(subscription.current_period_end).toLocaleDateString()}
+          loadingCancel={loadingCancel}
         />
+
 
         <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
         <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>

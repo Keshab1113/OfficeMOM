@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setUser, setProfileImage, startLogoutTimer } from "../redux/authSlice";
+import { setUser, setProfileImage } from "../redux/authSlice";
 import { useToast } from "../components/ToastContext";
 
 export default function OAuthSuccess() {
@@ -32,7 +32,6 @@ export default function OAuthSuccess() {
         })
       );
       dispatch(setProfileImage({ profileImage: profilePic }));
-      dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
 
       addToast("success", "Login successful!");
       navigate("/");

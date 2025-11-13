@@ -1,55 +1,75 @@
-import React, { useState } from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
-const ConfirmCancelModal = ({ isOpen, onClose, onConfirm }) => {
-  const [isLoading, setIsLoading] = useState(false);
+const ConfirmCancelModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  nextBillingDate,
+  loadingCancel
+}) => {
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
-  const handleConfirm = async () => {
-    try {
-      setIsLoading(true);
-      await onConfirm(); // Wait for async operation
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 w-[90%] max-w-md rounded-2xl shadow-xl p-6 relative">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-          Confirm Subscription Cancellation
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-[9999]">
+      <div
+        className="
+        w-[90%] max-w-md rounded-2xl p-6 relative shadow-2xl
+        bg-white text-gray-900
+        dark:bg-[#1E1E1E] dark:text-white
+      "
+      >
+        {/* Close Button */}
+        <button
+          onClick={!loadingCancel ? onClose : undefined}
+          disabled={loadingCancel}
+          className="
+            absolute top-4 right-4 text-gray-500 hover:text-gray-700
+            dark:text-gray-400 dark:hover:text-gray-200
+            disabled:opacity-40 disabled:cursor-not-allowed
+          "
+        >
+          ✕
+        </button>
+
+        {/* Title */}
+        <h2 className="text-xl font-semibold mb-2">
+          We're sorry to see you go 💔
         </h2>
 
-        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6">
-          Are you sure you want to cancel your subscription? After submitting the
-          request, your plan will be cancelled, and we will initiate a refund within{" "}
-          <b>15 working days</b>.
+        {/* Description */}
+        <p
+          className="
+          text-gray-700 text-[15px] leading-relaxed mb-6
+          dark:text-gray-300
+        "
+        >
+          Your plan and remaining credits will stay active till the end of this
+          billing period <b>({nextBillingDate})</b>.
+          <br />
+          <br />
+          No renewal or payment collection will happen afterwards.
         </p>
 
-        <div className="flex justify-end space-x-3">
+        {/* Buttons */}
+        <div className="space-y-3">
+          {/* Continue Unsubscribe */}
           <button
-            onClick={!isLoading ? onClose : undefined}
-            disabled={isLoading}
-            className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
-              text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition
-              disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={!loadingCancel ? onConfirm : undefined}
+            disabled={loadingCancel}
+            className="
+              w-full py-3 rounded-lg font-medium
+              bg-gray-200 hover:bg-gray-300 text-gray-900
+              dark:bg-[#2D2D2D] dark:hover:bg-[#3A3A3A] dark:text-white
+              disabled:opacity-60 disabled:cursor-not-allowed
+            "
           >
-            Cancel
-          </button>
-
-          <button
-            onClick={handleConfirm}
-            disabled={isLoading}
-            className={`px-4 py-2 text-sm rounded-lg font-medium text-white transition 
-              ${isLoading 
-                ? "bg-red-400 cursor-not-allowed" 
-                : "bg-red-600 hover:bg-red-700"}`}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
+            {loadingCancel ? (
+              <span className="flex justify-center items-center gap-2">
                 <svg
-                  className="animate-spin h-4 w-4 text-white"
+                  className="animate-spin h-4 w-4 text-gray-800 dark:text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -68,22 +88,41 @@ const ConfirmCancelModal = ({ isOpen, onClose, onConfirm }) => {
                     d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 00-8 8z"
                   ></path>
                 </svg>
-                Processing...
+                Cancelling subscription...
               </span>
             ) : (
-              "Submit"
+              "Continue unsubscribe"
             )}
           </button>
-        </div>
 
-        <button
-          onClick={!isLoading ? onClose : undefined}
-          disabled={isLoading}
-          className="absolute top-3 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200
-            disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          ✕
-        </button>
+          {/* Keep Subscription */}
+          <button
+            onClick={!loadingCancel ? onClose : undefined}
+            disabled={loadingCancel}
+            className="
+              w-full py-3 rounded-lg font-medium
+              bg-gray-100 hover:bg-gray-200 text-gray-800
+              dark:bg-[#3A3A3A] dark:hover:bg-[#4A4A4A] dark:text-gray-200
+              disabled:opacity-60 disabled:cursor-not-allowed
+            "
+          >
+            Keep subscription
+          </button>
+
+          {/* Talk to us */}
+          <button
+            onClick={!loadingCancel ? () => navigate("/contact-us") : undefined}
+            disabled={loadingCancel}
+            className="
+              w-full py-3 rounded-lg font-medium text-white
+              bg-indigo-500 hover:bg-indigo-600
+              dark:bg-[#685BFF] dark:hover:bg-[#5748ff]
+              disabled:opacity-60 disabled:cursor-not-allowed
+            "
+          >
+            Talk to us
+          </button>
+        </div>
       </div>
     </div>
   );

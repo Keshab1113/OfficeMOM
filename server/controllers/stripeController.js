@@ -41,9 +41,8 @@ exports.createCheckoutSession = async (req, res) => {
     if (!stripePriceId) {
       // Search for existing recurring prices for this plan
       const searchParams = new URLSearchParams({
-        query: `active:'true' AND metadata['plan_name']:'${plan}' AND recurring interval:'${
-          billingCycle === "yearly" ? "year" : "month"
-        }'`,
+        query: `active:'true' AND metadata['plan_name']:'${plan}' AND recurring interval:'${billingCycle === "yearly" ? "year" : "month"
+          }'`,
         limit: "1",
       });
 
@@ -558,10 +557,181 @@ exports.handleStripeWebhook = async (req, res) => {
 //     throw error;
 //   }
 // }
+// Add this helper function after the existing helper functions
 
+async function sendPaymentSuccessEmail(paymentData, connection) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAILTRAP_HOST,
+      port: process.env.MAILTRAP_PORT,
+      secure: true,
+      auth: {
+        user: process.env.MAIL_USER_NOREPLY,
+        pass: process.env.MAIL_PASS,
+      },
+      tls: { rejectUnauthorized: false },
+    });
+
+    const {
+      customer_email,
+      customer_name,
+      plan_name,
+      amount,
+      currency,
+      billing_cycle,
+      invoice_pdf,
+      receipt_url,
+      type,
+      metadata,
+      user_id
+    } = paymentData;
+
+    const [userData] = await connection.execute(
+      `SELECT * FROM users WHERE id = ?`,
+      [user_id]
+    );
+    const user = userData[0];
+    // Prepare attachments
+    const attachments = [];
+
+    // Add invoice PDF if available (for subscriptions)
+    if (invoice_pdf) {
+      attachments.push({
+        filename: `invoice_${plan_name}.pdf`,
+        path: invoice_pdf,
+      });
+    }
+
+    // Add receipt URL if available (for one-time payments)
+    if (receipt_url) {
+      attachments.push({
+        filename: `receipt_${plan_name || 'recharge'}.pdf`,
+        path: receipt_url,
+      });
+    }
+
+    // Determine email content based on payment type
+    let emailSubject, emailHtml;
+
+    if (type === 'recharge') {
+      // Parse metadata to get minutes
+      let minutes = 0;
+      if (typeof metadata === 'string') {
+        try {
+          const parsed = JSON.parse(metadata);
+          minutes = parseInt(parsed.minutes) || 0;
+        } catch (e) {
+          console.error('Error parsing metadata:', e);
+        }
+      } else if (metadata) {
+        minutes = parseInt(metadata.minutes) || 0;
+      }
+
+      emailSubject = 'Payment Successful - Minutes Recharged - OfficeMoM';
+      emailHtml = `
+        <html>
+        <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
+          <table style="max-width:600px; margin:auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+            <tr>
+              <td style="background:#28a745; color:#fff; text-align:center; padding:20px; font-size:20px; font-weight:bold;">
+                Payment Successful!
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px; color:#333;">
+                <p>Hello ${user?.fullName || 'Valued Customer'},</p>
+                <p>Thank you for your recharge! Your payment has been processed successfully.</p>
+                
+                <div style="background:#f0f8ff; padding:15px; border-radius:5px; margin:20px 0;">
+                  <h3 style="margin-top:0; color:#4a90e2;">Recharge Details</h3>
+                  <p><b>Amount:</b> $${amount} ${currency.toUpperCase()}</p>
+                  <p><b>Minutes Added:</b> ${minutes} minutes</p>
+                  <p><b>Date:</b> ${new Date().toLocaleString()}</p>
+                </div>
+
+                <p>Your minutes have been added to your account and are ready to use.</p>
+                <p>The receipt is attached to this email for your records.</p>
+                
+                <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f0f0f0; text-align:center; padding:10px; font-size:12px; color:#777;">
+                © ${new Date().getFullYear()} OfficeMoM. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+    } else {
+      // Subscription payment
+      emailSubject = 'Payment Successful - Subscription Active - OfficeMoM';
+      emailHtml = `
+        <html>
+        <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
+          <table style="max-width:600px; margin:auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+            <tr>
+              <td style="background:#4a90e2; color:#fff; text-align:center; padding:20px; font-size:20px; font-weight:bold;">
+                Welcome to ${plan_name}!
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px; color:#333;">
+                <p>Hello ${user?.fullName || 'Valued Customer'},</p>
+                <p>Thank you for subscribing! Your payment has been processed successfully.</p>
+                
+                <div style="background:#f0f8ff; padding:15px; border-radius:5px; margin:20px 0;">
+                  <h3 style="margin-top:0; color:#4a90e2;">Subscription Details</h3>
+                  <p><b>Plan:</b> ${plan_name}</p>
+                  <p><b>Billing Cycle:</b> ${billing_cycle}</p>
+                  <p><b>Amount:</b> $${amount} ${currency.toUpperCase()}</p>
+                  <p><b>Start Date:</b> ${new Date().toLocaleString()}</p>
+                </div>
+
+                <p>Your subscription is now active and ready to use!</p>
+                <p>The invoice is attached to this email for your records.</p>
+                
+                <div style="background:#fff3cd; padding:15px; border-radius:5px; margin:20px 0; border-left:4px solid #ffc107;">
+                  <p style="margin:0;"><b>Note:</b> You can cancel your subscription within 7 days of purchase.</p>
+                </div>
+                
+                <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#f0f0f0; text-align:center; padding:10px; font-size:12px; color:#777;">
+                © ${new Date().getFullYear()} OfficeMoM. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+    }
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
+      to: customer_email,
+      subject: emailSubject,
+      html: emailHtml,
+      attachments: attachments.length > 0 ? attachments : undefined,
+    });
+
+    console.log(`✅ Payment success email sent to ${customer_email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending payment success email:', error);
+    // Don't throw - email failure shouldn't break payment processing
+    return false;
+  }
+}
+
+// Update handleCheckoutSessionCompleted function
 async function handleCheckoutSessionCompleted(session, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
-  console.log(`🔄 Processing session: ${session.id}, mode: ${session.mode}`);
+  console.log(`📄 Processing session: ${session.id}, mode: ${session.mode}`);
 
   try {
     const paymentStatus = safeValue(session.payment_status);
@@ -599,7 +769,7 @@ async function handleCheckoutSessionCompleted(session, connection) {
       };
       await handleOneTimePaymentSession(session, connection, paymentStatus);
 
-      // ✅ NEW: Save Stripe receipt URL for one-time (payment) sessions
+      // ✅ Save Stripe receipt URL for one-time (payment) sessions
       if (paymentStatus === "paid") {
         try {
           // Get Payment Intent to find Charge
@@ -620,6 +790,16 @@ async function handleCheckoutSessionCompleted(session, connection) {
             console.log(
               `✅ Saved Stripe receipt URL for session: ${session.id}`
             );
+
+            // 📧 Send email for one-time payment with receipt
+            const [paymentData] = await connection.execute(
+              `SELECT * FROM stripe_payments WHERE stripe_session_id = ? LIMIT 1`,
+              [session.id]
+            );
+
+            if (paymentData.length > 0) {
+              await sendPaymentSuccessEmail(paymentData[0], connection);
+            }
           } else {
             console.warn(`⚠️ No receipt URL found for session: ${session.id}`);
           }
@@ -633,6 +813,115 @@ async function handleCheckoutSessionCompleted(session, connection) {
   } catch (error) {
     console.error("❌ Error in handleCheckoutSessionCompleted:", error);
     throw error;
+  }
+}
+
+// Update handleInvoicePaymentSucceeded function
+async function handleInvoicePaymentSucceeded(invoice, connection) {
+  const safeValue = (v) => (v === undefined ? null : v);
+
+  console.log(
+    `📄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`
+  );
+
+  let subscriptionId = safeValue(invoice.subscription);
+
+  // ✅ If invoice has no subscription, fetch using customer
+  if (!subscriptionId && invoice.customer) {
+    console.log(
+      "⚠️ Invoice missing subscription, fetching customer subscriptions..."
+    );
+    const customerSubs = await stripe.subscriptions.list({
+      customer: invoice.customer,
+      limit: 1,
+    });
+    if (customerSubs.data.length > 0) {
+      subscriptionId = customerSubs.data[0].id;
+      console.log(`✅ Found subscription via customer: ${subscriptionId}`);
+    }
+  }
+
+  if (!subscriptionId) {
+    console.warn(`⚠️ Still no subscription found for invoice: ${invoice.id}`);
+    return;
+  }
+
+  const invoiceId = safeValue(invoice.id);
+  const invoiceNumber = safeValue(invoice.number);
+  const invoicePdf = safeValue(invoice.invoice_pdf);
+  const customerId = safeValue(invoice.customer);
+
+  console.log(`📊 Invoice update values:`, {
+    invoiceId,
+    invoiceNumber,
+    invoicePdf,
+    subscriptionId,
+    customerId,
+  });
+
+  // ✅ Try updating by subscription_id first
+  const [updateBySub] = await connection.execute(
+    `UPDATE stripe_payments 
+     SET stripe_invoice_id = ?,
+         invoice_number = ?,
+         invoice_pdf = ?,
+         payment_status = 'paid',
+         updated_at = CURRENT_TIMESTAMP
+     WHERE stripe_subscription_id = ?
+     ORDER BY created_at DESC 
+     LIMIT 1`,
+    [invoiceId, invoiceNumber, invoicePdf, subscriptionId]
+  );
+
+  if (updateBySub.affectedRows === 0) {
+    // ✅ If subscription row not found yet, fallback to updating by customer_id
+    console.log(
+      "⚠️ No row matched subscription_id, updating by customer_id instead..."
+    );
+    const [updateByCustomer] = await connection.execute(
+      `UPDATE stripe_payments 
+       SET stripe_invoice_id = ?,
+           invoice_number = ?,
+           invoice_pdf = ?,
+           stripe_subscription_id = ?,
+           payment_status = 'paid',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE stripe_customer_id = ?
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [invoiceId, invoiceNumber, invoicePdf, subscriptionId, customerId]
+    );
+
+    console.log(
+      `✅ Invoice updated by customer_id, rows affected: ${updateByCustomer.affectedRows}`
+    );
+  } else {
+    console.log(
+      `✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateBySub.affectedRows}`
+    );
+  }
+
+  // Update invoice with custom fields
+  await stripe.invoices.update(invoice.id, {
+    footer:
+      "Thank you for subscribing to QuantumHash – your trusted AI meeting assistant!",
+    custom_fields: [
+      { name: "Customer ID", value: `User-${invoice.customer}` },
+      { name: "Plan", value: invoice.lines.data[0]?.description || "N/A" },
+    ],
+  });
+
+  // 📧 Send email for subscription payment with invoice
+  const [paymentData] = await connection.execute(
+    `SELECT * FROM stripe_payments 
+     WHERE stripe_subscription_id = ? 
+     ORDER BY created_at DESC 
+     LIMIT 1`,
+    [subscriptionId]
+  );
+
+  if (paymentData.length > 0 && invoicePdf) {
+    await sendPaymentSuccessEmail(paymentData[0], connection);
   }
 }
 
@@ -745,98 +1034,98 @@ async function handleSubscriptionSession(session, connection, paymentStatus) {
   }
 }
 
-async function handleInvoicePaymentSucceeded(invoice, connection) {
-  const safeValue = (v) => (v === undefined ? null : v);
+// async function handleInvoicePaymentSucceeded(invoice, connection) {
+//   const safeValue = (v) => (v === undefined ? null : v);
 
-  console.log(
-    `🔄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`
-  );
+//   console.log(
+//     `🔄 Processing invoice: ${invoice.id}, subscription: ${invoice.subscription}`
+//   );
 
-  let subscriptionId = safeValue(invoice.subscription);
+//   let subscriptionId = safeValue(invoice.subscription);
 
-  // ✅ If invoice has no subscription, fetch using customer
-  if (!subscriptionId && invoice.customer) {
-    console.log(
-      "⚠️ Invoice missing subscription, fetching customer subscriptions..."
-    );
-    const customerSubs = await stripe.subscriptions.list({
-      customer: invoice.customer,
-      limit: 1,
-    });
-    if (customerSubs.data.length > 0) {
-      subscriptionId = customerSubs.data[0].id;
-      console.log(`✅ Found subscription via customer: ${subscriptionId}`);
-    }
-  }
+//   // ✅ If invoice has no subscription, fetch using customer
+//   if (!subscriptionId && invoice.customer) {
+//     console.log(
+//       "⚠️ Invoice missing subscription, fetching customer subscriptions..."
+//     );
+//     const customerSubs = await stripe.subscriptions.list({
+//       customer: invoice.customer,
+//       limit: 1,
+//     });
+//     if (customerSubs.data.length > 0) {
+//       subscriptionId = customerSubs.data[0].id;
+//       console.log(`✅ Found subscription via customer: ${subscriptionId}`);
+//     }
+//   }
 
-  if (!subscriptionId) {
-    console.warn(`⚠️ Still no subscription found for invoice: ${invoice.id}`);
-    return;
-  }
+//   if (!subscriptionId) {
+//     console.warn(`⚠️ Still no subscription found for invoice: ${invoice.id}`);
+//     return;
+//   }
 
-  const invoiceId = safeValue(invoice.id);
-  const invoiceNumber = safeValue(invoice.number);
-  const invoicePdf = safeValue(invoice.invoice_pdf);
-  const customerId = safeValue(invoice.customer);
+//   const invoiceId = safeValue(invoice.id);
+//   const invoiceNumber = safeValue(invoice.number);
+//   const invoicePdf = safeValue(invoice.invoice_pdf);
+//   const customerId = safeValue(invoice.customer);
 
-  console.log(`📊 Invoice update values:`, {
-    invoiceId,
-    invoiceNumber,
-    invoicePdf,
-    subscriptionId,
-    customerId,
-  });
+//   console.log(`📊 Invoice update values:`, {
+//     invoiceId,
+//     invoiceNumber,
+//     invoicePdf,
+//     subscriptionId,
+//     customerId,
+//   });
 
-  // ✅ Try updating by subscription_id first
-  const [updateBySub] = await connection.execute(
-    `UPDATE stripe_payments 
-     SET stripe_invoice_id = ?,
-         invoice_number = ?,
-         invoice_pdf = ?,
-         payment_status = 'paid',
-         updated_at = CURRENT_TIMESTAMP
-     WHERE stripe_subscription_id = ?
-     ORDER BY created_at DESC 
-     LIMIT 1`,
-    [invoiceId, invoiceNumber, invoicePdf, subscriptionId]
-  );
+//   // ✅ Try updating by subscription_id first
+//   const [updateBySub] = await connection.execute(
+//     `UPDATE stripe_payments 
+//      SET stripe_invoice_id = ?,
+//          invoice_number = ?,
+//          invoice_pdf = ?,
+//          payment_status = 'paid',
+//          updated_at = CURRENT_TIMESTAMP
+//      WHERE stripe_subscription_id = ?
+//      ORDER BY created_at DESC 
+//      LIMIT 1`,
+//     [invoiceId, invoiceNumber, invoicePdf, subscriptionId]
+//   );
 
-  if (updateBySub.affectedRows === 0) {
-    // ✅ If subscription row not found yet, fallback to updating by customer_id
-    console.log(
-      "⚠️ No row matched subscription_id, updating by customer_id instead..."
-    );
-    const [updateByCustomer] = await connection.execute(
-      `UPDATE stripe_payments 
-       SET stripe_invoice_id = ?,
-           invoice_number = ?,
-           invoice_pdf = ?,
-           stripe_subscription_id = ?,
-           payment_status = 'paid',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE stripe_customer_id = ?
-       ORDER BY created_at DESC 
-       LIMIT 1`,
-      [invoiceId, invoiceNumber, invoicePdf, subscriptionId, customerId]
-    );
-    await stripe.invoices.update(invoice.id, {
-      footer:
-        "Thank you for subscribing to QuantumHash — your trusted AI meeting assistant!",
-      custom_fields: [
-        { name: "Customer ID", value: `User-${invoice.customer}` },
-        { name: "Plan", value: invoice.lines.data[0]?.description || "N/A" },
-      ],
-    });
+//   if (updateBySub.affectedRows === 0) {
+//     // ✅ If subscription row not found yet, fallback to updating by customer_id
+//     console.log(
+//       "⚠️ No row matched subscription_id, updating by customer_id instead..."
+//     );
+//     const [updateByCustomer] = await connection.execute(
+//       `UPDATE stripe_payments 
+//        SET stripe_invoice_id = ?,
+//            invoice_number = ?,
+//            invoice_pdf = ?,
+//            stripe_subscription_id = ?,
+//            payment_status = 'paid',
+//            updated_at = CURRENT_TIMESTAMP
+//        WHERE stripe_customer_id = ?
+//        ORDER BY created_at DESC 
+//        LIMIT 1`,
+//       [invoiceId, invoiceNumber, invoicePdf, subscriptionId, customerId]
+//     );
+//     await stripe.invoices.update(invoice.id, {
+//       footer:
+//         "Thank you for subscribing to QuantumHash — your trusted AI meeting assistant!",
+//       custom_fields: [
+//         { name: "Customer ID", value: `User-${invoice.customer}` },
+//         { name: "Plan", value: invoice.lines.data[0]?.description || "N/A" },
+//       ],
+//     });
 
-    console.log(
-      `✅ Invoice updated by customer_id, rows affected: ${updateByCustomer.affectedRows}`
-    );
-  } else {
-    console.log(
-      `✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateBySub.affectedRows}`
-    );
-  }
-}
+//     console.log(
+//       `✅ Invoice updated by customer_id, rows affected: ${updateByCustomer.affectedRows}`
+//     );
+//   } else {
+//     console.log(
+//       `✅ Invoice updated for subscription: ${subscriptionId}, rows affected: ${updateBySub.affectedRows}`
+//     );
+//   }
+// }
 
 async function handleSubscriptionUpdated(subscription, connection) {
   const safeValue = (v) => (v === undefined ? null : v);
@@ -1145,8 +1434,7 @@ async function addRechargeMinutes(userId, metadata, connection) {
   );
 
   console.log(
-    `✅ Recharge logged for user ${userId} (stripe_payment_id=${
-      stripePaymentId || "null"
+    `✅ Recharge logged for user ${userId} (stripe_payment_id=${stripePaymentId || "null"
     })`
   );
 }
@@ -1374,12 +1662,22 @@ exports.getBillingHistory = async (req, res) => {
        ORDER BY created_at DESC`,
       [userId]
     );
+    const [cancelRequests] = await connection.execute(
+      `SELECT * FROM cancel_subscription_requests
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
+      [userId]
+    );
 
     connection.release();
 
     res.json({
       success: true,
-      data: payments,
+      data: {
+        billing_history: payments,
+        cancel_requests: cancelRequests
+      }
+
     });
   } catch (error) {
     if (connection) connection.release();
@@ -1393,7 +1691,7 @@ exports.getBillingHistory = async (req, res) => {
 exports.cancelSubscription = async (req, res) => {
   let connection;
   try {
-    const { subscriptionId } = req.body;
+    const { subscriptionId, reason, stripe_customer_id, stripe_price_id, stripe_session_id } = req.body; // <-- capture reason
     const userId = req.user?.id;
     const userEmail = req.user?.email;
 
@@ -1454,8 +1752,6 @@ exports.cancelSubscription = async (req, res) => {
         });
       }
     }
-    // console.log("subscriptions: ", subscription);
-    // console.log("user_subscription: ", user_subscription);
 
     const total_remaining_time = user_subscription
       ? user_subscription.total_remaining_time
@@ -1468,11 +1764,11 @@ exports.cancelSubscription = async (req, res) => {
       : 0;
     const total_used_balance = total_used_time * 0.01;
 
-    // 2️⃣ Insert cancel request into table
+    // 2️⃣ Insert cancel request into table (including reason)
     await connection.execute(
       `INSERT INTO cancel_subscription_requests 
-        (user_id, user_email, stripe_subscription_id, plan_name, billing_cycle, amount, currency, current_period_end, total_minutes, total_remaining_time, total_used_time, total_used_balance ) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (user_id, user_email, stripe_subscription_id, plan_name, billing_cycle, amount, currency, current_period_end, total_minutes, total_remaining_time, total_used_time, total_used_balance, reason ) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         userEmail,
@@ -1486,8 +1782,25 @@ exports.cancelSubscription = async (req, res) => {
         total_remaining_time,
         total_used_time,
         total_used_balance,
+        reason || null, // store selected reason (or null)
       ]
     );
+
+    if (stripe_customer_id && stripe_price_id && stripe_session_id) {
+      await connection.execute(
+        `UPDATE stripe_payments
+     SET subscription_status = ?
+     WHERE stripe_customer_id = ? 
+       AND stripe_price_id = ?
+       AND stripe_session_id = ?`,
+        [
+          "cancellation_requested",   // or "canceled" if you want immediate cancellation
+          stripe_customer_id,
+          stripe_price_id,
+          stripe_session_id
+        ]
+      );
+    }
 
     // 3️⃣ Setup Nodemailer transporter
     const transporter = nodemailer.createTransport({
@@ -1501,7 +1814,10 @@ exports.cancelSubscription = async (req, res) => {
       tls: { rejectUnauthorized: false },
     });
 
-    // 4️⃣ Email templates
+    // sanitize or fallback text for email display
+    const safeReason = reason ? String(reason) : "Not provided";
+
+    // 4️⃣ Email templates (include reason)
     const userHtml = `
       <html>
       <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
@@ -1514,24 +1830,20 @@ exports.cancelSubscription = async (req, res) => {
           <tr>
             <td style="padding:30px; color:#333;">
               <p>Hello,</p>
-              <p>Your subscription for <b>${
-                subscription.product_name
-              }</b> has been scheduled for cancellation.</p>
+              <p>Your subscription for <b>${subscription.product_name || subscription.plan_name}</b> has been scheduled for cancellation.</p>
               <p><b>Plan:</b> ${subscription.plan_name}<br/>
                  <b>Billing Cycle:</b> ${subscription.billing_cycle}<br/>
-                 <b>Amount:</b> $${subscription.amount} ${
-      subscription.currency
-    }<br/>
-                 <b>Subscription ID:</b> ${
-                   subscription.stripe_subscription_id
-                 }<br/>
-                 <b>Valid Until:</b> ${new Date(
-                   subscription.current_period_end
-                 ).toLocaleString()}</p>
-                 <b>Total Used Time:</b> ${total_used_time}<br/>
-                 <b>Total Used Balance:</b> ${total_used_balance}<br/>
+                 <b>Amount:</b> $${subscription.amount} ${subscription.currency}<br/>
+                 <b>Subscription ID:</b> ${subscription.stripe_subscription_id}<br/>
+                 <b>Valid Until:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+
+              <p><b>Reason for cancellation:</b> ${safeReason}</p>
+
+              <p><b>Total Used Time:</b> ${total_used_time} minutes<br/>
+                 <b>Total Used Balance:</b> ${total_used_balance}</p>
+
               <p>You’ll retain access until the end of your current billing period.</p>
-              <p>A refund will be processed within <b>15 working days</b>.</p>
+              <p>A refund will be processed within <b>15 working days</b> (if applicable).</p>
               <p style="margin-top:30px;">Best,<br/>The OfficeMoM Team</p>
             </td>
           </tr>
@@ -1557,25 +1869,18 @@ exports.cancelSubscription = async (req, res) => {
           <tr>
             <td style="padding:30px; color:#333;">
               <p><b>User Email:</b> ${userEmail}</p>
-              <p><b>Subscription ID:</b> ${
-                subscription.stripe_subscription_id
-              }</p>
+              <p><b>Subscription ID:</b> ${subscription.stripe_subscription_id}</p>
               <p><b>Plan:</b> ${subscription.plan_name}</p>
-              <p><b>Amount:</b> $${subscription.amount} ${
-      subscription.currency
-    }</p>
+              <p><b>Amount:</b> $${subscription.amount} ${subscription.currency}</p>
               <p><b>Billing Cycle:</b> ${subscription.billing_cycle}</p>
-              <p><b>Current Period End:</b> ${new Date(
-                subscription.current_period_end
-              ).toLocaleString()}</p>
-              <p><b>Invoice:</b> <a href="${
-                subscription.invoice_pdf
-              }" target="_blank">View PDF</a></p>
+              <p><b>Current Period End:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+              <p><b>Reason for cancellation:</b> ${safeReason}</p>
+              <p><b>Invoice:</b> <a href="${subscription.invoice_pdf || '#'}" target="_blank">View PDF</a></p>
               <p>Status: <b>Pending Refund</b></p>
-              <b>Total Used Time:</b> ${total_used_time}<br/>
-              <b>Total Used Balance:</b> ${total_used_balance}<br/>
-              <b>Total Recharge Time:</b> ${total_minutes} min<br/>
-              <b>Total Remaining Time:</b> ${total_remaining_time} min<br/>
+              <p><b>Total Used Time:</b> ${total_used_time}</p>
+              <p><b>Total Used Balance:</b> ${total_used_balance}</p>
+              <p><b>Total Recharge Time:</b> ${total_minutes} min</p>
+              <p><b>Total Remaining Time:</b> ${total_remaining_time} min</p>
             </td>
           </tr>
         </table>
@@ -1619,3 +1924,4 @@ exports.cancelSubscription = async (req, res) => {
     });
   }
 };
+

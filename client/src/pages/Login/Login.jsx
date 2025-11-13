@@ -5,7 +5,6 @@ import { useDispatch } from "react-redux";
 import {
   setProfileImage,
   setUser,
-  startLogoutTimer,
 } from "../../redux/authSlice";
 import { useToast } from "../../components/ToastContext";
 import {
@@ -59,7 +58,6 @@ const Login = () => {
           profileImage: res.data.user.profilePic,
         })
       );
-      dispatch(startLogoutTimer(24 * 60 * 60 * 1000));
       setIsProcessing(false);
       addToast("success", "Login Successfully");
       navigate("/");
