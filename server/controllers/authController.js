@@ -132,10 +132,11 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
     const token = jwt.sign(
-      { id: user[0].id, email: user[0].email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+  { id: user[0].id, email: user[0].email },
+  process.env.JWT_SECRET,
+  { expiresIn: "7d" } // Longer expiry, we'll manage refresh on frontend
+  // { expiresIn: "2m" } // 2 minutes for testing
+);
     await db.query("UPDATE users SET active_token = ? WHERE id = ?", [token, user[0].id]);
     const [subscription] = await db.query(
       "SELECT * FROM user_subscription_details WHERE user_id = ?",
@@ -183,6 +184,61 @@ const logout = async (req, res) => {
   }
 };
 
+// const refreshToken = async (req, res) => {
+//   try {
+//     const oldToken = req.headers.authorization?.split(" ")[1];
+//     if (!oldToken) {
+//       return res.status(401).json({ message: "No token provided" });
+//     }
+
+//     let decoded;
+//     try {
+//       // Verify token (will throw if expired or invalid)
+//       decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
+//     } catch (err) {
+//       if (err.name === 'TokenExpiredError') {
+//         // Token expired - try to decode without verification to get user id
+//         decoded = jwt.decode(oldToken);
+//         if (!decoded || !decoded.id) {
+//           return res.status(401).json({ message: "Invalid token" });
+//         }
+
+//         // Check if this token was the active one (allow refresh for recently expired tokens)
+//         const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
+//         if (!user.length || user[0].active_token !== oldToken) {
+//           return res.status(401).json({ message: "Session expired. Please login again." });
+//         }
+//       } else {
+//         return res.status(401).json({ message: "Invalid token" });
+//       }
+//     }
+
+//     // For non-expired tokens, verify it's still active in database
+//     if (decoded.exp && decoded.exp * 1000 > Date.now()) {
+//       const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
+//       if (!user.length || user[0].active_token !== oldToken) {
+//         return res.status(401).json({ message: "Session expired. Please login again." });
+//       }
+//     }
+
+//     // Generate new token
+//     const newToken = jwt.sign(
+//       { id: decoded.id, email: decoded.email },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1d" }
+//     );
+
+//     // Update active token in database
+//     await db.query("UPDATE users SET active_token = ? WHERE id = ?", [newToken, decoded.id]);
+
+//     res.json({ token: newToken });
+//   } catch (err) {
+//     console.error("Refresh token error:", err);
+//     res.status(401).json({ message: "Token refresh failed" });
+//   }
+// };
+
+
 const refreshToken = async (req, res) => {
   try {
     const oldToken = req.headers.authorization?.split(" ")[1];
@@ -192,43 +248,45 @@ const refreshToken = async (req, res) => {
 
     let decoded;
     try {
-      // Verify token (will throw if expired or invalid)
+      // Verify token
       decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
     } catch (err) {
       if (err.name === 'TokenExpiredError') {
-        // Token expired - try to decode without verification to get user id
+        // Allow refresh for recently expired tokens (within 7 days)
         decoded = jwt.decode(oldToken);
         if (!decoded || !decoded.id) {
           return res.status(401).json({ message: "Invalid token" });
-        }
-
-        // Check if this token was the active one (allow refresh for recently expired tokens)
-        const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
-        if (!user.length || user[0].active_token !== oldToken) {
-          return res.status(401).json({ message: "Session expired. Please login again." });
         }
       } else {
         return res.status(401).json({ message: "Invalid token" });
       }
     }
 
-    // For non-expired tokens, verify it's still active in database
-    if (decoded.exp && decoded.exp * 1000 > Date.now()) {
-      const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
-      if (!user.length || user[0].active_token !== oldToken) {
-        return res.status(401).json({ message: "Session expired. Please login again." });
-      }
+    // Check if token is still active in database
+    const [user] = await db.query(
+      "SELECT active_token, id, email FROM users WHERE id = ?", 
+      [decoded.id]
+    );
+    
+    if (!user.length || user[0].active_token !== oldToken) {
+      return res.status(401).json({ 
+        message: "Session expired. Please login again." 
+      });
     }
 
-    // Generate new token
+    // Generate new token with fresh expiration (7 days from now)
     const newToken = jwt.sign(
-      { id: decoded.id, email: decoded.email },
+      { id: user[0].id, email: user[0].email },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "7d" }
+      // { expiresIn: "2m" } // 2 minutes for testing
     );
 
     // Update active token in database
-    await db.query("UPDATE users SET active_token = ? WHERE id = ?", [newToken, decoded.id]);
+    await db.query("UPDATE users SET active_token = ? WHERE id = ?", [
+      newToken, 
+      user[0].id
+    ]);
 
     res.json({ token: newToken });
   } catch (err) {
@@ -236,7 +294,6 @@ const refreshToken = async (req, res) => {
     res.status(401).json({ message: "Token refresh failed" });
   }
 };
-
 
 const verifyOtp = async (req, res) => {
   try {

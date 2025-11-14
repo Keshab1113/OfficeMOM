@@ -390,7 +390,7 @@ async function performFTPUpload(buffer, originalName, subDir) {
   const client = new ftp.Client();
   
   // More aggressive timeouts for VPS
-  client.ftp.verbose = true; // Enable verbose for debugging
+  // client.ftp.verbose = true; // Enable verbose for debugging
   client.ftp.timeout = 60000; // 60 second command timeout
   client.ftp.socketTimeout = 60 * 60 * 1000; // 60 minutes for socket
   client.ftp.ipFamily = 4;
@@ -431,7 +431,7 @@ async function performFTPUpload(buffer, originalName, subDir) {
 
     await client.ensureDir(targetDir);
     await client.cd(targetDir);
-    console.log(`📂 Directory: ${targetDir}`);
+    // console.log(`📂 Directory: ${targetDir}`);
 
     // Set binary mode explicitly
     await client.send("TYPE I");
@@ -586,13 +586,13 @@ async function performFTPUpload(buffer, originalName, subDir) {
     const avgSpeed = (buffer.length / 1024 / 1024 / totalTime).toFixed(2);
     const fileUrl = `${process.env.FTP_BASE_URL}/${subDir ? subDir + "/" : ""}${uniqueName}`;
 
-    console.log(`\n✅ Upload complete!`);
-    console.log(`📁 File: ${uniqueName}`);
-    console.log(`📊 Size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`⏱️  Total time: ${totalTime}s (${(totalTime / 60).toFixed(2)} min)`);
-    console.log(`⚡ Average speed: ${avgSpeed} MB/s`);
-    console.log(`📎 URL: ${fileUrl}`);
-    console.log(`─────────────────────────────────────────────────────\n`);
+    // console.log(`\n✅ Upload complete!`);
+    // console.log(`📁 File: ${uniqueName}`);
+    // console.log(`📊 Size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
+    // console.log(`⏱️  Total time: ${totalTime}s (${(totalTime / 60).toFixed(2)} min)`);
+    // console.log(`⚡ Average speed: ${avgSpeed} MB/s`);
+    // console.log(`📎 URL: ${fileUrl}`);
+    // console.log(`─────────────────────────────────────────────────────\n`);
 
     return fileUrl;
     
