@@ -1,46 +1,23 @@
 import { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import axios from 'axios';
-import { logout, updateToken } from '../../redux/authSlice';
+import { useSelector } from 'react-redux';
 
 const TokenRefreshHandler = () => {
   const token = useSelector((state) => state.auth.token);
-  const dispatch = useDispatch();
+  const tokenExpiration = useSelector((state) => state.auth.tokenExpiration);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !tokenExpiration) return;
 
-    // Refresh token when tab becomes visible
-    const handleVisibilityChange = async () => {
+    // Just log token status when tab becomes visible
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && token) {
-        try {
-          const response = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/auth/refresh-token`,
-            {},
-            {
-              headers: { Authorization: `Bearer ${token}` },
-              timeout: 5000
-            }
-          );
-
-          if (response.data && response.data.token) {
-            const newToken = response.data.token;
-            const payload = JSON.parse(atob(newToken.split('.')[1]));
-            const newExpiration = payload.exp * 1000;
-
-            dispatch(updateToken({
-              token: newToken,
-              tokenExpiration: newExpiration
-            }));
-
-            console.log('Token refreshed on tab focus');
-          }
-        } catch (error) {
-          if (error.response?.status === 401) {
-            console.log('Token invalid, logging out...');
-            dispatch(logout());
-          }
-        }
+        const timeUntilExpiration = tokenExpiration - Date.now();
+        const minutesRemaining = Math.floor(timeUntilExpiration / 1000 / 60);
+        
+        console.log(`👁️ Tab visible - Token expires in ${minutesRemaining} minutes`);
+        
+        // The middleware in store.js will handle the refresh
+        // No need to duplicate refresh logic here
       }
     };
 
@@ -49,7 +26,7 @@ const TokenRefreshHandler = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [token, dispatch]);
+  }, [token, tokenExpiration]);
 
   return null;
 };

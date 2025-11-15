@@ -82,7 +82,7 @@ const RealTablePreview = ({
     }
     setIsModalOpen(false);
     setIsSubmitting(false);
-    navigate(-1);
+    navigate("/");
   };
 
   const confirmDownloadOptions = () => setIsModalOpen(true);

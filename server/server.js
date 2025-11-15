@@ -120,7 +120,7 @@ const liveStreams = new Map();
 async function openAssemblyAIWS(roomId) {
   // STEP 1: Get temporary token from AssemblyAI
   // Multi-language detection enabled
-  const AAI_URL = `wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&format_text=true`;
+  const AAI_URL = `wss://streaming.eu.assemblyai.com/v3/ws?sample_rate=16000&format_text=true`;
 
 
   const ws = new WebSocket(AAI_URL, {

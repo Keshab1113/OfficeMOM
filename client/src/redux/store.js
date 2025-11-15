@@ -30,46 +30,11 @@ const persistedAudioReducer = persistReducer(audioPersistConfig, audioReducer);
 let isRefreshing = false;
 let refreshPromise = null;
 
-// const tokenExpirationMiddleware = (store) => {
-//   // Check token expiration every 5 minutes
-//   const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-//   const REFRESH_THRESHOLD = 10 * 60 * 1000; // Refresh if less than 10 minutes remaining
-
-//   setInterval(() => {
-//     const state = store.getState();
-//     const { token, tokenExpiration } = state.auth;
-
-//     if (!token || !tokenExpiration) return;
-
-//     const currentTime = Date.now();
-//     const timeUntilExpiration = tokenExpiration - currentTime;
-
-//     // If token expired, logout
-//     if (timeUntilExpiration <= 0) {
-//       console.log("Token expired, logging out...");
-//       handleTokenExpired(store, token);
-//       return;
-//     }
-
-//     // If token expiring soon, refresh it
-//     if (timeUntilExpiration <= REFRESH_THRESHOLD && !isRefreshing) {
-//       console.log("Token expiring soon, refreshing...");
-//       refreshTokenAsync(store, token);
-//     }
-//   }, CHECK_INTERVAL);
-
-//   return (next) => (action) => {
-//     return next(action);
-//   };
-// };
-
-// Handle expired token
-
 const tokenExpirationMiddleware = (store) => {
-  // Check token every 30 minutes and refresh if user is active
-  const CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
-  const ACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours of inactivity = logout
- 
+  // Check token every 1 hour (less aggressive)
+  const CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+  const REFRESH_THRESHOLD = 24 * 60 * 60 * 1000; // Refresh if less than 24 hours remaining
+  const ACTIVITY_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days of inactivity = logout
 
   let lastActivityTime = Date.now();
 
@@ -94,32 +59,56 @@ const tokenExpirationMiddleware = (store) => {
 
     const currentTime = Date.now();
     const timeSinceActivity = currentTime - lastActivityTime;
+    const timeUntilExpiration = tokenExpiration - currentTime;
 
-    // If user inactive for 24 hours, logout
+    console.log(`⏰ Token check - Time until expiration: ${Math.floor(timeUntilExpiration / 1000 / 60)} minutes`);
+
+    // If user inactive for 7 days, logout
     if (timeSinceActivity >= ACTIVITY_TIMEOUT) {
-      console.log("User inactive for 24 hours, logging out...");
+      console.log("⚠️ User inactive for 7 days, logging out...");
       handleTokenExpired(store, token);
       return;
     }
 
-    // If token expired, logout
-    // Refresh token proactively (keeps session alive)
-// Backend will validate if token is actually expired
-if (!isRefreshing) {
-  console.log("Refreshing token to maintain session...");
-  refreshTokenAsync(store, token).catch(err => {
-    // If refresh fails due to expired token, logout
-    console.error("Token refresh failed, logging out...");
-    handleTokenExpired(store, token);
-  });
-}
+    // If token already expired, try to refresh (backend allows grace period)
+    if (timeUntilExpiration <= 0) {
+      console.log("⚠️ Token expired, attempting refresh...");
+      if (!isRefreshing) {
+        refreshTokenAsync(store, token).catch(err => {
+          console.error("❌ Token refresh failed after expiration:", err);
+          const errorCode = err.response?.data?.code;
+          // Only logout on specific error codes
+          if (errorCode === "TOKEN_EXPIRED" || errorCode === "USER_NOT_FOUND" || errorCode === "TOKEN_REVOKED") {
+            handleTokenExpired(store, token);
+          }
+        });
+      }
+      return;
+    }
+
+    // Only refresh if token is expiring soon (less than 24 hours) AND user is active
+    if (timeUntilExpiration <= REFRESH_THRESHOLD && !isRefreshing) {
+      // Check if user was active in last hour
+      const wasRecentlyActive = timeSinceActivity < (60 * 60 * 1000); // 1 hour
+      
+      if (wasRecentlyActive) {
+        console.log("🔄 Token expiring soon and user active, refreshing...");
+        refreshTokenAsync(store, token).catch(err => {
+          console.error("❌ Token refresh failed:", err);
+          const errorCode = err.response?.data?.code;
+          // Only logout on specific error codes
+          if (errorCode === "TOKEN_EXPIRED" || errorCode === "USER_NOT_FOUND" || errorCode === "TOKEN_REVOKED") {
+            handleTokenExpired(store, token);
+          }
+        });
+      }
+    }
   }, CHECK_INTERVAL);
 
   return (next) => (action) => {
     return next(action);
   };
 };
-
 
 const handleTokenExpired = async (store, token) => {
   try {
@@ -183,13 +172,6 @@ const refreshTokenAsync = async (store, oldToken) => {
       }
     } catch (error) {
       console.error("Token refresh failed:", error.message);
-
-      // If refresh fails, logout user
-      if (error.response?.status === 401) {
-        console.log("Refresh token invalid, logging out...");
-        handleTokenExpired(store, oldToken);
-      }
-
       throw error;
     } finally {
       isRefreshing = false;

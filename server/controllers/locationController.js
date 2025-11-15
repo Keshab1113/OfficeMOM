@@ -74,6 +74,7 @@ const getUserLocation = async (req, res) => {
     const shouldIncludeRates = includeRates === 'true';
     let locationData = {};
     let method = "ip";
+    
 
     if (lat && lon) {
       // Google reverse geocode
