@@ -103,17 +103,16 @@ const tokenExpirationMiddleware = (store) => {
     }
 
     // If token expired, logout
-    if (tokenExpiration <= currentTime) {
-      console.log("Token expired, logging out...");
-      handleTokenExpired(store, token);
-      return;
-    }
-
     // Refresh token proactively (keeps session alive)
-    if (!isRefreshing) {
-      console.log("Refreshing token to maintain session...");
-      refreshTokenAsync(store, token);
-    }
+// Backend will validate if token is actually expired
+if (!isRefreshing) {
+  console.log("Refreshing token to maintain session...");
+  refreshTokenAsync(store, token).catch(err => {
+    // If refresh fails due to expired token, logout
+    console.error("Token refresh failed, logging out...");
+    handleTokenExpired(store, token);
+  });
+}
   }, CHECK_INTERVAL);
 
   return (next) => (action) => {

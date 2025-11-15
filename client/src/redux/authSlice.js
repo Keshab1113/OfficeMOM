@@ -17,13 +17,19 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setUser: (state, action) => {
-      state.fullName = action.payload.fullName;
-      state.email = action.payload.email;
-      state.token = action.payload.token;
-      const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // ✅ 1 day
-      // const expirationTime = Date.now() + 2 * 60 * 1000; // ✅ 2 minutes for testing
-      state.tokenExpiration = expirationTime;
+   setUser: (state, action) => {
+  state.fullName = action.payload.fullName;
+  state.email = action.payload.email;
+  state.token = action.payload.token;
+  
+  // ✅ Decode JWT to get actual expiration time
+  try {
+    const payload = JSON.parse(atob(action.payload.token.split('.')[1]));
+    state.tokenExpiration = payload.exp * 1000; // Convert to milliseconds
+  } catch (err) {
+    // Fallback if decode fails
+    state.tokenExpiration = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+  }
       state.totalTimes = action.payload.totalTimes;
       state.totalRemainingTime = action.payload.totalRemainingTime;
       state.totalCreatedMoMs = action.payload.totalCreatedMoMs;
