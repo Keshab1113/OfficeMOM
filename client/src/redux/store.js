@@ -30,46 +30,11 @@ const persistedAudioReducer = persistReducer(audioPersistConfig, audioReducer);
 let isRefreshing = false;
 let refreshPromise = null;
 
-// const tokenExpirationMiddleware = (store) => {
-//   // Check token expiration every 5 minutes
-//   const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-//   const REFRESH_THRESHOLD = 10 * 60 * 1000; // Refresh if less than 10 minutes remaining
-
-//   setInterval(() => {
-//     const state = store.getState();
-//     const { token, tokenExpiration } = state.auth;
-
-//     if (!token || !tokenExpiration) return;
-
-//     const currentTime = Date.now();
-//     const timeUntilExpiration = tokenExpiration - currentTime;
-
-//     // If token expired, logout
-//     if (timeUntilExpiration <= 0) {
-//       console.log("Token expired, logging out...");
-//       handleTokenExpired(store, token);
-//       return;
-//     }
-
-//     // If token expiring soon, refresh it
-//     if (timeUntilExpiration <= REFRESH_THRESHOLD && !isRefreshing) {
-//       console.log("Token expiring soon, refreshing...");
-//       refreshTokenAsync(store, token);
-//     }
-//   }, CHECK_INTERVAL);
-
-//   return (next) => (action) => {
-//     return next(action);
-//   };
-// };
-
-// Handle expired token
-
+ 
 const tokenExpirationMiddleware = (store) => {
   // Check token every 30 minutes and refresh if user is active
   const CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
   const ACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours of inactivity = logout
- 
 
   let lastActivityTime = Date.now();
 
@@ -78,6 +43,7 @@ const tokenExpirationMiddleware = (store) => {
   
   const updateActivity = () => {
     lastActivityTime = Date.now();
+    console.log("🟢 User activity detected at:", new Date(lastActivityTime).toLocaleTimeString());
   };
 
   // Add activity listeners
@@ -90,29 +56,39 @@ const tokenExpirationMiddleware = (store) => {
     const state = store.getState();
     const { token, tokenExpiration } = state.auth;
 
-    if (!token || !tokenExpiration) return;
+    if (!token || !tokenExpiration) {
+      console.log("⚪ No token or expiration found, skipping check");
+      return;
+    }
 
     const currentTime = Date.now();
     const timeSinceActivity = currentTime - lastActivityTime;
+    const timeUntilExpiration = tokenExpiration - currentTime;
+
+    console.log("🔵 Token Check:");
+    console.log("  - Time since activity:", Math.floor(timeSinceActivity / 1000 / 60), "minutes");
+    console.log("  - Time until token expires:", Math.floor(timeUntilExpiration / 1000 / 60), "minutes");
+    console.log("  - Token expiration:", new Date(tokenExpiration).toLocaleString());
 
     // If user inactive for 24 hours, logout
     if (timeSinceActivity >= ACTIVITY_TIMEOUT) {
-      console.log("User inactive for 24 hours, logging out...");
+      console.log("🔴 User inactive for 24 hours, logging out...");
       handleTokenExpired(store, token);
       return;
     }
 
-    // If token expired, logout
     // Refresh token proactively (keeps session alive)
-// Backend will validate if token is actually expired
-if (!isRefreshing) {
-  console.log("Refreshing token to maintain session...");
-  refreshTokenAsync(store, token).catch(err => {
-    // If refresh fails due to expired token, logout
-    console.error("Token refresh failed, logging out...");
-    handleTokenExpired(store, token);
-  });
-}
+    // Backend will validate if token is actually expired
+    if (!isRefreshing) {
+      console.log("🟡 Refreshing token to maintain session...");
+      refreshTokenAsync(store, token).catch(err => {
+        // If refresh fails due to expired token, logout
+        console.error("🔴 Token refresh failed, logging out...", err);
+        handleTokenExpired(store, token);
+      });
+    } else {
+      console.log("⏳ Token refresh already in progress, skipping...");
+    }
   }, CHECK_INTERVAL);
 
   return (next) => (action) => {
@@ -212,16 +188,17 @@ const setupAxiosInterceptor = (store) => {
   axiosInterceptorId = axios.interceptors.response.use(
     (response) => response,
     async (error) => {
+      console.log("🔴 Axios interceptor caught error:", error.response?.status, error.response?.data);
       const originalRequest = error.config;
 
       // If 401 error and not already retried
       if (error.response?.status === 401 && !originalRequest._retry) {
         const errorCode = error.response?.data?.code;
-
+ console.log("🔴 401 Error with code:", errorCode);
         // If token expired, try to refresh
         if (errorCode === "TOKEN_EXPIRED" && !originalRequest._isRefresh) {
+       console.log("🟡 Attempting token refresh from interceptor...");
           originalRequest._retry = true;
-
           try {
             const state = store.getState();
             const oldToken = state.auth.token;
