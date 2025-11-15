@@ -402,7 +402,7 @@ const [freePlanMessage, setFreePlanMessage] = useState("");
                                                 onClick={handleStartMakingNotes}
                                                 disabled={isProcessing || !selectedFile}
                                                 className={`mt-6 w-full py-4  rounded-lg text-gray-100 dark:text-white font-semibold transition-colors ${isProcessing || !selectedFile
-                                                    ? "bg-gray-500/20 cursor-not-allowed "
+                                                    ? "bg-gray-500/20 cursor-not-allowed text-gray-800 dark:text-white"
                                                     : "bg-blue-500 hover:bg-blue-600 cursor-pointer"
                                                     } flex items-center justify-center`}
                                             >

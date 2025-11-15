@@ -44,9 +44,9 @@ export default function MeetingRoom() {
     const screenStreamRef = useRef(null);
     // const captionsRef = useRef(null);
     const micStreamRef = useRef(null);
-const isEndingRef = useRef(false);
-const planTypeRef = useRef(null);
-const meetingTimeRef = useRef(0); 
+    const isEndingRef = useRef(false);
+    const planTypeRef = useRef(null);
+    const meetingTimeRef = useRef(0);
     // Timer
     // useEffect(() => {
     //     let interval;
@@ -56,43 +56,43 @@ const meetingTimeRef = useRef(0);
     //     return () => clearInterval(interval);
     // }, [timerActive]);
 
-useEffect(() => {
-    const fetchSubscription = async () => {
-        try {
-            const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subscription`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            planTypeRef.current = res.data?.data?.plan_name?.toLowerCase().includes("free") ? "free" : "paid";
-            console.log("User Plan Type:", planTypeRef.current);
-        } catch (err) {
-            console.error("Subscription check failed:", err);
-        }
-    };
-
-    fetchSubscription();
-}, [token]);
-
-useEffect(() => {
-    if (!timerActive) return;
-
-    const interval = setInterval(() => {
-        setMeetingTime((prev) => {
-            const newTime = prev + 1;
-            meetingTimeRef.current = newTime; // ✅ keep live time synced
-
-             // ⏱️ Auto-end after 30 minutes (1800 seconds) for free users
-            if (planTypeRef.current === "free" && newTime >= 1800) {
-                addToast("info", "Free plan meeting limit reached (auto-ended after 30 minutes).");
-                endMeeting();
+    useEffect(() => {
+        const fetchSubscription = async () => {
+            try {
+                const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subscription`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                planTypeRef.current = res.data?.data?.plan_name?.toLowerCase().includes("free") ? "free" : "paid";
+                console.log("User Plan Type:", planTypeRef.current);
+            } catch (err) {
+                console.error("Subscription check failed:", err);
             }
+        };
+
+        fetchSubscription();
+    }, [token]);
+
+    useEffect(() => {
+        if (!timerActive) return;
+
+        const interval = setInterval(() => {
+            setMeetingTime((prev) => {
+                const newTime = prev + 1;
+                meetingTimeRef.current = newTime; // ✅ keep live time synced
+
+                // ⏱️ Auto-end after 30 minutes (1800 seconds) for free users
+                if (planTypeRef.current === "free" && newTime >= 1800) {
+                    addToast("info", "Free plan meeting limit reached (auto-ended after 30 minutes).");
+                    endMeeting();
+                }
 
 
-            return newTime;
-        });
-    }, 1000);
+                return newTime;
+            });
+        }, 1000);
 
-    return () => clearInterval(interval);
-}, [timerActive]);
+        return () => clearInterval(interval);
+    }, [timerActive]);
 
 
 
@@ -108,6 +108,113 @@ useEffect(() => {
     //     }
     // }, [transcript, liveTranscript, showCaptions]);
 
+    // const startScreenSharing = async () => {
+    //     if (!meetingLink) {
+    //         addToast("error", "Please paste a meeting link");
+    //         return;
+    //     }
+    //     if (!navigator.mediaDevices?.getUserMedia) {
+    //         addToast("error", "Your browser doesn't support audio recording");
+    //         return;
+    //     }
+
+    //     // Use Socket.IO instead of raw WebSocket
+    //     const socket = io(import.meta.env.VITE_BACKEND_URL, {
+    //         transports: ["websocket"],
+    //     });
+    //     wsRef.current = socket;
+
+    //     socket.on("connect", () => {
+    //         console.log("Connected to server with Socket.IO", socket.id);
+
+    //         // Join a room (for example, using meetingLink as roomId)
+    //         socket.emit("host:join-room", { roomId: meetingLink });
+    //         setTimerActive(true);
+    //     });
+
+    //     socket.on("error", (err) => {
+    //         console.error("Socket error:", err);
+    //         addToast("error", "Connection error occurred");
+    //     });
+
+
+    //     // Start audio capture
+    //     try {
+    //         const micStream = await navigator.mediaDevices.getUserMedia({
+    //             audio: true,
+    //         });
+    //         const systemStream = await navigator.mediaDevices.getDisplayMedia({
+    //             audio: true,
+    //         });
+    //         micStreamRef.current = micStream;
+    //         screenStreamRef.current = systemStream;
+    //         setIsScreenShared(true);
+    //         setShowScreenSharePrompt(false);
+
+    //         const audioContext = new AudioContext();
+    //         const destination = audioContext.createMediaStreamDestination();
+
+    //         audioContext.createMediaStreamSource(micStream).connect(destination);
+    //         audioContext.createMediaStreamSource(systemStream).connect(destination);
+
+    //         const stream = destination.stream;
+    //         mediaStreamRef.current = stream;
+
+    //         // Add MediaRecorder to capture full session audio
+    //         const mediaRecorder = new MediaRecorder(stream);
+    //         mediaRecorderRef.current = mediaRecorder;
+    //         recordedChunksRef.current = [];
+
+    //         mediaRecorder.ondataavailable = (e) => {
+    //             if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+    //         };
+
+    //         mediaRecorder.start(1000);
+    //         console.log("MediaRecorder started");
+
+    //         const audioContext2 = new AudioContext({ sampleRate: 16000 });
+    //         const source = audioContext2.createMediaStreamSource(stream);
+    //         const processor = audioContext2.createScriptProcessor(4096, 1, 1);
+
+    //         source.connect(processor);
+    //         processor.connect(audioContext2.destination);
+
+    //         processor.onaudioprocess = (e) => {
+    //             const input = e.inputBuffer.getChannelData(0);
+    //             const buffer = convertFloat32ToPCM16(input);
+    //             if (socket.connected) {
+    //                 socket.emit("audio-chunk", buffer);
+    //             }
+    //         };
+    //         //  he
+    //         function convertFloat32ToPCM16(buffer) {
+    //             const l = buffer.length;
+    //             const output = new Int16Array(l);
+    //             for (let i = 0; i < l; i++) {
+    //                 const s = Math.max(-1, Math.min(1, buffer[i]));
+    //                 output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    //             }
+    //             return output.buffer;
+    //         }
+
+    //         const tableSection = document.getElementById("listening");
+    //         if (tableSection) {
+    //             tableSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    //         }
+
+    //         addToast("success", "Meeting started successfully! Live transcription is active.");
+    //     } catch (error) {
+    //         addToast(
+    //             "error",
+    //             "Microphone access denied. Please allow microphone permissions"
+    //         );
+    //         console.error("Meeting start failed:", error);
+    //         socket.disconnect();
+    //     }
+    // };
+
+    // Replace your startScreenSharing function with this mobile-compatible version:
+
     const startScreenSharing = async () => {
         if (!meetingLink) {
             addToast("error", "Please paste a meeting link");
@@ -118,6 +225,9 @@ useEffect(() => {
             return;
         }
 
+        // Detect if user is on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
         // Use Socket.IO instead of raw WebSocket
         const socket = io(import.meta.env.VITE_BACKEND_URL, {
             transports: ["websocket"],
@@ -126,8 +236,6 @@ useEffect(() => {
 
         socket.on("connect", () => {
             console.log("Connected to server with Socket.IO", socket.id);
-
-            // Join a room (for example, using meetingLink as roomId)
             socket.emit("host:join-room", { roomId: meetingLink });
             setTimerActive(true);
         });
@@ -137,27 +245,54 @@ useEffect(() => {
             addToast("error", "Connection error occurred");
         });
 
-        
         // Start audio capture
         try {
-            const micStream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-            });
-            const systemStream = await navigator.mediaDevices.getDisplayMedia({
-                audio: true,
-            });
-            micStreamRef.current = micStream;
-            screenStreamRef.current = systemStream;
+            let stream;
+
+            if (isMobile) {
+                // ✅ Mobile: Only request microphone (no screen sharing available)
+                const micStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                micStreamRef.current = micStream;
+                stream = micStream;
+
+                addToast("info", "Mobile mode: Recording microphone only");
+            } else {
+                // ✅ Desktop: Request mic first, then screen share
+                const micStream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                });
+
+                // Check if getDisplayMedia is supported before calling
+                if (!navigator.mediaDevices.getDisplayMedia) {
+                    addToast("error", "Screen sharing is not supported on this device");
+                    micStream.getTracks().forEach(t => t.stop());
+                    socket.disconnect();
+                    return;
+                }
+
+                const systemStream = await navigator.mediaDevices.getDisplayMedia({
+                    audio: true,
+                });
+
+                micStreamRef.current = micStream;
+                screenStreamRef.current = systemStream;
+
+                // Combine mic and system audio for desktop
+                const audioContext = new AudioContext();
+                const destination = audioContext.createMediaStreamDestination();
+                audioContext.createMediaStreamSource(micStream).connect(destination);
+                audioContext.createMediaStreamSource(systemStream).connect(destination);
+                stream = destination.stream;
+            }
+
             setIsScreenShared(true);
             setShowScreenSharePrompt(false);
-
-            const audioContext = new AudioContext();
-            const destination = audioContext.createMediaStreamDestination();
-
-            audioContext.createMediaStreamSource(micStream).connect(destination);
-            audioContext.createMediaStreamSource(systemStream).connect(destination);
-
-            const stream = destination.stream;
             mediaStreamRef.current = stream;
 
             // Add MediaRecorder to capture full session audio
@@ -186,7 +321,7 @@ useEffect(() => {
                     socket.emit("audio-chunk", buffer);
                 }
             };
-//  he
+
             function convertFloat32ToPCM16(buffer) {
                 const l = buffer.length;
                 const output = new Int16Array(l);
@@ -202,13 +337,24 @@ useEffect(() => {
                 tableSection.scrollIntoView({ behavior: "smooth", block: "start" });
             }
 
-            addToast("success", "Meeting started successfully! Live transcription is active.");
+            const successMessage = isMobile
+                ? "Meeting started! Recording microphone audio."
+                : "Meeting started successfully! Live transcription is active.";
+            addToast("success", successMessage);
         } catch (error) {
-            addToast(
-                "error",
-                "Microphone access denied. Please allow microphone permissions"
-            );
             console.error("Meeting start failed:", error);
+
+            // More specific error messages
+            if (error.name === 'NotAllowedError') {
+                addToast("error", "Microphone permission denied. Please allow microphone access in your browser settings.");
+            } else if (error.name === 'NotFoundError') {
+                addToast("error", "No microphone found. Please connect a microphone and try again.");
+            } else if (error.name === 'NotSupportedError') {
+                addToast("error", "This feature is not supported on your device or browser.");
+            } else {
+                addToast("error", "Failed to start meeting: " + (error.message || "Unknown error"));
+            }
+
             socket.disconnect();
         }
     };
@@ -238,113 +384,113 @@ useEffect(() => {
 
 
 
-   
+
     const endMeeting = async () => {
-    // 🧠 Prevent double uploads
-    if (isEndingRef.current) return;
-    isEndingRef.current = true;
+        // 🧠 Prevent double uploads
+        if (isEndingRef.current) return;
+        isEndingRef.current = true;
 
-    if (showEndingModal) return;
-    setTimerActive(false);
-    setShowEndingModal(true);
-    setIsRecording(false);
-    stopAllMedia();
+        if (showEndingModal) return;
+        setTimerActive(false);
+        setShowEndingModal(true);
+        setIsRecording(false);
+        stopAllMedia();
 
-    try {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            await new Promise((resolve) => {
-                mediaRecorderRef.current.onstop = resolve;
-                mediaRecorderRef.current.stop();
-            });
-        }
+        try {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                await new Promise((resolve) => {
+                    mediaRecorderRef.current.onstop = resolve;
+                    mediaRecorderRef.current.stop();
+                });
+            }
 
-        const finalTranscript = "";
+            const finalTranscript = "";
 
-        if (recordedChunksRef.current.length > 0) {
-            const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
-            const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
-                type: "audio/webm",
-            });
-
-            const formData = new FormData();
-            const durationSeconds = meetingTimeRef.current || meetingTime;
-const meetingDurationInMinutes = Math.ceil(durationSeconds / 60);
-console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", meetingDurationInMinutes, "minutes");
-
-
-            formData.append("audio", file);
-            formData.append("source", "Online Meeting Conversion");
-            formData.append("meetingDuration", meetingDurationInMinutes);
-
-            try {
-                const response = await axios.post(
-                    `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
-                    formData,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "multipart/form-data",
-                        },
-                    }
-                );
-
-                const data = response.data;
-                navigate(`/meeting/${meetingId}/result`, {
-                    state: {
-                        finalTranscript: data.transcription || finalTranscript,
-                        detectLanguage: data.language || "en",
-                        audioID: data.audioId,
-                        updatedMeetingId: data.transcriptAudioId,
-                        uploadedUserId: data.userId,
-                        historyID: data.id,
-                        transcription: data.transcription || finalTranscript,
-                    },
+            if (recordedChunksRef.current.length > 0) {
+                const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
+                const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
+                    type: "audio/webm",
                 });
 
-                const successMessage = data.minutesUsed
-                    ? `${data.message || "Meeting processed successfully!"} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
-                    : data.message || "Meeting processed successfully!";
+                const formData = new FormData();
+                const durationSeconds = meetingTimeRef.current || meetingTime;
+                const meetingDurationInMinutes = Math.ceil(durationSeconds / 60);
+                console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", meetingDurationInMinutes, "minutes");
 
-                addToast("success", successMessage);
-            } catch (err) {
-                console.error("Upload failed:", err);
 
-                if (err.response?.status === 402) {
-                    const errorData = err.response.data;
-                    addToast(
-                        "error",
-                        `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge.`,
-                        10000
+                formData.append("audio", file);
+                formData.append("source", "Online Meeting Conversion");
+                formData.append("meetingDuration", meetingDurationInMinutes);
+
+                try {
+                    const response = await axios.post(
+                        `${import.meta.env.VITE_BACKEND_URL}/api/upload/upload-audio`,
+                        formData,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                "Content-Type": "multipart/form-data",
+                            },
+                        }
                     );
 
-                    if (setShowRechargeModal) {
-                        setShowRechargeModal(true);
-                        setRechargeInfo({
-                            required: errorData.requiredMinutes,
-                            remaining: errorData.remainingMinutes,
-                            deficit: errorData.requiredMinutes - errorData.remainingMinutes,
-                        });
-                    }
-                    return;
-                }
+                    const data = response.data;
+                    navigate(`/meeting/${meetingId}/result`, {
+                        state: {
+                            finalTranscript: data.transcription || finalTranscript,
+                            detectLanguage: data.language || "en",
+                            audioID: data.audioId,
+                            updatedMeetingId: data.transcriptAudioId,
+                            uploadedUserId: data.userId,
+                            historyID: data.id,
+                            transcription: data.transcription || finalTranscript,
+                        },
+                    });
 
+                    const successMessage = data.minutesUsed
+                        ? `${data.message || "Meeting processed successfully!"} (${data.minutesUsed} minutes used, ${data.remainingMinutes} remaining)`
+                        : data.message || "Meeting processed successfully!";
+
+                    addToast("success", successMessage);
+                } catch (err) {
+                    console.error("Upload failed:", err);
+
+                    if (err.response?.status === 402) {
+                        const errorData = err.response.data;
+                        addToast(
+                            "error",
+                            `Insufficient Minutes: You need ${errorData.requiredMinutes} minutes but only have ${errorData.remainingMinutes} minutes remaining. Please recharge.`,
+                            10000
+                        );
+
+                        if (setShowRechargeModal) {
+                            setShowRechargeModal(true);
+                            setRechargeInfo({
+                                required: errorData.requiredMinutes,
+                                remaining: errorData.remainingMinutes,
+                                deficit: errorData.requiredMinutes - errorData.remainingMinutes,
+                            });
+                        }
+                        return;
+                    }
+
+                    navigate(`/meeting/${meetingId}/result`, {
+                        state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
+                    });
+                    addToast("error", err.response?.data?.message || err.message || "Failed to process meeting audio");
+                }
+            } else {
                 navigate(`/meeting/${meetingId}/result`, {
                     state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
                 });
-                addToast("error", err.response?.data?.message || err.message || "Failed to process meeting audio");
             }
-        } else {
-            navigate(`/meeting/${meetingId}/result`, {
-                state: { finalTranscript, detectLanguage: "en", transcription: finalTranscript },
-            });
+        } catch (error) {
+            console.error("Error ending meeting:", error);
+            addToast("error", "Failed to process meeting recording");
+        } finally {
+            setShowEndingModal(false);
         }
-    } catch (error) {
-        console.error("Error ending meeting:", error);
-        addToast("error", "Failed to process meeting recording");
-    } finally {
-        setShowEndingModal(false);
-    }
-};
+    };
 
 
     const formatTime = (totalSeconds) => {

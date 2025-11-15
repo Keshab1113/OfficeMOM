@@ -168,7 +168,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
 
   return (
     <div className="my-10 w-full max-w-full animate-fade-in h-fit ">
-      <div className="dark:bg-gray-900 bg-white w-full h-full min-h-[40vh] p-4 md:p-6 py-16 rounded-xl  shadow-2xl hover:shadow-3xl transform  transition-all duration-500 ease-out backdrop-blur-sm">
+      <div className=" w-full h-full min-h-[40vh] p-4 md:p-0 py-16  hover:shadow-3xl transform  transition-all duration-500 ease-out ">
         <div className="flex justify-center items-center gap-4 mb-8 animate-bounce-slow">
           <h1 className=" dark:text-white text-xl font-medium">Add Columns</h1>
           <button
@@ -186,7 +186,7 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
               className={`${columns.length > 3 ? "min-w-[800px]" : "w-full"
                 } transition-all duration-300`}>
               <div className="flex dark:bg-gray-900   animate-slide-down">
-                <div className="w-16 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 sm:w-20 p-3 sm:p-4 flex items-center justify-center flex-shrink-0  transition-colors duration-200">
+                <div className="w-16 md:w-24 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 flex items-center justify-center flex-shrink-0  transition-colors duration-200">
                   <h3 className="dark:text-white text-gray-700 text-sm sm:text-lg font-bold animate-fade-in">
                     S. No.
                   </h3>
@@ -321,11 +321,11 @@ const TablePreview = ({ onSaveHeaders, isSending }) => {
                     key={rowIndex}
                     className={`flex transition-all duration-300 ease-out animate-slide-up w-full ${opacity}`}>
                     <div
-                      className={`w-16 sm:w-20 flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${rowIndex === 0
-                          ? "dark:bg-[#162130] bg-[#a8aeb7]"
-                          : rowIndex === 1
-                            ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
-                            : "dark:bg-[#262f3b] bg-[#dae0e8]"
+                      className={`w-16 md:w-24 flex items-center border-b border-r border-gray-200 dark:border-gray-700 justify-center flex-shrink-0 transition-all duration-200 ${rowIndex === 0
+                        ? "dark:bg-[#162130] bg-[#a8aeb7]"
+                        : rowIndex === 1
+                          ? "dark:bg-[#1e2836] bg-[#c6cbd2]"
+                          : "dark:bg-[#262f3b] bg-[#dae0e8]"
                         }`}>
                       <div className="dark:text-gray-300 text-gray-600 font-semibold transition-colors duration-200">
                         {rowIndex + 1}
