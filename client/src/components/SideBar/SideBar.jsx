@@ -21,7 +21,7 @@ import {
 } from "react-icons/md";
 import { Zap, LogOut, CreditCard, Bot, ChevronsRight, ChevronDown, Wallet, BookUser, Contact } from "lucide-react";
 import axios from "axios";
-
+import { store } from '../../redux/store'; // Adjust path as needed
 const navItems = [
   {
     heading: "Join Online Meeting",
@@ -109,22 +109,40 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
 
     let intervalId;
 
-    const fetchSubscription = async () => {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        setSubscription(res.data.data);
-      } catch (err) {
-        console.error("Failed to load subscription details.", err);
-      }
-    };
+    // const fetchSubscription = async () => {
+    //   try {
+    //     const res = await axios.get(
+    //       `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
+    //       {
+    //         headers: {
+    //           Authorization: `Bearer ${token}`,
+    //         },
+    //       }
+    //     );
+    //     setSubscription(res.data.data);
+    //   } catch (err) {
+    //     console.error("Failed to load subscription details.", err);
+    //   }
+    // };
 
+    const fetchSubscription = async () => {
+    try {
+      // ✅ Get fresh token from Redux store on each call
+      const currentToken = store.getState().auth.token;
+      
+      const res = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
+        {
+          headers: {
+            Authorization: `Bearer ${currentToken}`, // ✅ Use fresh token
+          },
+        }
+      );
+      setSubscription(res.data.data);
+    } catch (err) {
+      console.error("Failed to load subscription details.", err);
+    }
+  };
     fetchSubscription();
 
     // 🔁 Fetch every 10 seconds (adjust as needed)

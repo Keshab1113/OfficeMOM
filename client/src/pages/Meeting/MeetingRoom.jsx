@@ -22,9 +22,9 @@ export default function MeetingRoom() {
     const activePlatform = state?.activePlatform || "";
     const { token } = useSelector((s) => s.auth);
 
-    const [transcript, setTranscript] = useState([]);
-    const [liveTranscript, setLiveTranscript] = useState("");
-    const [showCaptions, setShowCaptions] = useState(false);
+    // const [transcript, setTranscript] = useState([]);
+    // const [liveTranscript, setLiveTranscript] = useState("");
+    // const [showCaptions, setShowCaptions] = useState(false);
     const [showEndingModal, setShowEndingModal] = useState(false);
     const [meetingTime, setMeetingTime] = useState(0);
     const [timerActive, setTimerActive] = useState(false);
@@ -42,7 +42,7 @@ export default function MeetingRoom() {
     const mediaRecorderRef = useRef(null);
     const recordedChunksRef = useRef([]);
     const screenStreamRef = useRef(null);
-    const captionsRef = useRef(null);
+    // const captionsRef = useRef(null);
     const micStreamRef = useRef(null);
 const isEndingRef = useRef(false);
 const planTypeRef = useRef(null);
@@ -97,16 +97,16 @@ useEffect(() => {
 
 
     // Scroll captions down automatically
-    useEffect(() => {
-        if (captionsRef.current && showCaptions) {
-            setTimeout(() => {
-                captionsRef.current.scrollTo({
-                    top: captionsRef.current.scrollHeight,
-                    behavior: "smooth",
-                });
-            }, 100);
-        }
-    }, [transcript, liveTranscript, showCaptions]);
+    // useEffect(() => {
+    //     if (captionsRef.current && showCaptions) {
+    //         setTimeout(() => {
+    //             captionsRef.current.scrollTo({
+    //                 top: captionsRef.current.scrollHeight,
+    //                 behavior: "smooth",
+    //             });
+    //         }, 100);
+    //     }
+    // }, [transcript, liveTranscript, showCaptions]);
 
     const startScreenSharing = async () => {
         if (!meetingLink) {
@@ -137,21 +137,7 @@ useEffect(() => {
             addToast("error", "Connection error occurred");
         });
 
-        // Listen for Deepgram captions instead of transcript
-        socket.on("caption", ({ text, isFinal }) => {
-            if (!text) return;
-
-            setTranscript((prev) => {
-                if (isFinal) {
-                    return [...prev, text];
-                } else {
-                    return prev;
-                }
-            });
-
-            setLiveTranscript(text);
-        });
-
+        
         // Start audio capture
         try {
             const micStream = await navigator.mediaDevices.getUserMedia({
@@ -200,7 +186,7 @@ useEffect(() => {
                     socket.emit("audio-chunk", buffer);
                 }
             };
-
+//  he
             function convertFloat32ToPCM16(buffer) {
                 const l = buffer.length;
                 const output = new Int16Array(l);
@@ -272,7 +258,8 @@ useEffect(() => {
             });
         }
 
-        const finalTranscript = transcript.join(" ");
+        const finalTranscript = "";
+
         if (recordedChunksRef.current.length > 0) {
             const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
             const file = new File([blob], `meeting_recording_${Date.now()}.webm`, {
@@ -512,7 +499,7 @@ console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", m
 
                                     {/* Control Buttons */}
                                     <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
-                                        <button
+                                        {/* <button
                                             onClick={() => setShowCaptions(!showCaptions)}
                                             className={`px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 ${showCaptions
                                                 ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/25"
@@ -530,7 +517,7 @@ console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", m
                                                     Show Live Captions
                                                 </>
                                             )}
-                                        </button>
+                                        </button> */}
 
                                         <button
                                             onClick={toggleMute}
@@ -564,7 +551,7 @@ console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", m
                                     </div>
 
                                     {/* Live Captions Section */}
-                                    <div
+                                    {/* <div
                                         className={`w-full transition-all duration-500 ease-in-out ${showCaptions
                                             ? "opacity-100 max-h-96"
                                             : "opacity-0 max-h-0 overflow-hidden"
@@ -613,7 +600,7 @@ console.log("🕒 Meeting duration (accurate):", durationSeconds, "seconds =", m
                                                 <span>Language: Auto-detected</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> */}
                                 </>
                             )}
 
