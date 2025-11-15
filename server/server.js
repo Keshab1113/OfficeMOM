@@ -157,7 +157,7 @@ async function openAssemblyAIWS(roomId) {
 
 
       if (transcriptText) {
-        console.log("🗣️ Transcript:", transcriptText); // clean log
+        // console.log("🗣️ Transcript:", transcriptText); // clean log
         io.to(roomId).emit("caption", {
           text: transcriptText,
           isFinal: msg.type === "FinalTranscript" || msg.end_of_turn === true

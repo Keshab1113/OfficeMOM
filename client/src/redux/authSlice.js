@@ -22,6 +22,7 @@ const authSlice = createSlice({
       state.email = action.payload.email;
       state.token = action.payload.token;
       const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // ✅ 1 day
+      // const expirationTime = Date.now() + 2 * 60 * 1000; // ✅ 2 minutes for testing
       state.tokenExpiration = expirationTime;
       state.totalTimes = action.payload.totalTimes;
       state.totalRemainingTime = action.payload.totalRemainingTime;
@@ -48,7 +49,7 @@ const authSlice = createSlice({
       state.profileImage = action.payload;
     },
 
-    updateUser: (state, action) => {
+  updateUser: (state, action) => {
       const updates = action.payload;
       Object.keys(updates).forEach((key) => {
         if (Object.prototype.hasOwnProperty.call(state, key)) {
@@ -57,10 +58,14 @@ const authSlice = createSlice({
       });
     },
 
+    updateToken: (state, action) => {
+      state.token = action.payload.token;
+      state.tokenExpiration = action.payload.tokenExpiration;
+    },
+
     setLogoutTimer: (state, action) => { },
   },
 });
 
-export const { setUser, logout, setProfileImage, updateUser } = authSlice.actions;
-
+export const { setUser, logout, setProfileImage, updateUser, updateToken } = authSlice.actions;
 export default authSlice.reducer;

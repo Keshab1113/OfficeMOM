@@ -30,30 +30,88 @@ const persistedAudioReducer = persistReducer(audioPersistConfig, audioReducer);
 let isRefreshing = false;
 let refreshPromise = null;
 
-const tokenExpirationMiddleware = (store) => {
-  // Check token expiration every 5 minutes
-  const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  const REFRESH_THRESHOLD = 10 * 60 * 1000; // Refresh if less than 10 minutes remaining
+// const tokenExpirationMiddleware = (store) => {
+//   // Check token expiration every 5 minutes
+//   const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+//   const REFRESH_THRESHOLD = 10 * 60 * 1000; // Refresh if less than 10 minutes remaining
 
-  setInterval(() => {
+//   setInterval(() => {
+//     const state = store.getState();
+//     const { token, tokenExpiration } = state.auth;
+
+//     if (!token || !tokenExpiration) return;
+
+//     const currentTime = Date.now();
+//     const timeUntilExpiration = tokenExpiration - currentTime;
+
+//     // If token expired, logout
+//     if (timeUntilExpiration <= 0) {
+//       console.log("Token expired, logging out...");
+//       handleTokenExpired(store, token);
+//       return;
+//     }
+
+//     // If token expiring soon, refresh it
+//     if (timeUntilExpiration <= REFRESH_THRESHOLD && !isRefreshing) {
+//       console.log("Token expiring soon, refreshing...");
+//       refreshTokenAsync(store, token);
+//     }
+//   }, CHECK_INTERVAL);
+
+//   return (next) => (action) => {
+//     return next(action);
+//   };
+// };
+
+// Handle expired token
+
+const tokenExpirationMiddleware = (store) => {
+  // Check token every 30 minutes and refresh if user is active
+  const CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
+  const ACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours of inactivity = logout
+ 
+
+  let lastActivityTime = Date.now();
+
+  // Track user activity
+  const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+  
+  const updateActivity = () => {
+    lastActivityTime = Date.now();
+  };
+
+  // Add activity listeners
+  activityEvents.forEach(event => {
+    window.addEventListener(event, updateActivity, true);
+  });
+
+  // Periodic check and refresh
+  const intervalId = setInterval(() => {
     const state = store.getState();
     const { token, tokenExpiration } = state.auth;
 
     if (!token || !tokenExpiration) return;
 
     const currentTime = Date.now();
-    const timeUntilExpiration = tokenExpiration - currentTime;
+    const timeSinceActivity = currentTime - lastActivityTime;
+
+    // If user inactive for 24 hours, logout
+    if (timeSinceActivity >= ACTIVITY_TIMEOUT) {
+      console.log("User inactive for 24 hours, logging out...");
+      handleTokenExpired(store, token);
+      return;
+    }
 
     // If token expired, logout
-    if (timeUntilExpiration <= 0) {
+    if (tokenExpiration <= currentTime) {
       console.log("Token expired, logging out...");
       handleTokenExpired(store, token);
       return;
     }
 
-    // If token expiring soon, refresh it
-    if (timeUntilExpiration <= REFRESH_THRESHOLD && !isRefreshing) {
-      console.log("Token expiring soon, refreshing...");
+    // Refresh token proactively (keeps session alive)
+    if (!isRefreshing) {
+      console.log("Refreshing token to maintain session...");
       refreshTokenAsync(store, token);
     }
   }, CHECK_INTERVAL);
@@ -63,7 +121,7 @@ const tokenExpirationMiddleware = (store) => {
   };
 };
 
-// Handle expired token
+
 const handleTokenExpired = async (store, token) => {
   try {
     // Try to notify backend
@@ -95,7 +153,7 @@ const refreshTokenAsync = async (store, oldToken) => {
   refreshPromise = (async () => {
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/refresh`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/refresh-token`,
         {},
         {
           headers: { Authorization: `Bearer ${oldToken}` },

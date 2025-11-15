@@ -30,6 +30,7 @@ import MeetingRoom from "./pages/Meeting/MeetingRoom";
 import MeetingResult from "./pages/Meeting/MeetingResult";
 import GenerateNotesHome from "./pages/GenerateNotes/GenerateNotesHome";
 import Recharge from "./pages/Recharge/Recharge";
+import TokenRefreshHandler from './components/LittleComponent/TokenRefreshHandler';
 
 function App() {
   
@@ -37,6 +38,7 @@ function App() {
 
   return (
     <>
+     <TokenRefreshHandler />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
