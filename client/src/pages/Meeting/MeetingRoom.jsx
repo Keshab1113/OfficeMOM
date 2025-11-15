@@ -186,7 +186,7 @@ useEffect(() => {
                     socket.emit("audio-chunk", buffer);
                 }
             };
-
+//  he
             function convertFloat32ToPCM16(buffer) {
                 const l = buffer.length;
                 const output = new Int16Array(l);
