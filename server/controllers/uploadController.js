@@ -11,6 +11,7 @@ const {
   secondsToMinutes
 } = require("./../middlewares/minutesManager");
 const { convertMp4ToMp3 } = require("../utils/convertToMp3"); 
+const { processTranscript } = require("./deepseekController");
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
 const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
@@ -666,8 +667,538 @@ res.status(200).json({
   }
 };
 
+// Add this function to uploadController.js
+const uploadAudioBackground = async (req, res) => {
+    const { source, driveUrl } = req.body;
+    console.log("🔥 Background audio upload request received", req.body);
+    
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ 
+                success: false,
+                message: "Unauthorized: no user ID" 
+            });
+        }
 
+        let buffer;
+        let originalName;
+        let actualSource = source || "upload";
+        let ftpUrlToUse = null;
+
+        // Get audio buffer and name based on source
+        if (req.body.audioUrl) {
+            ftpUrlToUse = req.body.audioUrl;
+            originalName = `remote_audio_${Date.now()}.mp3`;
+            actualSource = source || "url_audio";
+        } else if (driveUrl) {
+            if (!driveUrl.includes("drive.google.com")) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: "Invalid Google Drive URL" 
+                });
+            }
+            buffer = await downloadFromDrive(driveUrl);
+            originalName = `drive_audio_${Date.now()}.mp3`;
+            actualSource = source || "google_drive";
+        } else if (req.file) {
+            buffer = req.file.buffer;
+            originalName = req.file.originalname;
+
+            if (!source) {
+                if (originalName.includes("recorded_audio")) {
+                    actualSource = "Live Transcript Conversion";
+                } else {
+                    actualSource = "Generate Notes Conversion";
+                }
+            }
+        } else {
+            return res.status(400).json({ 
+                success: false,
+                message: "No audio file uploaded, URL or Google Drive link provided" 
+            });
+        }
+
+        console.log(`🎵 Processing audio - Source: ${actualSource}, File: ${originalName}`);
+
+        // ⏱️ STEP 1: Check audio duration
+        let audioDurationMinutes;
+        let isEstimated = false;
+
+        if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
+            audioDurationMinutes = parseFloat(req.body.meetingDuration);
+            console.log(`✅ Using frontend meeting duration: ${audioDurationMinutes} minutes`);
+        } else {
+            const durationResult = await getAudioDuration(buffer);
+            audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
+            isEstimated = typeof durationResult === 'object' ? durationResult.estimated : false;
+            console.log(`ℹ️ Using computed audio duration: ${audioDurationMinutes} minutes${isEstimated ? ' (estimated)' : ''}`);
+        }
+
+        // ⏱️ STEP 2: Check if user has sufficient minutes
+        const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
+
+        if (!minutesCheck.hasMinutes) {
+            if (minutesCheck.isFreeUserLimitExceeded) {
+                return res.status(403).json({
+                    success: false,
+                    message: minutesCheck.message,
+                    requiredMinutes: minutesCheck.requiredMinutes,
+                    maxFreeMinutes: minutesCheck.maxFreeMinutes,
+                    isFreeUserLimitExceeded: true,
+                    upgradeRequired: true,
+                    upgradeUrl: "/pricing"
+                });
+            }
+            
+            return res.status(402).json({
+                success: false,
+                message: minutesCheck.message,
+                requiredMinutes: minutesCheck.requiredMinutes,
+                remainingMinutes: minutesCheck.remainingMinutes,
+                needsRecharge: true,
+                rechargeUrl: "/pricing"
+            });
+        }
+
+        // ✅ User has sufficient minutes, create history record
+        const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+        originalName = sanitizeFileName(originalName);
+
+        // Insert history record with processing status
+        const [historyResult] = await db.query(
+            `INSERT INTO history (user_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date, processing_status, processing_progress) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [userId, originalName, null, formattedDate, false, actualSource, null, null, 'transcribing', 5]
+        );
+
+        const historyId = historyResult.insertId;
+        console.log(`✅ Created history record with ID: ${historyId}`);
+
+        // Add to processing queue
+        const [queueResult] = await db.query(
+            `INSERT INTO processing_queue (history_id, user_id, task_type, status, progress) VALUES (?, ?, ?, ?, ?)`,
+            [historyId, userId, 'transcription', 'queued', 5]
+        );
+
+        // ⏱️ STEP 3: Deduct minutes immediately
+        const deductionResult = await deductUserMinutes(userId, audioDurationMinutes);
+        console.log(`✅ Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
+
+        // ✅ Start background processing (non-blocking) - FULL WORKFLOW
+        processFullWorkflowInBackground({
+            buffer,
+            originalName,
+            ftpUrlToUse,
+            actualSource,
+            audioDurationMinutes,
+            userId,
+            historyId,
+            queueId: queueResult.insertId
+        });
+
+        // ✅ Return immediate response - user doesn't wait
+        res.status(200).json({
+            success: true,
+            message: "Upload successful! Processing in background.",
+            id: historyId,
+            userId: userId,
+            minutesUsed: audioDurationMinutes,
+            remainingMinutes: deductionResult.remainingMinutes,
+            processing: true
+        });
+
+    } catch (err) {
+        console.error("Upload audio error:", err);
+        
+        let errorMessage = "Upload failed";
+        let statusCode = 500;
+        
+        if (err.message.includes("Unable to determine audio duration")) {
+            errorMessage = "Could not read audio file";
+            statusCode = 400;
+        } else if (err.message.includes("Insufficient minutes")) {
+            errorMessage = err.message;
+            statusCode = 402;
+        } else if (err.message.includes("Invalid Google Drive")) {
+            errorMessage = err.message;
+            statusCode = 400;
+        }
+        
+        res.status(statusCode).json({
+            success: false,
+            message: errorMessage,
+            error: err.message,
+        });
+    }
+};
+
+async function processFullWorkflowInBackground(params) {
+    const {
+        buffer,
+        originalName,
+        ftpUrlToUse,
+        actualSource,
+        audioDurationMinutes,
+        userId,
+        historyId,
+        queueId
+    } = params;
+
+    let audioId = null;
+    let transcriptAudioId = null;
+
+    try {
+        console.log(`🚀 Starting FULL workflow for history ${historyId}`);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // PHASE 1: UPLOAD TO FTP
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        await updateWorkflowProgress(historyId, userId, queueId, 10, 'transcribing', 'Uploading audio...');
+
+        let ftpUrl;
+        if (ftpUrlToUse) {
+            ftpUrl = ftpUrlToUse;
+            console.log(`✅ Using existing audio URL: ${ftpUrl}`);
+        } else {
+            ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+            console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
+        }
+
+        await updateWorkflowProgress(historyId, userId, queueId, 20, 'transcribing', 'Audio uploaded');
+
+        // Update history with audio URL
+        await db.query(
+            `UPDATE history SET audioUrl = ? WHERE id = ?`,
+            [ftpUrl, historyId]
+        );
+
+        // Insert into user_audios table
+        const [uploadAudioResult] = await db.query(
+            "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
+            [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
+        );
+        audioId = uploadAudioResult.insertId;
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // PHASE 2: TRANSCRIPTION
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        await updateWorkflowProgress(historyId, userId, queueId, 30, 'transcribing', 'Sending to transcription service...');
+
+        let finalTranscript;
+        let assemblyUrl = ftpUrl;
+
+        if (ftpUrlToUse) {
+            try {
+                console.log(`🎧 Sending FTP URL to AssemblyAI: ${ftpUrl}`);
+                const testResponse = await axios.post(
+                    TRANSCRIPT_URL,
+                    { audio_url: ftpUrl, language_detection: true, speaker_labels: true },
+                    { headers: { authorization: ASSEMBLY_KEY } }
+                );
+
+                if (testResponse.data && testResponse.data.id) {
+                    await updateWorkflowProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
+                    finalTranscript = await pollTranscription(testResponse.data.id);
+                } else {
+                    throw new Error("AssemblyAI did not accept URL");
+                }
+            } catch (err) {
+                console.warn("⚠️ Reuploading to AssemblyAI...");
+                const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
+                const uploadRes = await axios.post(UPLOAD_URL, audioRes.data, {
+                    headers: { authorization: ASSEMBLY_KEY, "content-type": "application/octet-stream" }
+                });
+                assemblyUrl = uploadRes.data.upload_url;
+                const created = await createTranscription(assemblyUrl);
+                await updateWorkflowProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
+                finalTranscript = await pollTranscription(created.id);
+            }
+        } else {
+            const created = await createTranscription(ftpUrl);
+            await updateWorkflowProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
+            finalTranscript = await pollTranscription(created.id);
+        }
+
+        await updateWorkflowProgress(historyId, userId, queueId, 70, 'transcribing', 'Transcription complete');
+
+        const speakerText = finalTranscript.text || "";
+
+        // Insert transcript into database
+        const [transcriptResult] = await db.query(
+            "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
+            [audioId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
+        );
+        transcriptAudioId = transcriptResult.insertId;
+
+        console.log(`✅ Transcription complete. Audio ID: ${audioId}, Transcript ID: ${transcriptAudioId}`);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // PHASE 3: MOM GENERATION (AUTO-START)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        await updateWorkflowProgress(historyId, userId, queueId, 75, 'generating_mom', 'Starting MoM generation...');
+
+        // Use default headers
+        const defaultHeaders = ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"];
+
+        const mockReq = {
+            body: {
+                transcript: speakerText,
+                headers: defaultHeaders,
+                audio_id: audioId,
+                userId: userId,
+                transcript_audio_id: transcriptAudioId,
+                detectLanguage: finalTranscript.language_code,
+                history_id: historyId
+            }
+        };
+
+        const mockRes = {
+            statusCode: null,
+            responseData: null,
+            status: function(code) {
+                this.statusCode = code;
+                return this;
+            },
+            json: function(data) {
+                this.responseData = data;
+                return this;
+            }
+        };
+
+        await updateWorkflowProgress(historyId, userId, queueId, 80, 'generating_mom', 'Generating MoM with AI...');
+
+        // Process with DeepSeek
+        await processTranscript(mockReq, mockRes);
+
+        if (mockRes.responseData && !mockRes.responseData.success) {
+            throw new Error(mockRes.responseData.error || "MoM generation failed");
+        }
+
+        await updateWorkflowProgress(historyId, userId, queueId, 95, 'generating_mom', 'Finalizing MoM...');
+
+        // Update to completed
+        await db.query(
+            `UPDATE history SET processing_status = 'completed', processing_progress = 100 WHERE id = ?`,
+            [historyId]
+        );
+
+        await db.query(
+            `UPDATE processing_queue SET status = 'completed', progress = 100, task_type = 'completed' WHERE id = ?`,
+            [queueId]
+        );
+
+        console.log(`✅ FULL WORKFLOW COMPLETED for history ${historyId}`);
+
+    } catch (error) {
+        console.error(`❌ Workflow failed for history ${historyId}:`, error);
+
+        await db.query(
+            `UPDATE history SET processing_status = 'failed', error_message = ? WHERE id = ?`,
+            [error.message, historyId]
+        );
+
+        await db.query(
+            `UPDATE processing_queue SET status = 'failed' WHERE id = ?`,
+            [queueId]
+        );
+    }
+}
+
+async function updateWorkflowProgress(historyId, userId, queueId, progress, status, message) {
+    try {
+        await db.query(
+            `UPDATE history SET processing_progress = ?, processing_status = ? WHERE id = ? AND user_id = ?`,
+            [progress, status, historyId, userId]
+        );
+
+        await db.query(
+            `UPDATE processing_queue SET progress = ?, task_type = ? WHERE id = ?`,
+            [progress, message || status, queueId]
+        );
+
+        console.log(`📊 Progress: ${progress}% - ${message || status}`);
+    } catch (error) {
+        console.error("Error updating progress:", error);
+    }
+}
+
+// Background audio processing function
+async function processAudioInBackground(params) {
+  const {
+    buffer,
+    originalName,
+    ftpUrlToUse,
+    actualSource,
+    audioDurationMinutes,
+    userId,
+    historyId,
+    queueId
+  } = params;
+
+  try {
+    console.log(`🚀 Starting background audio processing for history ${historyId}`);
+
+    // Update progress to 30%
+    await updateAudioProgress(historyId, userId, queueId, 30, 'transcribing');
+
+    let ftpUrl;
+    
+    // Upload to FTP if needed
+    if (ftpUrlToUse) {
+      ftpUrl = ftpUrlToUse;
+      console.log(`✅ Using existing audio URL: ${ftpUrl}`);
+    } else {
+      ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+      console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
+    }
+
+    // Update progress to 50%
+    await updateAudioProgress(historyId, userId, queueId, 50, 'transcribing');
+
+    // Update history with audio URL
+    await db.query(
+      `UPDATE history SET audioUrl = ?, processing_progress = ? WHERE id = ?`,
+      [ftpUrl, 50, historyId]
+    );
+
+    // Insert into user_audios table
+    const [uploadAudioResult] = await db.query(
+      "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
+      [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
+    );
+
+    // Update progress to 70%
+    await updateAudioProgress(historyId, userId, queueId, 70, 'transcribing');
+
+    // 🔥 STEP 4: Send to AssemblyAI for transcription
+    let assemblyUrl = ftpUrl;
+    let finalTranscript;
+
+    if (ftpUrlToUse) {
+      try {
+        console.log(`🎧 Trying to send FTP URL directly to AssemblyAI: ${ftpUrl}`);
+        const testResponse = await axios.post(
+          TRANSCRIPT_URL,
+          { 
+            audio_url: ftpUrl, 
+            language_detection: true, 
+            speaker_labels: true 
+          },
+          { headers: { authorization: ASSEMBLY_KEY } }
+        );
+
+        if (testResponse.data && testResponse.data.id) {
+          console.log("✅ AssemblyAI accepted FTP URL directly.");
+          finalTranscript = await pollTranscription(testResponse.data.id);
+        } else {
+          throw new Error("AssemblyAI did not accept URL properly");
+        }
+      } catch (err) {
+        console.warn("⚠️ AssemblyAI might not have fetched full audio, reuploading...");
+        try {
+          const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
+          const uploadRes = await axios.post(
+            UPLOAD_URL,
+            audioRes.data,
+            {
+              headers: {
+                authorization: ASSEMBLY_KEY,
+                "content-type": "application/octet-stream",
+              },
+            }
+          );
+          assemblyUrl = uploadRes.data.upload_url;
+          console.log(`✅ Reuploaded to AssemblyAI successfully: ${assemblyUrl}`);
+
+          const created = await createTranscription(assemblyUrl);
+          finalTranscript = await pollTranscription(created.id);
+        } catch (uploadErr) {
+          throw new Error("AssemblyAI upload failed");
+        }
+      }
+    } else {
+      // Default flow for uploaded file or Google Drive
+      const created = await createTranscription(ftpUrl);
+      finalTranscript = await pollTranscription(created.id);
+    }
+
+    // Update progress to 90%
+    await updateAudioProgress(historyId, userId, queueId, 90, 'transcribing');
+
+    const speakerText = finalTranscript.text || "";
+
+    // 📝 Insert transcript into database
+    const [transcriptResult] = await db.query(
+      "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
+      [uploadAudioResult.insertId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
+    );
+
+    // Update history with transcription data and mark as ready for MoM
+    await db.query(
+      `UPDATE history 
+       SET processing_status = 'pending', 
+           processing_progress = 100,
+           audioUrl = ?,
+           isMoMGenerated = 0
+       WHERE id = ?`,
+      [ftpUrl, historyId]
+    );
+
+    // Update queue status
+    await db.query(
+      `UPDATE processing_queue SET status = 'completed', progress = 100 WHERE id = ?`,
+      [queueId]
+    );
+
+    console.log(`✅ Background audio processing completed for history ${historyId}`);
+    console.log(`📝 Transcription ready for MoM generation. Audio ID: ${uploadAudioResult.insertId}, Transcript ID: ${transcriptResult.insertId}`);
+
+  } catch (error) {
+    console.error(`❌ Background audio processing failed for history ${historyId}:`, error);
+    
+    // Update status to failed
+    await db.query(
+      `UPDATE history SET processing_status = 'failed', error_message = ? WHERE id = ?`,
+      [error.message, historyId]
+    );
+
+    await db.query(
+      `UPDATE processing_queue SET status = 'failed' WHERE id = ?`,
+      [queueId]
+    );
+  }
+}
+
+async function updateAudioProgress(historyId, userId, queueId, progress, status) {
+  try {
+    // Update history
+    await db.query(
+      `UPDATE history SET processing_progress = ?, processing_status = ? WHERE id = ? AND user_id = ?`,
+      [progress, status, historyId, userId]
+    );
+
+    // Update queue
+    await db.query(
+      `UPDATE processing_queue SET progress = ? WHERE id = ?`,
+      [progress, queueId]
+    );
+
+    console.log(`📊 Audio progress updated: ${progress}% for history ${historyId}`);
+  } catch (error) {
+    console.error("Error updating audio progress:", error);
+  }
+}
+
+// Add this to your module.exports
 module.exports = {
   uploadAudio,
   uploadAudioToFTPOnly,
+  uploadAudioBackground // Add the new function
 };
+
+
+// module.exports = {
+//   uploadAudio,
+//   uploadAudioToFTPOnly,
+// };

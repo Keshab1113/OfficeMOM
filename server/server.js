@@ -27,6 +27,7 @@ const passport = require("./config/passport");
 const session = require("express-session");
 const audioBackup = require("./services/audioBackup");
 const stripeController = require("./controllers/stripeController.js");
+const processRoutes = require("./routes/processRoutes.js");
 
 const app = express();
 // ⚠️ ADD THIS RIGHT AFTER app = express()
@@ -83,7 +84,7 @@ app.use("/api/history", historyRoutes);
 app.use("/api/send-meeting-email", emailRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/stripe", stripeRoutes);
-app.use("/api/process", deepseekRoutes);
+app.use("/api/process", processRoutes);
 app.use("/api/plans", planRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/location", locationRoutes);

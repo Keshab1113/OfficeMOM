@@ -28,7 +28,7 @@
 // module.exports = router;
 const express = require("express");
 const authMiddleware = require("../middlewares/authMiddleware");
-const { uploadAudio } = require("../controllers/uploadController");
+const { uploadAudio, uploadAudioBackground } = require("../controllers/uploadController");
 const { uploadAudioToFTPOnly } = require("../controllers/uploadController");
 const router = express.Router();
 const multer = require("multer");
@@ -62,6 +62,13 @@ router.post(
   authMiddleware,
   upload.single("audio"),
   uploadAudioToFTPOnly
+);
+router.post(
+  "/upload-audio-background",
+  uploadTimeout,  // ADD THIS LINE
+  authMiddleware,
+  upload.single("audio"),  // ADD THIS LINE - This was missing!
+  uploadAudioBackground
 );
 
 module.exports = router;

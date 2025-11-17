@@ -24,6 +24,12 @@ import axios from "axios";
 
 const navItems = [
   {
+    heading: "Start New Meeting",
+    icon: MdMeetingRoom,
+    url: "/live-meeting",
+    description: "In Person Meeting",
+  },
+  {
     heading: "Join Online Meeting",
     icon: MdVideoCall,
     url: "/meeting",
@@ -34,12 +40,6 @@ const navItems = [
     icon: MdAudiotrack,
     url: "/generate-notes",
     description: "Audio & Video files",
-  },
-  {
-    heading: "Start New Meeting",
-    icon: MdMeetingRoom,
-    url: "/live-meeting",
-    description: "In Person Meeting",
   },
   {
     heading: "Meeting Master",

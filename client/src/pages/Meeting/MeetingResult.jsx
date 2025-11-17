@@ -6,11 +6,12 @@ import { useState, useEffect } from "react";
 import { useToast } from "../../components/ToastContext";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import { DateTime } from "luxon";
-import { FileText, Home } from "lucide-react";
+import { FileText, Home, Loader2  } from "lucide-react";
 import Footer from "../../components/Footer/Footer";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import { useSelector } from "react-redux";
 import { processTranscriptWithDeepSeek } from "../../lib/apiConfig";
+import axios from "axios";
 
 const breadcrumbItems = [{ label: "Meeting Result" }];
 
@@ -19,7 +20,7 @@ export default function MeetingResult() {
     const { state } = useLocation();
     const navigate = useNavigate();
     const { addToast } = useToast();
-    const { email, fullName } = useSelector((s) => s.auth);
+    const { email, fullName, token } = useSelector((s) => s.auth);
 
     // Expecting these from MeetingRoom navigation state
     const finalTranscript = state?.finalTranscript || state?.transcription || "";
@@ -32,6 +33,11 @@ export default function MeetingResult() {
     const [isSending, setIsSending] = useState(false);
     const [showFullData, setShowFullData] = useState(null);
     const [showRealTable, setShowRealTable] = useState(false);
+
+    const isProcessing = state?.processing || false;
+
+    const [processingStatus, setProcessingStatus] = useState(null);
+    const [transcriptionData, setTranscriptionData] = useState(null);
 
     // Create a unique key for this meeting's data
     const storageKey = `meeting_${meetingId || audioID || 'current'}`;
@@ -52,39 +58,61 @@ export default function MeetingResult() {
         }
     }, [storageKey]);
 
-    const handleSaveHeaders = async (headers, audioIdFromUpload, transcriptAudioIdFromUpload, userIdFromUpload) => {
-        setIsSending(true);
-        try {
-            const tableData = await processTranscriptWithDeepSeek(
-                finalTranscript,
-                headers,
-                audioIdFromUpload,
-                userIdFromUpload,
-                transcriptAudioIdFromUpload,
-                detectLanguage,
-                historyID
-            );
-            if (!Array.isArray(tableData.final_mom)) {
-                addToast("error", "Could not process meeting notes");
-                setIsSending(false);
-                return;
+    useEffect(() => {
+        if (!isProcessing || !historyID) return;
+
+        const pollStatus = async () => {
+            try {
+                const response = await axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/process/status/${historyID}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                const { status, progress, data, error } = response.data;
+
+                setProcessingStatus({ status, progress, error });
+
+                // If transcription is complete, load the data
+                if (status === 'pending' || status === 'completed') {
+                    setTranscriptionData(data);
+                }
+            } catch (error) {
+                console.error("Error polling status:", error);
             }
+        };
 
-            // Save to localStorage
-            const dataToSave = {
-                showFullData: tableData.final_mom,
-                showRealTable: true,
-                timestamp: new Date().toISOString()
-            };
-            localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+        // Poll every 3 seconds
+        const interval = setInterval(pollStatus, 3000);
+        pollStatus(); // Initial call
 
-            setShowFullData(tableData.final_mom);
-            setShowRealTable(true);
-            setIsSending(false);
+        return () => clearInterval(interval);
+    }, [isProcessing, historyID, token]);
+
+    const handleSaveHeaders = async (headers, audioIdFromUpload, transcriptAudioIdFromUpload, userIdFromUpload) => {
+        try {
+            // Start MoM generation in background
+            await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/process/start-mom`,
+                {
+                    finalTranscript: transcriptionData?.transcription || state?.finalTranscript,
+                    headers,
+                    audioId: audioIdFromUpload,
+                    userId: userIdFromUpload,
+                    transcriptAudioId: transcriptAudioIdFromUpload,
+                    detectLanguage: transcriptionData?.language || state?.detectLanguage,
+                    historyID,
+                    storageKey: `meeting_${historyID}`
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            addToast("success", "MoM generation started in background!");
+
+            // Redirect immediately
+            navigate('/generate-notes');
         } catch (error) {
-            console.error("Error processing:", error);
-            addToast("error", "Failed to process transcript");
-            setIsSending(false);
+            console.error("Error starting MoM generation:", error);
+            addToast("error", "Failed to start MoM generation");
         }
     };
 
@@ -103,6 +131,25 @@ export default function MeetingResult() {
         // Optional: Clear localStorage after successful save
         // localStorage.removeItem(storageKey);
     };
+
+    if (isProcessing && (!processingStatus || processingStatus.status === 'transcribing')) {
+        return (
+            <section className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <Loader2 className="w-16 h-16 animate-spin text-blue-500 mx-auto" />
+                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                        Processing Audio...
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Progress: {processingStatus?.progress || 0}%
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                        This may take a few minutes. You can set up headers while we process.
+                    </p>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="relative min-h-screen w-full overflow-hidden">
@@ -128,10 +175,10 @@ export default function MeetingResult() {
                         {!showRealTable ? <h1 className="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                             Meeting Summary
                         </h1>
-                         : 
-                         <h1 className="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                            Minutes of the Meeting (MOM)
-                        </h1>}
+                            :
+                            <h1 className="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                                Minutes of the Meeting (MOM)
+                            </h1>}
                         {!showRealTable ?
                             <p className="text-sm md:text-base font-semibold mb-6 text-center bg-gradient-to-r from-blue-900 to-purple-950 dark:from-blue-100 dark:to-blue-200 bg-clip-text text-transparent">
                                 You can now customize the headings for your Minutes of the Meeting (MOM) columns on this page. If you provide specific headings, your MOM will be generated accordingly. If no headings are provided, the default headings (as shown) will be used automatically.
