@@ -10,15 +10,60 @@ const Timing = () => {
   const dropdownRef = useRef(null);
   const [location, setLocation] = useState(null);
 
+  // useEffect(() => {
+  //   const fetchLocation = async (lat, lon) => {
+  //     try {
+  //       const url =
+  //         lat && lon
+  //           ? `${
+  //               import.meta.env.VITE_BACKEND_URL
+  //             }/api/location?lat=${lat}&lon=${lon}`
+  //           : `/api/location`;
+
+  //       const res = await axios.get(url);
+  //       setLocation(res.data.data);
+
+  //       if (res.data.data) {
+  //         const recommended = Array.isArray(countryToLanguage[res.data.data.country])
+  //           ? countryToLanguage[res.data.data.country]
+  //           : [countryToLanguage[res.data.data.country]];
+
+  //         setSelectedLanguages((prev) => [
+  //           ...new Set([...prev, ...recommended]),
+  //         ]);
+  //       }
+  //     } catch (err) {
+  //       console.error("Failed to fetch location:", err);
+  //     }
+  //   };
+
+  //   // Try browser geolocation first
+  //   if (navigator.geolocation) {
+  //     navigator.geolocation.getCurrentPosition(
+  //       (position) => {
+  //         fetchLocation(position.coords.latitude, position.coords.longitude);
+  //       },
+  //       (error) => {
+  //         console.warn(
+  //           "Geolocation failed, falling back to IP:",
+  //           error.message
+  //         );
+  //         fetchLocation(); // fallback to IP
+  //       }
+  //     );
+  //   } else {
+  //     // No geolocation support
+  //     fetchLocation();
+  //   }
+  // }, []);
+
   useEffect(() => {
     const fetchLocation = async (lat, lon) => {
       try {
         const url =
           lat && lon
-            ? `${
-                import.meta.env.VITE_BACKEND_URL
-              }/api/location?lat=${lat}&lon=${lon}`
-            : `/api/location`;
+            ? `${import.meta.env.VITE_BACKEND_URL}/api/location?lat=${lat}&lon=${lon}`
+            : `${import.meta.env.VITE_BACKEND_URL}/api/location`;
 
         const res = await axios.get(url);
         setLocation(res.data.data);
@@ -37,25 +82,37 @@ const Timing = () => {
       }
     };
 
-    // Try browser geolocation first
+    // iOS-compatible geolocation
     if (navigator.geolocation) {
+      // Add timeout and higher accuracy settings for iOS
+      const options = {
+        enableHighAccuracy: false, // Set to false for faster response on iOS
+        timeout: 10000, // 10 seconds timeout (iOS can be slow)
+        maximumAge: 300000 // Accept cached position up to 5 minutes old
+      };
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           fetchLocation(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.warn(
-            "Geolocation failed, falling back to IP:",
-            error.message
+            `Geolocation failed (${error.code}: ${error.message}), falling back to IP`
           );
-          fetchLocation(); // fallback to IP
-        }
+          alert(
+            `Geolocation failed (${error.code}: ${error.message}), falling back to IP`
+          );
+          // Fallback to IP-based location
+          fetchLocation();
+        },
+        options // Pass options for iOS compatibility
       );
     } else {
       // No geolocation support
       fetchLocation();
     }
   }, []);
+
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -109,9 +166,8 @@ const Timing = () => {
           </div>
 
           <FiChevronDown
-            className={`absolute right-2 top-1/2 -translate-y-1/2 text-black dark:text-gray-300 transition-transform ${
-              showDropdown ? "rotate-180" : ""
-            }`}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 text-black dark:text-gray-300 transition-transform ${showDropdown ? "rotate-180" : ""
+              }`}
           />
         </div>
 
@@ -130,10 +186,9 @@ const Timing = () => {
                 <div
                   key={i}
                   className={`px-3 py-2 dark:text-white cursor-pointer select-none flex justify-between items-center
-                    ${
-                      selectedLanguages.includes(lang)
-                        ? "bg-blue-100 dark:bg-gray-700 font-semibold"
-                        : "hover:bg-blue-100 dark:hover:bg-gray-800"
+                    ${selectedLanguages.includes(lang)
+                      ? "bg-blue-100 dark:bg-gray-700 font-semibold"
+                      : "hover:bg-blue-100 dark:hover:bg-gray-800"
                     }`}
                   onClick={() => toggleLanguage(lang)}
                 >
