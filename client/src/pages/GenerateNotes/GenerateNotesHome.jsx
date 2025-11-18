@@ -83,7 +83,7 @@ const GenerateNotesHome = () => {
             } else {
                 response = await axios.post(
                     apiUrl,
-                    { driveUrl, source: "google_drive" },
+                    { driveUrl, source: "Generate Notes Conversion" },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             }

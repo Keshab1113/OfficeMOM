@@ -50,7 +50,7 @@ const getHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     const [rows] = await db.query(
-      "SELECT id, source, date, created_at, data, title, isMoMGenerated, uploadedAt, audioUrl, language FROM history WHERE user_id = ? ORDER BY created_at DESC",
+      "SELECT id,is_viewed, source, date, created_at, data, title, isMoMGenerated, uploadedAt, audioUrl, language FROM history WHERE user_id = ? ORDER BY created_at DESC",
       [userId]
     );
     const fixed = rows.map((r) => ({
@@ -71,7 +71,7 @@ const getHistory = async (req, res) => {
   }
 };
 
- 
+
 const getMeetingAudios = async (req, res) => {
   try {
     const hostUserId = req.user.id;
@@ -138,7 +138,7 @@ const getMeetingAudios = async (req, res) => {
       meetingId: r.meetingId,
       roomId: r.roomId,
       audioUrl: r.audioUrl,
-       duration: parseFloat(r.duration) || 0,
+      duration: parseFloat(r.duration) || 0,
       title: r.title, // now saved to DB
       uploadedAt: r.ended_at
         ? new Date(r.ended_at).toISOString()
@@ -252,6 +252,42 @@ const getUserHistoryStats = async (req, res) => {
   }
 };
 
+const markAsViewed = async (req, res) => {
+  try {
+    const { id: historyId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Marking history ${historyId} as viewed for user ${userId}`);
+
+    const [result] = await db.query(
+      `UPDATE history SET is_viewed = 1 WHERE id = ? AND user_id = ?`,
+      [historyId, userId]
+    );
+
+    console.log(`Update result:`, result);
+
+    if (result.affectedRows === 0) {
+      console.log(`No rows affected - record may not exist or already be viewed`);
+      return res.status(404).json({
+        success: false,
+        message: "History record not found or already viewed"
+      });
+    }
+
+    console.log(`Successfully updated ${result.affectedRows} row(s)`);
+    res.json({
+      success: true,
+      message: "Marked as viewed"
+    });
+  } catch (error) {
+    console.error("Error marking as viewed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark as viewed"
+    });
+  }
+}
+
 module.exports = {
   addHistory,
   getHistory,
@@ -259,4 +295,5 @@ module.exports = {
   deleteHistory,
   getUserHistoryStats,
   getMeetingAudios,
+  markAsViewed,
 };

@@ -14,15 +14,25 @@ import { useDispatch } from "react-redux";
 import { setTableData } from "../../redux/meetingSlice";
 // import { useToast } from "../ToastContext";
 
-const TablePreview = ({ onSaveHeaders, isSending }) => {
-  const [columns, setColumns] = useState([
-    { id: 1, heading: "Discussion Summary" },
-    { id: 2, heading: "Action Items" },
-    { id: 3, heading: "Responsibility" },
-    { id: 4, heading: "Target Date" },
-    { id: 5, heading: "Status" },
+const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
+  const [columns, setColumns] = useState(() => {
+    // Use initialHeaders if provided, otherwise use default headers
+    if (initialHeaders && Array.isArray(initialHeaders)) {
+      return initialHeaders.map((heading, index) => ({
+        id: index + 1,
+        heading: heading
+      }));
+    }
 
-  ]);
+    // Fallback to default headers
+    return [
+      { id: 1, heading: "Discussion Summary" },
+      { id: 2, heading: "Action Items" },
+      { id: 3, heading: "Responsibility" },
+      { id: 4, heading: "Target Date" },
+      { id: 5, heading: "Status" },
+    ];
+  });
 
   // eslint-disable-next-line no-unused-vars
   const [rows, setRows] = useState(6);

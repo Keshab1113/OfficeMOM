@@ -15,5 +15,6 @@ router.post('/save-headers', authMiddleware, processController.saveHeadersAndSta
 router.get('/status/:historyId', authMiddleware, processController.getProcessingStatus);
 router.get('/history/processing', authMiddleware, processController.getUserProcessingItems);
 router.get('/headers/:historyId', authMiddleware, processController.getHeaders);
+router.get('/last-headers', authMiddleware, processController.getLastUsedHeaders);
 
 module.exports = router;

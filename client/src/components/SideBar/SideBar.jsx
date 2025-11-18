@@ -104,35 +104,39 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
+  const fetchSubscription = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setSubscription(res.data.data);
+    } catch (err) {
+      console.error("Failed to load subscription details.", err);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
-
-    let intervalId;
-
-    const fetchSubscription = async () => {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        setSubscription(res.data.data);
-      } catch (err) {
-        console.error("Failed to load subscription details.", err);
-      }
-    };
-
     fetchSubscription();
-
-    // 🔁 Fetch every 10 seconds (adjust as needed)
-    intervalId = setInterval(fetchSubscription, 10000);
-
-    // 🧹 cleanup
-    return () => clearInterval(intervalId);
   }, [token]);
+
+  const shouldPoll =
+    location.pathname.startsWith("/meeting") ||
+    location.pathname.startsWith("/generate-notes") ||
+    location.pathname.startsWith("/live-meeting") ||
+    location.pathname.startsWith("/success");
+
+  useEffect(() => {
+    if (!token || !shouldPoll) return;
+    const interval = setInterval(fetchSubscription, 10000);
+    return () => clearInterval(interval);
+  }, [token, shouldPoll]);
+
 
 
   const handleLogout = async () => {

@@ -20,13 +20,40 @@ export default function MeetingResult() {
     const [isSending, setIsSending] = useState(false);
     const [processingStatus, setProcessingStatus] = useState(null);
     const [isTranscriptionComplete, setIsTranscriptionComplete] = useState(false);
+    const [lastUsedHeaders, setLastUsedHeaders] = useState(null);
+    const [loadingHeaders, setLoadingHeaders] = useState(true);
+
+    // Fetch last used headers
+    useEffect(() => {
+        const fetchLastUsedHeaders = async () => {
+            try {
+                setLoadingHeaders(true);
+                const response = await axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/process/last-headers`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                if (response.data.success) {
+                    setLastUsedHeaders(response.data.headers);
+                    console.log('✅ Loaded last used headers:', response.data.headers);
+                }
+            } catch (error) {
+                console.error("Error fetching last used headers:", error);
+                // Continue with default headers if there's an error
+            } finally {
+                setLoadingHeaders(false);
+            }
+        };
+
+        fetchLastUsedHeaders();
+    }, [token]);
 
     // Poll for transcription status
     useEffect(() => {
         if (!historyId) return;
 
         let pollCount = 0;
-        const maxPolls = 300; // 10 minutes max (300 * 2 seconds)
+        const maxPolls = 300;
 
         const pollStatus = async () => {
             try {
@@ -39,7 +66,6 @@ export default function MeetingResult() {
 
                 setProcessingStatus({ status, progress, error, awaitingHeaders });
 
-                // Stop polling if transcription is complete and awaiting headers
                 if (awaitingHeaders || status === 'awaiting_headers') {
                     setIsTranscriptionComplete(true);
                     clearInterval(interval);
@@ -47,7 +73,6 @@ export default function MeetingResult() {
                     clearInterval(interval);
                     addToast("error", error || "Processing failed. Please try again.");
                 } else if (status === 'completed') {
-                    // If somehow already completed (shouldn't happen), redirect to view
                     clearInterval(interval);
                     navigate(`/momGenerate/${historyId}`);
                 }
@@ -66,8 +91,8 @@ export default function MeetingResult() {
             }
         };
 
-        const interval = setInterval(pollStatus, 2000); // Poll every 2 seconds
-        pollStatus(); // Initial call
+        const interval = setInterval(pollStatus, 2000);
+        pollStatus();
 
         return () => clearInterval(interval);
     }, [historyId, token, navigate, addToast]);
@@ -78,7 +103,6 @@ export default function MeetingResult() {
 
             console.log('📤 Submitting headers:', { historyId, headers, useDefault });
 
-            // Submit headers to backend
             await axios.post(
                 `${import.meta.env.VITE_BACKEND_URL}/api/process/save-headers`,
                 {
@@ -90,11 +114,8 @@ export default function MeetingResult() {
             );
 
             setIsSending(false);
-            
-            // Show success message
             addToast("success", "Headers saved! MoM generation started in background.");
             
-            // Redirect back to generate notes page
             setTimeout(() => {
                 navigate('/generate-notes');
             }, 1500);
@@ -125,6 +146,18 @@ export default function MeetingResult() {
                         <p className="text-sm md:text-base font-semibold mb-6 text-center bg-gradient-to-r from-blue-900 to-purple-950 dark:from-blue-100 dark:to-blue-200 bg-clip-text text-transparent">
                             Customize the headings for your Minutes of the Meeting (MoM) columns. If you provide specific headings, your MoM will be generated accordingly. Default headings will be used if none are provided.
                         </p>
+
+                        {/* Loading Headers State */}
+                        {loadingHeaders && (
+                            <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        Loading your last used headers...
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Transcription Status */}
                         {!isTranscriptionComplete && processingStatus && (
@@ -177,10 +210,13 @@ export default function MeetingResult() {
                         )}
 
                         <div className="mt-6 w-full">
-                            <TablePreview
-                                onSaveHeaders={handleSaveHeaders}
-                                isSending={isSending}
-                            />
+                            {!loadingHeaders && (
+                                <TablePreview
+                                    onSaveHeaders={handleSaveHeaders}
+                                    isSending={isSending}
+                                    initialHeaders={lastUsedHeaders}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

@@ -6,6 +6,7 @@ const {
   deleteHistory,
   getUserHistoryStats,
   getMeetingAudios,
+  markAsViewed,
 } = require("../controllers/historyController.js");
 const authMiddleware = require("../middlewares/authMiddleware.js");
 
@@ -17,5 +18,6 @@ router.get("/meeting-audios", authMiddleware, getMeetingAudios);
 router.get("/user-stats", authMiddleware, getUserHistoryStats);
 router.put("/:id", authMiddleware, updateHistoryTitle);
 router.delete("/:id", authMiddleware, deleteHistory);
+router.put('/:id/viewed', authMiddleware, markAsViewed);
 
 module.exports = router;

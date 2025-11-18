@@ -2,17 +2,87 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
-import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Clock, CheckCircle, XCircle, Loader2, PauseCircle } from "lucide-react";
+import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Clock, CheckCircle, XCircle, Loader2, PauseCircle, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { removeAudioPreview } from "../../redux/audioSlice";
 import { useToast } from "../ToastContext";
 import { DateTime } from "luxon";
 
-// Notification Sound (you can replace with your own)
+// Notification Sound
 const playNotificationSound = () => {
-  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTcIGWi77eefTRAMUKfj8LZjHAY4kdfy');
-  audio.volume = 0.5;
-  audio.play().catch(e => console.log('Audio play failed:', e));
+  try {
+    const audio = new Audio('/Images/notification.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(e => console.log('Audio play failed:', e));
+  } catch (error) {
+    console.log('Notification sound error:', error);
+  }
+};
+
+// Custom hook for smooth progress animation
+const useSmoothProgress = (targetProgress, awaitingHeaders, status) => {
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const animationRef = useRef(null);
+  const lastTargetRef = useRef(0);
+
+  useEffect(() => {
+    // Don't animate if awaiting headers
+    if (awaitingHeaders) {
+      setDisplayProgress(targetProgress);
+      return;
+    }
+
+    // Don't go backwards - only animate forward
+    if (targetProgress < lastTargetRef.current && status !== 'pending') {
+      return;
+    }
+
+    lastTargetRef.current = targetProgress;
+
+    // Clear any existing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
+    const startProgress = displayProgress;
+    const diff = targetProgress - startProgress;
+
+    // If difference is small, jump directly
+    if (Math.abs(diff) < 2) {
+      setDisplayProgress(targetProgress);
+      return;
+    }
+
+    const duration = Math.abs(diff) * 50; // 50ms per percentage point
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease out animation
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const currentProgress = startProgress + (diff * easeProgress);
+
+      setDisplayProgress(Math.round(currentProgress));
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        setDisplayProgress(targetProgress);
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [targetProgress, awaitingHeaders, status]);
+
+  return displayProgress;
 };
 
 // Skeleton Loading Component
@@ -32,18 +102,60 @@ const SkeletonItem = () => (
   </div>
 );
 
+// New Badge Component with Glowing Effect
+const NewBadge = () => (
+  <motion.div
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{
+      type: "spring",
+      stiffness: 500,
+      damping: 15,
+      delay: 0.5
+    }}
+    className="relative"
+  >
+    {/* Glowing background effect */}
+    <div className="absolute inset-0 bg-green-500/20 rounded-full blur-sm animate-pulse" />
+
+    {/* Main badge */}
+    <motion.div
+      animate={{
+        scale: [1, 1.1, 1],
+        boxShadow: [
+          "0 0 0 0 rgba(34, 197, 94, 0.7)",
+          "0 0 0 10px rgba(34, 197, 94, 0)",
+          "0 0 0 0 rgba(34, 197, 94, 0)"
+        ]
+      }}
+      transition={{
+        duration: 2,
+        repeat: Infinity,
+        repeatType: "loop"
+      }}
+      className="relative flex items-center gap-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full text-[8px] font-bold shadow-lg"
+    >
+      <Sparkles className="w-3 h-3" />
+      NEW
+    </motion.div>
+  </motion.div>
+);
+
 // Processing Item Component
 const ProcessingItem = ({ item, onNavigate }) => {
+  // Use smooth progress hook
+  const smoothProgress = useSmoothProgress(item.progress || 0, item.awaitingHeaders, item.status);
+
   const getStatusIcon = (status, awaitingHeaders) => {
     if (awaitingHeaders) {
       return <PauseCircle className="w-5 h-5 text-yellow-500 animate-pulse" />;
     }
-    
+
     switch (status) {
       case 'transcribing':
-        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
+        return <Loader2 className="w-7 h-7 text-blue-500 animate-spin" />;
       case 'generating_mom':
-        return <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />;
+        return <Loader2 className="w-7 h-7 text-purple-500 animate-spin" />;
       case 'completed':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'failed':
@@ -57,13 +169,13 @@ const ProcessingItem = ({ item, onNavigate }) => {
 
   const getStatusText = (status, progress, awaitingHeaders, taskType) => {
     if (awaitingHeaders) {
-      return '⸻ Awaiting Headers';
+      return '⏸️ Awaiting Headers';
     }
 
     if (taskType) {
       return taskType;
     }
-    
+
     if (status === 'transcribing') {
       if (progress < 30) return 'Uploading...';
       if (progress < 70) return 'Transcribing...';
@@ -73,7 +185,7 @@ const ProcessingItem = ({ item, onNavigate }) => {
       if (progress < 85) return 'Generating MoM...';
       return 'Finalizing...';
     }
-    if (status === 'awaiting_headers') return '⸻ Set Headers to Continue';
+    if (status === 'awaiting_headers') return '⏸️ Set Headers to Continue';
     if (status === 'completed') return 'Completed ✓';
     if (status === 'failed') return 'Failed';
     return 'Queued';
@@ -100,9 +212,8 @@ const ProcessingItem = ({ item, onNavigate }) => {
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
       onClick={handleClick}
-      className={`bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 shadow-sm hover:shadow-lg transition-all ${
-        item.awaitingHeaders ? 'cursor-pointer hover:border-yellow-400 hover:scale-[1.02]' : ''
-      }`}
+      className={`bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 shadow-sm hover:shadow-lg transition-all ${item.awaitingHeaders ? 'cursor-pointer hover:border-yellow-400 hover:scale-[1.02]' : ''
+        }`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -112,23 +223,27 @@ const ProcessingItem = ({ item, onNavigate }) => {
               {item.title || "Processing..."}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {getStatusText(item.status, item.progress, item.awaitingHeaders, item.taskType)}
+              {getStatusText(item.status, smoothProgress, item.awaitingHeaders, item.taskType)}
             </p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2">
-          {item.progress}%
+        <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2 tabular-nums">
+          {smoothProgress}%
         </span>
       </div>
 
       {/* Progress Bar */}
       <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
         <motion.div
-          className={`h-full ${getProgressColor(item.progress, item.awaitingHeaders)} transition-all duration-500 ease-out`}
+          className={`h-full ${getProgressColor(smoothProgress, item.awaitingHeaders)} transition-colors duration-300`}
           initial={{ width: 0 }}
-          animate={{ width: `${item.progress}%` }}
+          animate={{ width: `${smoothProgress}%` }}
+          transition={{
+            duration: 0.3,
+            ease: "easeOut"
+          }}
         >
-          {item.progress > 95 && !item.awaitingHeaders && (
+          {smoothProgress > 95 && !item.awaitingHeaders && (
             <div className="h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
           )}
         </motion.div>
@@ -155,7 +270,7 @@ const ProcessingItem = ({ item, onNavigate }) => {
 };
 
 // Completed History Item Component
-const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete, menuOpenId, onMenuToggle }) => {
+const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete, menuOpenId, onMenuToggle, onMarkAsViewed }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
   const editInputRef = useRef(null);
@@ -169,6 +284,18 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
     : DateTime.fromSQL(utcDate, { zone: "utc" }).setZone(DateTime.local().zoneName);
 
   const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
+
+  // Debug: Check the actual value from database
+  // console.log("item: ",item);
+
+  // console.log('Item:', item.id, 'is_viewed:', item.is_viewed, 'type:', typeof item.is_viewed);
+
+  // Mark as viewed only on click
+  const handleClick = () => {
+    if (!item.is_viewed) {
+      onMarkAsViewed(item.id);
+    }
+  };
 
   const startEditing = () => {
     setIsEditing(true);
@@ -217,6 +344,9 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
     }
   };
 
+  // Determine if item is new (not viewed)
+  const isNew = !item.is_viewed;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -225,28 +355,43 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
       transition={{ duration: 0.3 }}
       onMouseEnter={() => onHoverChange(`${item.id}-${index}`)}
       onMouseLeave={() => onHoverChange(null)}
-      className={`bg-white dark:bg-gray-800/50 rounded-xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 relative border ${
-        isHovered === `${item.id}-${index}`
-          ? "border-purple-300 dark:border-purple-600/50 shadow-lg shadow-purple-500/10"
-          : "border-gray-100 dark:border-gray-700/50"
-      }`}
+      className={`relative rounded-xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 border ${isNew
+          ? "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-700/50 shadow-lg shadow-green-500/10 animate-pulse-slow"
+          : isHovered === `${item.id}-${index}`
+            ? "bg-white dark:bg-gray-800/50 border-purple-300 dark:border-purple-600/50 shadow-lg shadow-purple-500/10"
+            : "bg-white dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/50"
+        }`}
     >
-      <div className="flex justify-between items-start gap-3">
+      {/* New Badge */}
+      {isNew && (
+        <div className="absolute top-3 -left-1 z-20 -rotate-45">
+          <NewBadge />
+        </div>
+      )}
+
+      {/* Glowing border effect for new items */}
+      {isNew && (
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-green-400/20 to-emerald-400/20 dark:from-green-500/10 dark:to-emerald-500/10 animate-pulse" />
+      )}
+
+      <div className="relative z-10 flex justify-between items-start gap-3">
         <div className="flex gap-3 justify-start items-center flex-1 min-w-0">
           <motion.div
-            className={`p-2 rounded-lg ${
-              isHovered === `${item.id}-${index}`
-                ? "bg-gradient-to-br from-blue-500 to-blue-600 shadow-md"
-                : "bg-blue-100 dark:bg-blue-900/30"
-            } transition-all duration-300`}
+            className={`p-2 rounded-lg ${isNew
+                ? "bg-gradient-to-br from-green-500 to-emerald-500 shadow-lg shadow-green-500/30"
+                : isHovered === `${item.id}-${index}`
+                  ? "bg-gradient-to-br from-blue-500 to-blue-600 shadow-md"
+                  : "bg-blue-100 dark:bg-blue-900/30"
+              } transition-all duration-300`}
             whileHover={{ scale: 1.05, rotate: 5 }}
           >
             <FileText
-              className={`w-5 h-5 ${
-                isHovered === `${item.id}-${index}`
+              className={`w-5 h-5 ${isNew
                   ? "text-white"
-                  : "text-blue-600 dark:text-blue-400"
-              }`}
+                  : isHovered === `${item.id}-${index}`
+                    ? "text-white"
+                    : "text-blue-600 dark:text-blue-400"
+                }`}
             />
           </motion.div>
 
@@ -282,16 +427,29 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
             <div className="flex-1 min-w-0">
               <Link
                 to={`/momGenerate/${item.id}`}
-                className="text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 font-semibold transition-colors truncate block text-sm"
+                onClick={handleClick}
+                className={`font-semibold transition-colors truncate block text-sm ${isNew
+                    ? "text-green-800 dark:text-green-200 hover:text-emerald-600 dark:hover:text-emerald-400"
+                    : "text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
+                  }`}
               >
                 {item.title || item.source || "Unknown"}
               </Link>
               <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
-                <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
+                <span className={`text-xs whitespace-nowrap flex-shrink-0 ${isNew
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-gray-500 dark:text-gray-400"
+                  }`}>
                   {formattedDate}
                 </span>
-                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-                <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize whitespace-nowrap truncate">
+                <span className={`w-1 h-1 rounded-full ${isNew
+                    ? "bg-green-400"
+                    : "bg-gray-300 dark:bg-gray-600"
+                  } flex-shrink-0`} />
+                <span className={`text-xs font-medium capitalize whitespace-nowrap truncate ${isNew
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-purple-600 dark:text-purple-400"
+                  }`}>
                   {item.source}
                 </span>
               </div>
@@ -304,10 +462,19 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
             <motion.button
               whileHover={{ scale: 1.1, rotate: 90 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => onMenuToggle(menuOpenId === item.id ? null : item.id)}
-              className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMenuToggle(menuOpenId === item.id ? null : item.id);
+              }}
+              className={`p-2 cursor-pointer rounded-lg transition-all duration-200 ${isNew
+                  ? "hover:bg-green-100 dark:hover:bg-green-900/30"
+                  : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
             >
-              <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <MoreVertical className={`w-4 h-4 ${isNew
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-gray-500 dark:text-gray-400"
+                }`} />
             </motion.button>
 
             <AnimatePresence>
@@ -353,7 +520,7 @@ const UnifiedHistory = ({ NeedFor, height }) => {
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [hoveredItemId, setHoveredItemId] = useState(null);
   const [previousProcessingIds, setPreviousProcessingIds] = useState(new Set());
-  
+
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
   const { addToast } = useToast();
@@ -366,13 +533,20 @@ const UnifiedHistory = ({ NeedFor, height }) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/history`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
+      // console.log('Raw history data:', res.data); // Debug log
+
       let filteredData = res.data.filter((item) => item.isMoMGenerated === 1);
-      
+
+      // Debug: Check is_viewed values
+      // filteredData.forEach(item => {
+      //   console.log(`Item ${item.id}: is_viewed = ${item.is_viewed}, type = ${typeof item.is_viewed}`);
+      // });
+
       if (NeedFor) {
         filteredData = filteredData.filter((item) => item.source === NeedFor);
       }
-      
+
       setCompletedHistory(filteredData);
     } catch (err) {
       console.error("Get history error:", err);
@@ -386,18 +560,18 @@ const UnifiedHistory = ({ NeedFor, height }) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/process/history/processing`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       let items = response.data.processingItems || [];
-      
+
       // Filter by source if needed
       if (NeedFor) {
         items = items.filter((item) => item.source === NeedFor);
       }
-      
+
       // Check for newly completed items
       const currentProcessingIds = new Set(items.map(item => item.id));
       const completedIds = [...previousProcessingIds].filter(id => !currentProcessingIds.has(id));
-      
+
       // Show notification for completed items
       completedIds.forEach(id => {
         const completedItem = processingItems.find(item => item.id === id);
@@ -406,16 +580,38 @@ const UnifiedHistory = ({ NeedFor, height }) => {
           addToast("success", `🎉 Your MoM "${completedItem.title}" is ready!`, 5000);
         }
       });
-      
+
       setPreviousProcessingIds(currentProcessingIds);
       setProcessingItems(items);
-      
+
       // Refresh completed history when items complete
       if (completedIds.length > 0) {
         await fetchCompletedHistory();
       }
     } catch (error) {
       console.error('Error fetching processing status:', error);
+    }
+  };
+
+  // Mark item as viewed
+  const markAsViewed = async (historyId) => {
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/history/${historyId}/viewed`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Update local state
+      setCompletedHistory(prev =>
+        prev.map(item =>
+          item.id === historyId ? { ...item, is_viewed: true } : item
+        )
+      );
+
+      // console.log(`Marked item ${historyId} as viewed`); // Debug log
+    } catch (error) {
+      console.error('Error marking as viewed:', error);
     }
   };
 
@@ -431,9 +627,11 @@ const UnifiedHistory = ({ NeedFor, height }) => {
 
   // Poll for processing updates
   useEffect(() => {
-    const interval = setInterval(fetchProcessingItems, 2000); // Poll every 2 seconds
+    if (processingItems.length === 0) return;
+
+    const interval = setInterval(fetchProcessingItems, 3000);
     return () => clearInterval(interval);
-  }, [token, NeedFor, previousProcessingIds, processingItems]);
+  }, [processingItems.length]);
 
   // Handle menu click outside
   useEffect(() => {
@@ -473,6 +671,9 @@ const UnifiedHistory = ({ NeedFor, height }) => {
   };
 
   const totalItems = processingItems.length + completedHistory.length;
+  const newItemsCount = completedHistory.filter(item => !item.is_viewed).length;
+
+  // console.log('New items count:', newItemsCount); // Debug log
 
   return (
     <div
@@ -493,12 +694,20 @@ const UnifiedHistory = ({ NeedFor, height }) => {
               {processingItems.length > 0 && `${processingItems.length} processing`}
               {processingItems.length > 0 && completedHistory.length > 0 && ' • '}
               {completedHistory.length > 0 && `${completedHistory.length} completed`}
+              {newItemsCount > 0 && ` • ${newItemsCount} new`}
             </p>
           </div>
         </div>
         {!isLoading && totalItems > 0 && (
-          <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-xs font-semibold text-purple-700 dark:text-purple-300">
-            {totalItems} {totalItems === 1 ? 'item' : 'items'}
+          <div className="flex items-center gap-2">
+            {newItemsCount > 0 && (
+              <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded-full text-xs font-semibold text-green-700 dark:text-green-300">
+                {newItemsCount} new
+              </div>
+            )}
+            <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-xs font-semibold text-purple-700 dark:text-purple-300">
+              {totalItems} {totalItems === 1 ? 'item' : 'items'}
+            </div>
           </div>
         )}
       </div>
@@ -555,6 +764,7 @@ const UnifiedHistory = ({ NeedFor, height }) => {
                   onDelete={handleDelete}
                   menuOpenId={menuOpenId}
                   onMenuToggle={setMenuOpenId}
+                  onMarkAsViewed={markAsViewed}
                 />
               ))}
             </AnimatePresence>
@@ -584,6 +794,12 @@ const UnifiedHistory = ({ NeedFor, height }) => {
         }
         .dark .scrollbar-track-gray-800::-webkit-scrollbar-track {
           background-color: rgb(31 41 55);
+        }
+        .tabular-nums {
+          font-variant-numeric: tabular-nums;
+        }
+        .animate-pulse-slow {
+          animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
       `}</style>
     </div>

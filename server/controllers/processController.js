@@ -45,7 +45,7 @@ const processController = {
 
             // Check if transcription is already complete
             const [historyRows] = await db.query(
-                `SELECT data, processing_status FROM history WHERE id = ? AND user_id = ?`,
+                `SELECT data, processing_status, processing_progress FROM history WHERE id = ? AND user_id = ?`,
                 [historyId, userId]
             );
 
@@ -57,6 +57,7 @@ const processController = {
             }
 
             const history = historyRows[0];
+            const currentProgress = history.processing_progress || 0;
             let storedData = null;
 
             // Parse stored data if it exists
@@ -70,9 +71,9 @@ const processController = {
 
             // If transcription data is available, start MoM generation immediately
             if (storedData && storedData.transcription) {
-                console.log(`🚀 Transcription available, starting MoM generation immediately for history ${historyId}`);
+                console.log(`🚀 Transcription available at ${currentProgress}%, starting MoM generation for history ${historyId}`);
 
-                // Start MoM generation in background
+                // Start MoM generation in background - pass current progress
                 startMoMGeneration({
                     finalTranscript: storedData.transcription,
                     headers: finalHeaders,
@@ -81,17 +82,11 @@ const processController = {
                     transcriptAudioId: storedData.transcriptAudioId,
                     detectLanguage: storedData.language,
                     historyID: historyId,
-                    storageKey: `meeting_${historyId}`
+                    storageKey: `meeting_${historyId}`,
+                    currentProgress: currentProgress // Pass current progress
                 });
 
-                // Update queue status
-                await db.query(
-                    `UPDATE processing_queue 
-                 SET status = 'generating_mom', 
-                     progress = 30
-                 WHERE history_id = ? AND user_id = ?`,
-                    [historyId, userId]
-                );
+                // DON'T update queue status here - let startMoMGeneration handle it
 
             } else {
                 // Transcription not ready yet, MoM will start automatically when transcription completes
@@ -261,125 +256,85 @@ const processController = {
                 message: "Failed to get headers"
             });
         }
+    },
+
+    async getLastUsedHeaders(req, res) {
+        try {
+            const userId = req.user.id;
+
+            const [headers] = await db.query(
+                `SELECT headers, is_default, updated_at 
+             FROM meeting_headers 
+             WHERE user_id = ? 
+             ORDER BY updated_at DESC 
+             LIMIT 1`,
+                [userId]
+            );
+
+            if (headers.length === 0) {
+                return res.json({
+                    success: true,
+                    headers: ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"],
+                    isDefault: true,
+                    message: "Using default headers"
+                });
+            }
+
+            const savedHeaders = typeof headers[0].headers === 'string'
+                ? JSON.parse(headers[0].headers)
+                : headers[0].headers;
+
+            res.json({
+                success: true,
+                headers: savedHeaders,
+                isDefault: headers[0].is_default === 1,
+                lastUsed: headers[0].updated_at
+            });
+
+        } catch (error) {
+            console.error("Error getting last used headers:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to get last used headers",
+                error: error.message
+            });
+        }
     }
 };
 
-// Background MoM generation function
-// Background MoM generation function
-async function processMoMInBackground(params) {
-    const {
-        finalTranscript,
-        headers,
-        audioId,
-        userId,
-        transcriptAudioId,
-        detectLanguage,
-        historyID,
-        storageKey
-    } = params;
-
+// ✅ SAFE UPDATE: Only update if new progress is HIGHER than current
+async function updateMoMProgress(historyId, userId, newProgress, status) {
     try {
-        console.log(`🚀 Starting background MoM generation for history ${historyID}`);
+        // First, get current progress
+        const [current] = await db.query(
+            `SELECT processing_progress FROM history WHERE id = ? AND user_id = ?`,
+            [historyId, userId]
+        );
 
-        // Update progress to 30%
-        await updateMoMProgress(historyID, userId, 30, 'generating_mom');
+        const currentProgress = current[0]?.processing_progress || 0;
 
-        // Create a mock request object for processTranscript
-        const mockReq = {
-            body: {
-                transcript: finalTranscript,
-                headers: headers,
-                audio_id: audioId,
-                userId: userId,
-                transcript_audio_id: transcriptAudioId,
-                detectLanguage: detectLanguage,
-                history_id: historyID
-            }
-        };
+        // Only update if new progress is higher (prevents backwards progress)
+        if (newProgress >= currentProgress) {
+            await db.query(
+                `UPDATE history 
+                 SET processing_progress = ?, 
+                     processing_status = ? 
+                 WHERE id = ? AND user_id = ?`,
+                [newProgress, status, historyId, userId]
+            );
 
-        const mockRes = {
-            statusCode: null,
-            responseData: null,
-            status: function (code) {
-                this.statusCode = code;
-                return this;
-            },
-            json: function (data) {
-                this.responseData = data;
-                return this;
-            }
-        };
+            await db.query(
+                `UPDATE processing_queue 
+                 SET progress = ?,
+                     status = ?
+                 WHERE history_id = ? AND user_id = ?`,
+                [newProgress, status, historyId, userId]
+            );
 
-        // Process with DeepSeek
-        await processTranscript(mockReq, mockRes);
-
-        if (mockRes.statusCode !== 200 || (mockRes.responseData && !mockRes.responseData.success)) {
-            throw new Error(mockRes.responseData?.error || "MoM generation failed");
+            console.log(`📊 Progress: ${currentProgress}% → ${newProgress}% (${status}) for history ${historyId}`);
+        } else {
+            console.log(`⚠️  Skipped update: ${newProgress}% is not higher than current ${currentProgress}% for history ${historyId}`);
         }
-
-        // Update progress to 90%
-        await updateMoMProgress(historyID, userId, 90, 'generating_mom');
-
-        // Update to completed
-        await db.query(
-            `UPDATE history 
-             SET processing_status = 'completed', 
-                 processing_progress = 100,
-                 awaiting_headers = 0
-             WHERE id = ? AND user_id = ?`,
-            [historyID, userId]
-        );
-
-        // Update queue status
-        await db.query(
-            `UPDATE processing_queue 
-             SET status = 'completed', 
-                 progress = 100
-             WHERE history_id = ? AND user_id = ?`,
-            [historyID, userId]
-        );
-
-        console.log(`✅ Background MoM generation completed for history ${historyID}`);
-
-    } catch (error) {
-        console.error(`❌ Background MoM generation failed for history ${historyID}:`, error);
-
-        await db.query(
-            `UPDATE history 
-             SET processing_status = 'failed', 
-                 error_message = ?,
-                 awaiting_headers = 0
-             WHERE id = ? AND user_id = ?`,
-            [error.message, historyID, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue 
-             SET status = 'failed' 
-             WHERE history_id = ? AND user_id = ?`,
-            [historyID, userId]
-        );
-    }
-}
-
-async function updateMoMProgress(historyId, userId, progress, status) {
-    try {
-        await db.query(
-            `UPDATE history 
-             SET processing_progress = ?, 
-                 processing_status = ? 
-             WHERE id = ? AND user_id = ?`,
-            [progress, status, historyId, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue 
-             SET progress = ? 
-             WHERE history_id = ? AND user_id = ?`,
-            [progress, historyId, userId]
-        );
-
-        console.log(`📊 MoM Progress updated: ${progress}% for history ${historyId}`);
     } catch (error) {
         console.error("Error updating MoM progress:", error);
     }
@@ -394,14 +349,24 @@ async function startMoMGeneration(params) {
         transcriptAudioId,
         detectLanguage,
         historyID,
-        storageKey
+        storageKey,
+        currentProgress = 0
     } = params;
 
     try {
-        console.log(`🚀 Starting MoM generation for history ${historyID}`);
+        console.log(`🚀 Starting MoM generation for history ${historyID} from ${currentProgress}%`);
 
-        // Update progress to generating_mom
-        await updateMoMProgress(historyID, userId, 30, 'generating_mom');
+        // ✅ Calculate smart starting progress
+        // If transcription completed (currentProgress >= 70), continue from there
+        // Otherwise, start from 70% as MoM generation phase
+        let startProgress = currentProgress;
+
+        if (currentProgress < 70) {
+            startProgress = 70; // Transcription phase ends at 70%
+        }
+
+        // Update to generating_mom status with current progress
+        await updateMoMProgress(historyID, userId, startProgress, 'generating_mom');
 
         // Create a mock request object for processTranscript
         const mockReq = {
@@ -429,6 +394,9 @@ async function startMoMGeneration(params) {
             }
         };
 
+        // Progress: Starting DeepSeek processing
+        await updateMoMProgress(historyID, userId, Math.max(startProgress, 75), 'generating_mom');
+
         // Process with DeepSeek
         await processTranscript(mockReq, mockRes);
 
@@ -436,7 +404,16 @@ async function startMoMGeneration(params) {
             throw new Error(mockRes.responseData?.error || "MoM generation failed");
         }
 
-        // Update progress to completed
+        // Progress: DeepSeek completed
+        await updateMoMProgress(historyID, userId, 90, 'generating_mom');
+
+        // Progress: Finalizing
+        await updateMoMProgress(historyID, userId, 95, 'generating_mom');
+
+        // Small delay for smooth transition
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Final: Completed
         await updateMoMProgress(historyID, userId, 100, 'completed');
 
         console.log(`✅ MoM generation completed for history ${historyID}`);

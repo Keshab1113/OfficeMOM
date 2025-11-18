@@ -6,11 +6,17 @@ dotenv.config();
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: "S9867867878$#@4email", // better to move this into .env
+  password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-  connectionLimit: 10,
-   dateStrings: true,
-  timezone: 'Z',
+
+  connectionLimit: 20,          // Increase to handle concurrency
+  waitForConnections: true,     // Critical
+  queueLimit: 0,                // Unlimited queue
+  enableKeepAlive: true,        // Prevents ETIMEDOUT
+  keepAliveInitialDelay: 0,     // Start keep-alive immediately
+
+  dateStrings: true,
+  timezone: "Z",
 });
 
 module.exports = pool.promise();
