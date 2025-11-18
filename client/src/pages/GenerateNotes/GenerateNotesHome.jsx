@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useToast } from "../../components/ToastContext";
@@ -8,13 +8,12 @@ import { FiUploadCloud } from "react-icons/fi";
 import { MonitorSmartphone, HardDriveUpload, FileText, AudioLines } from "lucide-react";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
 import Timing from "../../components/Timing/Timing";
-import AllHistory from "../../components/History/History";
+import UnifiedHistory from "../../components/History/UnifiedHistory";
 import MeetingInstruction from "../../components/MeetingInstructions/MeetingInstruction";
 import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
 import Footer from "../../components/Footer/Footer";
 import RechargeModal from "../../components/RechargeModal/RechargeModal";
 import FreePlanLimitModal from "../../components/LittleComponent/FreePlanLimitModal";
-import ProcessingHistory from "../../components/History/ProcessingHistory";
 
 const breadcrumbItems = [{ label: "Generate Notes" }];
 
@@ -33,7 +32,6 @@ const GenerateNotesHome = () => {
     const [rechargeInfo, setRechargeInfo] = useState(null);
     const [showFreePlanModal, setShowFreePlanModal] = useState(false);
     const [freePlanMessage, setFreePlanMessage] = useState("");
-    const [processingItems, setProcessingItems] = useState([]);
 
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
@@ -59,7 +57,6 @@ const GenerateNotesHome = () => {
         setError(null);
     };
 
-    // ✅ FIXED: Upload and redirect to MeetingResult
     const handleStartMakingNotes = async () => {
         try {
             if (activeTab === "computer" && !selectedFile) return;
@@ -95,12 +92,12 @@ const GenerateNotesHome = () => {
             setIsProcessing(false);
 
             const successMessage = data.minutesUsed
-                ? `Upload successful! ${data.minutesUsed} minutes deducted. Transcribing...`
-                : "Upload successful! Transcribing...";
+                ? `Upload successful! ${data.minutesUsed} minutes deducted.`
+                : "Upload successful!";
 
             addToast("success", successMessage);
 
-            // ✅ Redirect to MeetingResult with historyId
+            // Navigate to header setup page
             navigate(`/generate-notes/meeting-result/${data.historyId}`, {
                 state: {
                     historyID: data.historyId,
@@ -108,6 +105,13 @@ const GenerateNotesHome = () => {
                     awaitingHeaders: true
                 }
             });
+
+            // Reset form
+            setSelectedFile(null);
+            setDriveUrl("");
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
 
         } catch (err) {
             console.error(err);
@@ -131,28 +135,6 @@ const GenerateNotesHome = () => {
             }
         }
     };
-
-    // ✅ Poll for processing items
-    useEffect(() => {
-        const pollProcessingStatus = async () => {
-            if (!token) return;
-
-            try {
-                const response = await axios.get(
-                    `${import.meta.env.VITE_BACKEND_URL}/api/process/history/processing`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                setProcessingItems(response.data.processingItems || []);
-            } catch (error) {
-                console.error('Error fetching processing status:', error);
-            }
-        };
-
-        const interval = setInterval(pollProcessingStatus, 3000);
-        pollProcessingStatus();
-
-        return () => clearInterval(interval);
-    }, [token]);
 
     return (
         <>
@@ -193,7 +175,7 @@ const GenerateNotesHome = () => {
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
-                                                    <span>Uploading...</span>
+                                                    <span>Processing in background...</span>
                                                 </div>
                                             </div>
                                         )}
@@ -258,7 +240,7 @@ const GenerateNotesHome = () => {
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
-                                                    Uploading...
+                                                    Processing...
                                                 </>
                                             ) : (
                                                 <>
@@ -270,13 +252,11 @@ const GenerateNotesHome = () => {
                                     </div>
                                 </div>
 
-                                <div className="lg:col-span-1 space-y-4">
-                                    <div className="h-80 sm:h-96 lg:h-[27rem] w-full">
-                                        <AllHistory NeedFor="Generate Notes Conversion" height="100%" />
-                                    </div>
-                                    <div className="h-80 sm:h-96 lg:h-[27rem] w-full">
-                                        <ProcessingHistory processingItems={processingItems} />
-                                    </div>
+                                <div className="lg:col-span-1">
+                                    <UnifiedHistory
+                                        NeedFor="Generate Notes Conversion" 
+                                        height="26.8rem"
+                                    />
                                 </div>
                             </div>
 
