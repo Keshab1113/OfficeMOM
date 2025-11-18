@@ -3,12 +3,11 @@ import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
-import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Plus } from "lucide-react";
+import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Plus, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { removeAudioPreview } from "../../redux/audioSlice";
 import { useToast } from "../ToastContext";
 import { DateTime } from "luxon";
-
 
 // Enhanced Skeleton component with shimmer effect
 const SkeletonItem = () => (
@@ -27,7 +26,90 @@ const SkeletonItem = () => (
   </div>
 );
 
-const AllHistory = ({ title, NeedFor, height }) => {
+// Processing Item Component
+const ProcessingItem = ({ item }) => {
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'transcribing':
+        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
+      case 'generating_mom':
+        return <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />;
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'failed':
+        return <XCircle className="w-5 h-5 text-red-500" />;
+      default:
+        return <Clock className="w-5 h-5 text-gray-400" />;
+    }
+  };
+
+  const getStatusText = (status, progress) => {
+    if (status === 'transcribing') {
+      if (progress < 30) return 'Uploading...';
+      if (progress < 70) return 'Transcribing...';
+      return 'Processing transcript...';
+    }
+    if (status === 'generating_mom') {
+      if (progress < 85) return 'Generating MoM...';
+      return 'Finalizing...';
+    }
+    if (status === 'completed') return 'Completed ✓';
+    if (status === 'failed') return 'Failed';
+    return 'Queued';
+  };
+
+  const getProgressColor = (progress) => {
+    if (progress < 30) return 'bg-blue-500';
+    if (progress < 70) return 'bg-indigo-500';
+    if (progress < 100) return 'bg-purple-500';
+    return 'bg-green-500';
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 shadow-sm">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {getStatusIcon(item.status)}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-sm text-gray-800 dark:text-white truncate">
+              {item.title || item.source || "Processing..."}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {getStatusText(item.status, item.progress)}
+            </p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2">
+          {item.progress}%
+        </span>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
+        <div
+          className={`h-full ${getProgressColor(item.progress)} transition-all duration-500 ease-out`}
+          style={{ width: `${item.progress}%` }}
+        >
+          {item.progress > 95 && (
+            <div className="h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+          )}
+        </div>
+      </div>
+
+      {item.error && (
+        <p className="text-xs text-red-500 mt-2 truncate">
+          Error: {item.error}
+        </p>
+      )}
+
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+        Source: {item.source}
+      </p>
+    </div>
+  );
+};
+
+const AllHistory = ({ title, NeedFor, height, processingItems = [] }) => {
   const [history, setHistory] = useState([]);
   const [notCompleted, setNotCompleted] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,8 +216,6 @@ const AllHistory = ({ title, NeedFor, height }) => {
   };
 
   const handleDelete = async (id) => {
-    // if (!window.confirm("Are you sure you want to delete this history item?"))
-    //   return;
     try {
       await axios.delete(
         `${import.meta.env.VITE_BACKEND_URL}/api/history/${id}`,
@@ -175,6 +255,7 @@ const AllHistory = ({ title, NeedFor, height }) => {
   }, [menuOpenId]);
 
   const allData = title ? notCompleted : history;
+  const hasProcessingItems = processingItems.length > 0;
 
   return (
     <div className={` shadow-xl rounded-2xl w-full dark:bg-gradient-to-br dark:from-gray-900/95 dark:to-gray-800/95 bg-gradient-to-br from-white to-gray-50 p-6 flex flex-col border dark:border-gray-700/50 border-gray-200/50 relative backdrop-blur-sm`} style={{ height: height || '30rem' }}>
@@ -193,10 +274,11 @@ const AllHistory = ({ title, NeedFor, height }) => {
             </p>
           </div>
         </div>
-        {!isLoading && allData.length > 0 && (
-          <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full  text-xs font-semibold text-purple-700 dark:text-purple-300 flex justify-center items-center whitespace-nowrap">
-            
-              {allData.length}{" "}{allData.length === 1 ? 'item' : 'items'}
+        {!isLoading && (allData.length > 0 || hasProcessingItems) && (
+          <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-xs font-semibold text-purple-700 dark:text-purple-300 flex justify-center items-center whitespace-nowrap">
+            {hasProcessingItems && `${processingItems.length} processing`}
+            {hasProcessingItems && allData.length > 0 && ' • '}
+            {allData.length > 0 && `${allData.length} ${allData.length === 1 ? 'item' : 'items'}`}
           </div>
         )}
       </div>
@@ -208,7 +290,7 @@ const AllHistory = ({ title, NeedFor, height }) => {
             <SkeletonItem key={index} />
           ))}
         </div>
-      ) : allData.length === 0 ? (
+      ) : (allData.length === 0 && !hasProcessingItems) ? (
         <div className="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-8">
           <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4">
             <History className="w-12 h-12 opacity-50" />
@@ -221,24 +303,27 @@ const AllHistory = ({ title, NeedFor, height }) => {
       ) : (
         <div className="relative flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-200 dark:scrollbar-track-gray-800">
           <div className="space-y-3 pr-2">
+            {/* Show processing items first */}
+            {hasProcessingItems && (
+              <>
+                {processingItems.map((item, index) => (
+                  <ProcessingItem key={`processing-${item.id}-${index}`} item={item} />
+                ))}
+                <div className="border-t border-gray-200 dark:border-gray-600 my-2"></div>
+              </>
+            )}
+
+            {/* Show completed/pending items */}
             {allData.map((item, index) => {
-              // Convert UTC date to user's local time
-// Convert UTC date to user's local timezone using Luxon
-// Convert UTC or SQL date to user's local timezone dynamically using Luxon
-// Convert UTC or SQL date to user's *local* timezone using Luxon
-const utcDate = item.date || item.uploadedAt;
+              // Convert UTC date to user's local timezone using Luxon
+              const utcDate = item.date || item.uploadedAt;
+              const parsed = DateTime.fromISO(utcDate, { zone: "utc" });
+              const localDate = parsed.isValid
+                ? parsed.setZone(DateTime.local().zoneName)
+                : DateTime.fromSQL(utcDate, { zone: "utc" }).setZone(DateTime.local().zoneName);
 
-// Try ISO first, fallback to SQL; always interpret as UTC then convert to local
-const parsed = DateTime.fromISO(utcDate, { zone: "utc" });
-const localDate = parsed.isValid
-  ? parsed.setZone(DateTime.local().zoneName)
-  : DateTime.fromSQL(utcDate, { zone: "utc" }).setZone(DateTime.local().zoneName);
-
-// Show full date and time
-const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
-
-
-
+              // Show full date and time
+              const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
 
               const isHovered = hoveredItemId === `${item.id}-${index}`;
               const isEditing = editingId === item.id;
@@ -309,16 +394,12 @@ const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
                           </Link>
                           <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
                             <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
-                               {formattedDate}
+                              {formattedDate}
                             </span>
                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
                             <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize whitespace-nowrap truncate">
                               {item.source}
                             </span>
-                            {/* <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" /> */}
-                            {/* <span className="text-xs font-medium text-purple-600 dark:text-purple-400 capitalize">
-                              {timeAgo(localDate)}
-                            </span> */}
                           </div>
                         </div>
                       )}
@@ -333,7 +414,6 @@ const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
                             setMenuOpenId(
                               menuOpenId === item.id ? null : item.id
                             );
-                            setIsPaused(menuOpenId !== item.id);
                           }}
                           className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                         >
@@ -369,7 +449,6 @@ const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
                                     onClick={() => {
                                       navigate("/live-meeting");
                                       setMenuOpenId(null);
-                                      setIsPaused(false);
                                     }}
                                     className="w-full cursor-pointer px-4 py-2.5 text-left text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-purple-600 dark:text-purple-400 flex items-center gap-3 border-t border-gray-100 dark:border-gray-700"
                                   >
@@ -389,10 +468,9 @@ const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
             })}
           </div>
         </div>
-
       )}
 
-      <style >{`
+      <style>{`
         @keyframes shimmer {
           100% {
             transform: translateX(100%);

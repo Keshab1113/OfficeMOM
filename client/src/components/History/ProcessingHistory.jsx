@@ -1,8 +1,15 @@
 import React from 'react';
-import { Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Loader2, PauseCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ProcessingHistory = ({ processingItems = [] }) => {
-    const getStatusIcon = (status) => {
+    const navigate = useNavigate();
+
+    const getStatusIcon = (status, awaitingHeaders) => {
+        if (awaitingHeaders) {
+            return <PauseCircle className="w-5 h-5 text-yellow-500" />;
+        }
+        
         switch (status) {
             case 'transcribing':
                 return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
@@ -12,12 +19,22 @@ const ProcessingHistory = ({ processingItems = [] }) => {
                 return <CheckCircle className="w-5 h-5 text-green-500" />;
             case 'failed':
                 return <XCircle className="w-5 h-5 text-red-500" />;
+            case 'awaiting_headers':
+                return <PauseCircle className="w-5 h-5 text-yellow-500" />;
             default:
                 return <Clock className="w-5 h-5 text-gray-400" />;
         }
     };
 
-    const getStatusText = (status, progress) => {
+    const getStatusText = (status, progress, awaitingHeaders, taskType) => {
+        if (awaitingHeaders) {
+            return '⏸️ Awaiting Headers';
+        }
+
+        if (taskType) {
+            return taskType;
+        }
+        
         if (status === 'transcribing') {
             if (progress < 30) return 'Uploading...';
             if (progress < 70) return 'Transcribing...';
@@ -27,16 +44,24 @@ const ProcessingHistory = ({ processingItems = [] }) => {
             if (progress < 85) return 'Generating MoM...';
             return 'Finalizing...';
         }
+        if (status === 'awaiting_headers') return '⏸️ Set Headers to Continue';
         if (status === 'completed') return 'Completed ✓';
         if (status === 'failed') return 'Failed';
         return 'Queued';
     };
 
-    const getProgressColor = (progress) => {
+    const getProgressColor = (progress, awaitingHeaders) => {
+        if (awaitingHeaders) return 'bg-yellow-500';
         if (progress < 30) return 'bg-blue-500';
         if (progress < 70) return 'bg-indigo-500';
         if (progress < 100) return 'bg-purple-500';
         return 'bg-green-500';
+    };
+
+    const handleItemClick = (item) => {
+        if (item.awaitingHeaders) {
+            navigate(`/generate-notes/meeting-result/${item.id}`);
+        }
     };
 
     if (processingItems.length === 0) {
@@ -65,17 +90,20 @@ const ProcessingHistory = ({ processingItems = [] }) => {
                 {processingItems.map((item) => (
                     <div
                         key={item.id}
-                        className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 border border-gray-200 dark:border-slate-600 hover:shadow-md transition-shadow"
+                        onClick={() => handleItemClick(item)}
+                        className={`bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 border border-gray-200 dark:border-slate-600 hover:shadow-md transition-all ${
+                            item.awaitingHeaders ? 'cursor-pointer hover:border-yellow-400 hover:scale-[1.02]' : ''
+                        }`}
                     >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {getStatusIcon(item.status)}
+                                {getStatusIcon(item.status, item.awaitingHeaders)}
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-medium text-sm text-gray-800 dark:text-white truncate">
                                         {item.title}
                                     </h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {getStatusText(item.status, item.progress)}
+                                        {getStatusText(item.status, item.progress, item.awaitingHeaders, item.taskType)}
                                     </p>
                                 </div>
                             </div>
@@ -87,14 +115,21 @@ const ProcessingHistory = ({ processingItems = [] }) => {
                         {/* Progress Bar */}
                         <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
                             <div
-                                className={`h-full ${getProgressColor(item.progress)} transition-all duration-500 ease-out`}
+                                className={`h-full ${getProgressColor(item.progress, item.awaitingHeaders)} transition-all duration-500 ease-out`}
                                 style={{ width: `${item.progress}%` }}
                             >
-                                {item.progress > 95 && (
+                                {item.progress > 95 && !item.awaitingHeaders && (
                                     <div className="h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
                                 )}
                             </div>
                         </div>
+
+                        {item.awaitingHeaders && (
+                            <div className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 font-semibold flex items-center gap-1">
+                                <PauseCircle className="w-3 h-3" />
+                                Click to set headers and continue
+                            </div>
+                        )}
 
                         {item.error && (
                             <p className="text-xs text-red-500 mt-2 truncate">

@@ -76,7 +76,7 @@ export default function AboutUs() {
 
   const stats = [
     { number: "10M+", label: "Minutes Transcribed" },
-    { number: "50K+", label: "Happy Users" },
+    { number: "5.5K+", label: "Happy Users" },
     { number: "99.2%", label: "Accuracy Rate" },
     { number: "70%", label: "Time Saved" },
   ];

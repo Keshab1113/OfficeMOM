@@ -95,7 +95,7 @@ function App() {
           <Route path="/join-meeting/:id" element={<JoinMeeting />} />
 
           <Route path="/generate-notes" element={<ProtectedRoute><GenerateNotesHome /></ProtectedRoute>} />
-          <Route path="/generate-notes/:audioId/result" element={<ProtectedRoute><MeetingResult /></ProtectedRoute>} />
+          <Route path="/generate-notes/meeting-result/:historyId" element={<ProtectedRoute><MeetingResult /></ProtectedRoute>} />
           <Route
             path="/profile"
             element={

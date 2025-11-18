@@ -59,7 +59,7 @@ const GenerateNotesHome = () => {
         setError(null);
     };
 
-    // ✅ FIXED: Simple background upload - no waiting!
+    // ✅ FIXED: Upload and redirect to MeetingResult
     const handleStartMakingNotes = async () => {
         try {
             if (activeTab === "computer" && !selectedFile) return;
@@ -92,24 +92,22 @@ const GenerateNotesHome = () => {
             }
 
             const data = response.data;
-
-            // ✅ Stop loader immediately
             setIsProcessing(false);
 
-            // ✅ Show success message
             const successMessage = data.minutesUsed
-                ? `Upload successful! ${data.minutesUsed} minutes deducted. Processing in background...`
-                : "Upload successful! Processing in background...";
+                ? `Upload successful! ${data.minutesUsed} minutes deducted. Transcribing...`
+                : "Upload successful! Transcribing...";
 
             addToast("success", successMessage);
 
-            // ✅ Clear the form
-            setSelectedFile(null);
-            setDriveUrl("");
-            if (fileInputRef.current) fileInputRef.current.value = "";
-
-            // ✅ Show notification about background processing
-            addToast("info", "Your audio is being processed. Check 'Processing History' below for updates.", 8000);
+            // ✅ Redirect to MeetingResult with historyId
+            navigate(`/generate-notes/meeting-result/${data.historyId}`, {
+                state: {
+                    historyID: data.historyId,
+                    processing: true,
+                    awaitingHeaders: true
+                }
+            });
 
         } catch (err) {
             console.error(err);
@@ -201,19 +199,11 @@ const GenerateNotesHome = () => {
                                         )}
 
                                         <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 mb-4">
-                                            <button
-                                                onClick={() => setActiveTab("computer")}
-                                                disabled={isProcessing}
-                                                className={`flex-1 cursor-pointer md:py-3 md:px-4 px-2 py-2 text-xs md:text-base rounded-lg md:font-semibold transition-all ${activeTab === "computer" ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md" : "text-gray-600 dark:text-gray-300"}`}
-                                            >
+                                            <button onClick={() => setActiveTab("computer")} disabled={isProcessing} className={`flex-1 cursor-pointer md:py-3 md:px-4 px-2 py-2 text-xs md:text-base rounded-lg md:font-semibold transition-all ${activeTab === "computer" ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md" : "text-gray-600 dark:text-gray-300"}`}>
                                                 <MonitorSmartphone className="w-5 h-5 inline mr-2" />
                                                 From Computer
                                             </button>
-                                            <button
-                                                onClick={() => setActiveTab("drive")}
-                                                disabled={isProcessing}
-                                                className={`flex-1 cursor-pointer md:py-3 md:px-4 px-2 py-2 text-xs md:text-base rounded-lg md:font-semibold transition-all ${activeTab === "drive" ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md" : "text-gray-600 dark:text-gray-300"}`}
-                                            >
+                                            <button onClick={() => setActiveTab("drive")} disabled={isProcessing} className={`flex-1 cursor-pointer md:py-3 md:px-4 px-2 py-2 text-xs md:text-base rounded-lg md:font-semibold transition-all ${activeTab === "drive" ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-md" : "text-gray-600 dark:text-gray-300"}`}>
                                                 <HardDriveUpload className="w-5 h-5 inline mr-2" />
                                                 From Google Drive
                                             </button>
@@ -255,9 +245,7 @@ const GenerateNotesHome = () => {
                                             )}
                                         </div>
 
-                                        {error && (
-                                            <div className="mt-4 w-full p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">{error}</div>
-                                        )}
+                                        {error && <div className="mt-4 w-full p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">{error}</div>}
 
                                         <button
                                             onClick={handleStartMakingNotes}
@@ -275,7 +263,7 @@ const GenerateNotesHome = () => {
                                             ) : (
                                                 <>
                                                     <FileText className="w-6 h-6 mr-2" />
-                                                    Upload & Process in Background
+                                                    Upload & Set Headers
                                                 </>
                                             )}
                                         </button>
@@ -318,6 +306,6 @@ const GenerateNotesHome = () => {
             )}
         </>
     );
-};
+}
 
 export default GenerateNotesHome;
