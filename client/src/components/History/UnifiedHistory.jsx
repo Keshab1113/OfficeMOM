@@ -8,15 +8,11 @@ import { removeAudioPreview } from "../../redux/audioSlice";
 import { useToast } from "../ToastContext";
 import { DateTime } from "luxon";
 
-// Notification Sound - using local file
+// Notification Sound (you can replace with your own)
 const playNotificationSound = () => {
-  try {
-    const audio = new Audio('/Images/notification.mp3'); // Make sure notification.wav is in your public folder
-    audio.volume = 0.5;
-    audio.play().catch(e => console.log('Audio play failed:', e));
-  } catch (error) {
-    console.log('Notification sound error:', error);
-  }
+  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTcIGWi77eefTRAMUKfj8LZjHAY4kdfy');
+  audio.volume = 0.5;
+  audio.play().catch(e => console.log('Audio play failed:', e));
 };
 
 // Skeleton Loading Component
@@ -120,11 +116,22 @@ const ProcessingItem = ({ item, onNavigate }) => {
             </p>
           </div>
         </div>
-        {(item.status === 'transcribing' || item.status === 'generating_mom') && (
-          <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full">
-            Processing
-          </span>
-        )}
+        <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2">
+          {item.progress}%
+        </span>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
+        <motion.div
+          className={`h-full ${getProgressColor(item.progress, item.awaitingHeaders)} transition-all duration-500 ease-out`}
+          initial={{ width: 0 }}
+          animate={{ width: `${item.progress}%` }}
+        >
+          {item.progress > 95 && !item.awaitingHeaders && (
+            <div className="h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+          )}
+        </motion.div>
       </div>
 
       {item.awaitingHeaders && (
@@ -148,10 +155,9 @@ const ProcessingItem = ({ item, onNavigate }) => {
 };
 
 // Completed History Item Component
-const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete, menuOpenId, onMenuToggle, onMarkAsViewed }) => {
+const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete, menuOpenId, onMenuToggle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
-  const [showNewBadge, setShowNewBadge] = useState(item.isNew || false);
   const editInputRef = useRef(null);
   const { addToast } = useToast();
   const token = useSelector((state) => state.auth.token);
@@ -211,13 +217,6 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
     }
   };
 
-  const handleClick = async () => {
-    if (showNewBadge) {
-      setShowNewBadge(false);
-      onMarkAsViewed(item.id);
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -232,20 +231,6 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
           : "border-gray-100 dark:border-gray-700/50"
       }`}
     >
-      {/* New Badge */}
-      {showNewBadge && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          exit={{ scale: 0 }}
-          className="absolute -top-2 -right-2 z-10"
-        >
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg animate-pulse">
-            NEW
-          </span>
-        </motion.div>
-      )}
-
       <div className="flex justify-between items-start gap-3">
         <div className="flex gap-3 justify-start items-center flex-1 min-w-0">
           <motion.div
@@ -297,7 +282,6 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
             <div className="flex-1 min-w-0">
               <Link
                 to={`/momGenerate/${item.id}`}
-                onClick={handleClick}
                 className="text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 font-semibold transition-colors truncate block text-sm"
               >
                 {item.title || item.source || "Unknown"}

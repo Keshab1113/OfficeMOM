@@ -1,31 +1,3 @@
-// const express = require("express");
-// const authMiddleware = require("../middlewares/authMiddleware");
-// const { uploadAudio } = require("../controllers/uploadController");
-// const { uploadAudioToFTPOnly } = require("../controllers/uploadController");
-// const router = express.Router();
-// const multer = require("multer");
-// // const upload = multer({ storage: multer.memoryStorage() });
-// const upload = multer({
-//   storage: multer.memoryStorage(),
-//   limits: { fileSize: 1024 * 1024 * 2000 } // 2 GB
-// });
-
-
-// router.post(
-//   "/upload-audio",
-//   authMiddleware,
-//   upload.single("audio"),
-//   uploadAudio
-// );
-
-// router.post(
-//   "/upload-audio-ftp",
-//   authMiddleware,
-//   upload.single("audio"),
-//   uploadAudioToFTPOnly
-// );
-
-// module.exports = router;
 const express = require("express");
 const authMiddleware = require("../middlewares/authMiddleware");
 const { uploadAudio, uploadAudioBackground } = require("../controllers/uploadController");
@@ -47,27 +19,26 @@ const uploadTimeout = (req, res, next) => {
   next();
 };
 
-// ⚠️ UPDATED: Add timeout middleware to routes
 router.post(
   "/upload-audio",
-  uploadTimeout,  // ADD THIS LINE
   authMiddleware,
+  uploadTimeout,
   upload.single("audio"),
   uploadAudio
 );
 
 router.post(
   "/upload-audio-ftp",
-  uploadTimeout,  // ADD THIS LINE
   authMiddleware,
+  uploadTimeout,
   upload.single("audio"),
   uploadAudioToFTPOnly
 );
 router.post(
   "/upload-audio-background",
-  uploadTimeout,  // ADD THIS LINE
   authMiddleware,
-  upload.single("audio"),  // ADD THIS LINE - This was missing!
+  uploadTimeout,
+  upload.single("audio"),
   uploadAudioBackground
 );
 

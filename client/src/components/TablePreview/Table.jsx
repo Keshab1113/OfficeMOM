@@ -20,7 +20,7 @@ export default function DataTable({
   React.useEffect(() => {
     setTableData(data);
   }, [data]);
-console.log("tableData: ",tableData);
+// console.log("tableData: ",tableData);
 
   const toCamelCase = (str) =>
     str
