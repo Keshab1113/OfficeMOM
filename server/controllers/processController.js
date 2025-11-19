@@ -1,8 +1,9 @@
 const db = require("../config/db");
 const { processTranscript } = require("./deepseekController");
+const emailController = require("./emailController");
 
 const processController = {
-    // ✅ NEW: Save headers and start MoM generation
+    // Save headers and start MoM generation
     async saveHeadersAndStartMoM(req, res) {
         try {
             const { historyId, headers, useDefault } = req.body;
@@ -10,7 +11,6 @@ const processController = {
 
             console.log('📝 Headers received:', { historyId, headers, useDefault, userId });
 
-            // Validate
             if (!historyId || !userId) {
                 return res.status(400).json({
                     success: false,
@@ -18,32 +18,28 @@ const processController = {
                 });
             }
 
-            // Use provided headers or defaults
             const finalHeaders = headers && headers.length > 0
                 ? headers
                 : ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"];
 
-            // ✅ Save headers to database
             await db.query(
                 `INSERT INTO meeting_headers (history_id, user_id, headers, is_default) 
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE 
-             headers = VALUES(headers), 
-             is_default = VALUES(is_default), 
-             updated_at = CURRENT_TIMESTAMP`,
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE 
+                 headers = VALUES(headers), 
+                 is_default = VALUES(is_default), 
+                 updated_at = CURRENT_TIMESTAMP`,
                 [historyId, userId, JSON.stringify(finalHeaders), useDefault ? 1 : 0]
             );
 
-            // ✅ Update history - headers are set
             await db.query(
                 `UPDATE history 
-             SET headers_set = 1, 
-                 awaiting_headers = 0
-             WHERE id = ? AND user_id = ?`,
+                 SET headers_set = 1, 
+                     awaiting_headers = 0
+                 WHERE id = ? AND user_id = ?`,
                 [historyId, userId]
             );
 
-            // Check if transcription is already complete
             const [historyRows] = await db.query(
                 `SELECT data, processing_status, processing_progress FROM history WHERE id = ? AND user_id = ?`,
                 [historyId, userId]
@@ -60,7 +56,6 @@ const processController = {
             const currentProgress = history.processing_progress || 0;
             let storedData = null;
 
-            // Parse stored data if it exists
             if (history.data) {
                 try {
                     storedData = typeof history.data === 'string' ? JSON.parse(history.data) : history.data;
@@ -69,11 +64,9 @@ const processController = {
                 }
             }
 
-            // If transcription data is available, start MoM generation immediately
             if (storedData && storedData.transcription) {
                 console.log(`🚀 Transcription available at ${currentProgress}%, starting MoM generation for history ${historyId}`);
 
-                // Start MoM generation in background - pass current progress
                 startMoMGeneration({
                     finalTranscript: storedData.transcription,
                     headers: finalHeaders,
@@ -83,20 +76,16 @@ const processController = {
                     detectLanguage: storedData.language,
                     historyID: historyId,
                     storageKey: `meeting_${historyId}`,
-                    currentProgress: currentProgress // Pass current progress
+                    currentProgress: currentProgress
                 });
-
-                // DON'T update queue status here - let startMoMGeneration handle it
-
             } else {
-                // Transcription not ready yet, MoM will start automatically when transcription completes
                 console.log(`⏳ Headers saved, waiting for transcription to complete for history ${historyId}`);
 
                 await db.query(
                     `UPDATE processing_queue 
-                 SET status = 'awaiting_transcription', 
-                     task_type = 'Headers set - Waiting for transcription'
-                 WHERE history_id = ? AND user_id = ?`,
+                     SET status = 'awaiting_transcription', 
+                         task_type = 'Headers set - Waiting for transcription'
+                     WHERE history_id = ? AND user_id = ?`,
                     [historyId, userId]
                 );
             }
@@ -171,6 +160,21 @@ const processController = {
         try {
             const userId = req.user.id;
 
+            const [userRows] = await db.query(
+                `SELECT email, fullName FROM users WHERE id = ?`,
+                [userId]
+            );
+
+            if (userRows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const userEmail = userRows[0].email;
+            const userName = userRows[0].fullName || "Valued User";
+
             const [processingItems] = await db.query(
                 `SELECT 
                     h.id, 
@@ -182,6 +186,7 @@ const processController = {
                     h.error_message,
                     h.awaiting_headers,
                     h.headers_set,
+                    h.completion_email_sent,
                     q.progress as queue_progress,
                     q.task_type
                  FROM history h
@@ -194,6 +199,9 @@ const processController = {
                  ORDER BY h.uploadedAt DESC`,
                 [userId]
             );
+
+            // ✅ Check for completed items that need email notification
+            await checkAndSendCompletionEmails(userId, userEmail, userName);
 
             res.json({
                 success: true,
@@ -264,10 +272,10 @@ const processController = {
 
             const [headers] = await db.query(
                 `SELECT headers, is_default, updated_at 
-             FROM meeting_headers 
-             WHERE user_id = ? 
-             ORDER BY updated_at DESC 
-             LIMIT 1`,
+                 FROM meeting_headers 
+                 WHERE user_id = ? 
+                 ORDER BY updated_at DESC 
+                 LIMIT 1`,
                 [userId]
             );
 
@@ -302,10 +310,66 @@ const processController = {
     }
 };
 
+// ✅ IMPROVED: Check for completed items and send emails (with duplicate prevention)
+async function checkAndSendCompletionEmails(userId, userEmail, userName) {
+    try {
+        console.log(`🔍 Checking for completion emails for user: ${userId}`);
+
+        // Get completed items that haven't had email sent yet
+        const [completedItems] = await db.query(
+            `SELECT 
+                id, 
+                title
+             FROM history 
+             WHERE user_id = ? 
+             AND processing_status = 'completed'
+             AND (completion_email_sent IS NULL OR completion_email_sent = 0)
+             AND uploadedAt >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+             ORDER BY uploadedAt DESC
+             LIMIT 10`,
+            [userId]
+        );
+
+        console.log(`📧 Found ${completedItems.length} items needing completion emails`);
+
+        for (const item of completedItems) {
+            try {
+                console.log(`📨 Sending completion email for: ${item.id} - "${item.title}"`);
+
+                const emailSent = await emailController.sendProcessingCompleteEmail(
+                    userEmail,
+                    userName,
+                    item.title,
+                    item.id
+                );
+
+                if (emailSent) {
+                    // Mark email as sent in database
+                    await db.query(
+                        `UPDATE history 
+                         SET completion_email_sent = 1,
+                             email_sent_at = NOW()
+                         WHERE id = ? AND user_id = ?`,
+                        [item.id, userId]
+                    );
+                    console.log(`✅ Email sent and marked for history ${item.id}`);
+                } else {
+                    console.log(`⚠️ Email controller returned false for history ${item.id}`);
+                }
+
+            } catch (emailError) {
+                console.error(`❌ Failed to send completion email for history ${item.id}:`, emailError);
+                // Continue with next item even if one fails
+            }
+        }
+    } catch (error) {
+        console.error("❌ Error in checkAndSendCompletionEmails:", error);
+    }
+}
+
 // ✅ SAFE UPDATE: Only update if new progress is HIGHER than current
 async function updateMoMProgress(historyId, userId, newProgress, status) {
     try {
-        // First, get current progress
         const [current] = await db.query(
             `SELECT processing_progress FROM history WHERE id = ? AND user_id = ?`,
             [historyId, userId]
@@ -313,7 +377,6 @@ async function updateMoMProgress(historyId, userId, newProgress, status) {
 
         const currentProgress = current[0]?.processing_progress || 0;
 
-        // Only update if new progress is higher (prevents backwards progress)
         if (newProgress >= currentProgress) {
             await db.query(
                 `UPDATE history 
@@ -333,7 +396,7 @@ async function updateMoMProgress(historyId, userId, newProgress, status) {
 
             console.log(`📊 Progress: ${currentProgress}% → ${newProgress}% (${status}) for history ${historyId}`);
         } else {
-            console.log(`⚠️  Skipped update: ${newProgress}% is not higher than current ${currentProgress}% for history ${historyId}`);
+            console.log(`⚠️ Skipped update: ${newProgress}% is not higher than current ${currentProgress}%`);
         }
     } catch (error) {
         console.error("Error updating MoM progress:", error);
@@ -356,19 +419,10 @@ async function startMoMGeneration(params) {
     try {
         console.log(`🚀 Starting MoM generation for history ${historyID} from ${currentProgress}%`);
 
-        // ✅ Calculate smart starting progress
-        // If transcription completed (currentProgress >= 70), continue from there
-        // Otherwise, start from 70% as MoM generation phase
-        let startProgress = currentProgress;
+        let startProgress = currentProgress < 70 ? 70 : currentProgress;
 
-        if (currentProgress < 70) {
-            startProgress = 70; // Transcription phase ends at 70%
-        }
-
-        // Update to generating_mom status with current progress
         await updateMoMProgress(historyID, userId, startProgress, 'generating_mom');
 
-        // Create a mock request object for processTranscript
         const mockReq = {
             body: {
                 transcript: finalTranscript,
@@ -394,29 +448,36 @@ async function startMoMGeneration(params) {
             }
         };
 
-        // Progress: Starting DeepSeek processing
         await updateMoMProgress(historyID, userId, Math.max(startProgress, 75), 'generating_mom');
 
-        // Process with DeepSeek
         await processTranscript(mockReq, mockRes);
 
         if (mockRes.statusCode !== 200 || (mockRes.responseData && !mockRes.responseData.success)) {
             throw new Error(mockRes.responseData?.error || "MoM generation failed");
         }
 
-        // Progress: DeepSeek completed
         await updateMoMProgress(historyID, userId, 90, 'generating_mom');
-
-        // Progress: Finalizing
         await updateMoMProgress(historyID, userId, 95, 'generating_mom');
 
-        // Small delay for smooth transition
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Final: Completed
         await updateMoMProgress(historyID, userId, 100, 'completed');
 
         console.log(`✅ MoM generation completed for history ${historyID}`);
+
+        // ✅ Send email immediately on completion
+        console.log(`📧 Attempting to send immediate completion email for history ${historyID}`);
+        try {
+            const emailSent = await sendCompletionEmailImmediately(historyID, userId);
+            if (emailSent) {
+                console.log(`✅ Immediate email sent successfully for history ${historyID}`);
+            } else {
+                console.log(`⚠️ Immediate email send returned false for history ${historyID}`);
+            }
+        } catch (emailError) {
+            console.error(`❌ Immediate email failed for history ${historyID}:`, emailError);
+            // Don't throw - email failure shouldn't break main process
+        }
 
     } catch (error) {
         console.error(`❌ MoM generation failed for history ${historyID}:`, error);
@@ -436,6 +497,70 @@ async function startMoMGeneration(params) {
              WHERE history_id = ? AND user_id = ?`,
             [historyID, userId]
         );
+    }
+}
+
+// ✅ Send email immediately when processing completes
+async function sendCompletionEmailImmediately(historyId, userId) {
+    try {
+        console.log(`📧 Sending immediate completion email for history ${historyId}`);
+        
+        // Check if email was already sent
+        const [emailCheck] = await db.query(
+            `SELECT completion_email_sent FROM history WHERE id = ? AND user_id = ?`,
+            [historyId, userId]
+        );
+
+        if (emailCheck[0]?.completion_email_sent === 1) {
+            console.log(`ℹ️ Email already sent for history ${historyId}, skipping`);
+            return true;
+        }
+
+        const [userRows] = await db.query(
+            `SELECT u.email, u.fullName, h.title 
+             FROM users u 
+             JOIN history h ON u.id = h.user_id 
+             WHERE u.id = ? AND h.id = ?`,
+            [userId, historyId]
+        );
+
+        if (userRows.length === 0) {
+            console.log(`❌ User or history not found: userId=${userId}, historyId=${historyId}`);
+            return false;
+        }
+
+        const userEmail = userRows[0].email;
+        const userName = userRows[0].fullName || "Valued User";
+        const meetingTitle = userRows[0].title || "Meeting";
+
+        console.log(`📨 Sending to: ${userEmail} for meeting: "${meetingTitle}"`);
+
+        const emailSent = await emailController.sendProcessingCompleteEmail(
+            userEmail,
+            userName,
+            meetingTitle,
+            historyId
+        );
+
+        if (emailSent) {
+            // Mark email as sent
+            await db.query(
+                `UPDATE history 
+                 SET completion_email_sent = 1,
+                     email_sent_at = NOW()
+                 WHERE id = ? AND user_id = ?`,
+                [historyId, userId]
+            );
+            console.log(`✅ Email sent and marked for history ${historyId}`);
+            return true;
+        } else {
+            console.log(`❌ Failed to send email for history ${historyId}`);
+            return false;
+        }
+
+    } catch (error) {
+        console.error(`❌ Error sending immediate completion email for history ${historyId}:`, error);
+        return false;
     }
 }
 

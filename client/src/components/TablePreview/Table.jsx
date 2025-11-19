@@ -20,7 +20,7 @@ export default function DataTable({
   React.useEffect(() => {
     setTableData(data);
   }, [data]);
-// console.log("tableData: ",tableData);
+  // console.log("tableData: ",tableData);
 
   const toCamelCase = (str) =>
     str
@@ -62,7 +62,7 @@ export default function DataTable({
   // Handle cell edit commit
   const handleProcessRowUpdate = (newRow, oldRow) => {
     const updatedRow = { ...newRow };
-    
+
     // Find which field changed and update via onEditRow
     header.forEach((h) => {
       const field = toCamelCase(h);
@@ -181,6 +181,16 @@ export default function DataTable({
     [isDarkMode]
   );
 
+  const CustomNoRowsOverlay = () => {
+    return (
+      <div className="flex flex-col items-center justify-center py-10">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-500"></div>
+        <p className="mt-3 text-gray-400">Loading...</p>
+      </div>
+    );
+  };
+
+
   return (
     <ThemeProvider theme={theme}>
       <Paper
@@ -188,17 +198,15 @@ export default function DataTable({
           height: "auto",
           width: "100%",
           margin: "20px auto",
-          border: `1px solid ${
-            theme.palette.mode === "dark" ? "#0a0a0a" : "#f0ebeb"
-          }`,
+          border: `1px solid ${theme.palette.mode === "dark" ? "#333" : "#f0ebeb"}`,
           boxShadow: "none",
           borderRadius: 2,
           pt: 2,
-          backgroundColor: theme.palette.mode === "dark" ? "#0a0a0a" : "#fff",
+          backgroundColor: "transparent",
           transition: "background-color 0.3s ease",
           overflowX: "auto",
         }}
-        elevation={3}
+        elevation={0}
       >
         <DataGrid
           autoHeight
@@ -213,14 +221,16 @@ export default function DataTable({
           processRowUpdate={handleProcessRowUpdate}
           onProcessRowUpdateError={handleProcessRowUpdateError}
           editMode="cell"
+          slots={{
+            noRowsOverlay: CustomNoRowsOverlay,
+          }}
           sx={{
             border: 0,
             color: theme.palette.mode === "dark" ? "#e0e0e0" : "#000",
+            backgroundColor: "transparent",
 
             "& .MuiDataGrid-cell": {
-              borderBottom: `0px solid ${
-                theme.palette.mode === "dark" ? "#333" : "#e0e0e0"
-              }`,
+              borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
               lineHeight: "1.5",
@@ -228,28 +238,68 @@ export default function DataTable({
               display: "flex",
               paddingTop: "8px",
               paddingBottom: "8px",
+              backgroundColor: "transparent",
             },
+
             "& .MuiDataGrid-cellContent": {
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
             },
+
             "& .MuiDataGrid-row": {
               maxHeight: "none !important",
               height: "auto !important",
+              backgroundColor: "transparent",
+              '&:hover': {
+                backgroundColor: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)",
+              },
+              '&.Mui-selected': {
+                backgroundColor: theme.palette.mode === "dark" ? "rgba(33, 150, 243, 0.2)" : "rgba(33, 150, 243, 0.08)",
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === "dark" ? "rgba(33, 150, 243, 0.3)" : "rgba(33, 150, 243, 0.12)",
+                },
+              },
             },
 
             "& .MuiDataGrid-columnHeaders": {
-              backgroundColor:
-                theme.palette.mode === "dark" ? "#1e1e1e" : "#e3f2fd",
+              backgroundColor: "transparent", // Make header background transparent
               color: theme.palette.mode === "dark" ? "#90caf9" : "#0d47a1",
+              borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
             },
-            "& .MuiDataGrid-footerContainer": {
-              backgroundColor:
-                theme.palette.mode === "dark" ? "#303030" : "#e3f2fd",
+
+            "& .MuiDataGrid-columnHeader": {
+              backgroundColor: "transparent", // Make individual column headers transparent
             },
+
             "& .MuiDataGrid-columnHeaderTitle": {
               fontWeight: "bold",
               fontSize: "0.95rem",
+              backgroundColor: "transparent", // Make header title background transparent
+            },
+
+            "& .MuiDataGrid-columnHeaderTitleContainer": {
+              backgroundColor: "transparent", // Make header title container transparent
+            },
+
+            "& .MuiDataGrid-footerContainer": {
+              backgroundColor: "transparent",
+              borderTop: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
+            },
+
+            "& .MuiDataGrid-toolbarContainer": {
+              backgroundColor: "transparent",
+            },
+
+            "& .MuiDataGrid-overlay": {
+              backgroundColor: "transparent",
+            },
+
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: "transparent",
+            },
+
+            "& .MuiDataGrid-main": {
+              backgroundColor: "transparent",
             },
           }}
         />

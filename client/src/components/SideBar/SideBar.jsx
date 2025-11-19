@@ -535,7 +535,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                   Time Remaining:
                 </span>
                 <span className="text-teal-600 dark:text-teal-400 font-bold text-base">
-                  {`${subscription?.total_remaining_time} min`}
+                  {`${subscription?.total_remaining_time || 0} min`}
                 </span>
               </div>
 

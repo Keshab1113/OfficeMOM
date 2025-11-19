@@ -17,6 +17,7 @@ const multer = require("multer");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db.js");
+const emailController = require("../controllers/emailController.js");
 
 const upload = multer();
 const router = express.Router();
@@ -56,6 +57,7 @@ router.get(
       if (!req.user) return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_user`);
 
       const user = req.user;
+      const isNewUser = req.isNewUser; // This should be set in your passport strategy
 
       // Check subscription
       const [subscription] = await db.query(
@@ -77,7 +79,17 @@ router.get(
         console.log(`✅ Created default subscription for Google OAuth user ${user.id}`);
       }
 
-      // Query total created MoMs count (assuming table transcript_audio_file stores them)
+      // Send welcome email to new users (don't block login if this fails)
+      if (isNewUser) {
+        const welcomeEmailSent = await emailController.sendWelcomeEmail(user.email, user.fullName);
+        if (!welcomeEmailSent) {
+          console.warn("⚠️ Welcome email failed to send for new Google user, but login continues");
+        } else {
+          console.log(`✅ Welcome email sent to new Google user: ${user.email}`);
+        }
+      }
+
+      // Query total created MoMs count
       const [momCount] = await db.query(
         "SELECT COUNT(*) AS totalCreatedMoMs FROM history WHERE user_id = ?",
         [user.id]
@@ -87,6 +99,7 @@ router.get(
 
       const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
       await db.query("UPDATE users SET active_token = ? WHERE id = ?", [token, user.id]);
+      
       const redirectURL = `${process.env.FRONTEND_URL}/oauth-success?token=${token}&id=${user.id}&name=${encodeURIComponent(
         user.fullName
       )}&email=${encodeURIComponent(user.email)}&profilePic=${encodeURIComponent(
@@ -100,7 +113,6 @@ router.get(
     }
   }
 );
-
 
 // Facebook routes (updated)
 router.get(

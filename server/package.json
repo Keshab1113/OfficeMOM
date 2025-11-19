@@ -28,6 +28,7 @@
     "form-data": "^4.0.4",
     "get-audio-duration": "^4.0.1",
     "google-auth-library": "^10.4.0",
+    "imap": "^0.8.19",
     "joi": "^18.0.0",
     "jsonwebtoken": "^9.0.2",
     "luxon": "^3.7.2",

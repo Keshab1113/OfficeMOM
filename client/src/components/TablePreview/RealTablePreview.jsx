@@ -133,15 +133,13 @@ const RealTablePreview = ({
         <button
           onClick={confirmDownloadOptions}
           disabled={isSubmitting}
-          className={`group cursor-pointer flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 transform active:scale-95 ${
-            isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-          }`}
+          className={`group cursor-pointer flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 transform active:scale-95 ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+            }`}
         >
           <Download
             size={20}
-            className={`${
-              isSubmitting ? "animate-spin" : "group-hover:scale-110"
-            } transition-transform duration-300`}
+            className={`${isSubmitting ? "animate-spin" : "group-hover:scale-110"
+              } transition-transform duration-300`}
           />
           {isSubmitting ? "Submitting..." : "Save & Export"}
         </button>
