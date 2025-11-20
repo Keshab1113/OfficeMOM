@@ -21,6 +21,7 @@ import {
 } from "react-icons/md";
 import { Zap, LogOut, CreditCard, Bot, ChevronsRight, ChevronDown, Wallet, BookUser, Contact } from "lucide-react";
 import axios from "axios";
+import { useSocket } from "../../context/SocketContext";
 
 const navItems = [
   {
@@ -77,6 +78,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   } = useSelector((state) => state.auth);
   const { profileImage } = useSelector((state) => state.auth);
   const { addToast } = useToast();
+  const { socket, isConnected } = useSocket();
   // const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -90,6 +92,9 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const [subscription, setSubscription] = useState(null);
   const [isHovering, setIsHovering] = useState(false);
   const [isExpandButtonClick, setIsExpandButtonClick] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0); // ✅ Track last fetch
+  const subscriptionCacheRef = useRef(null); // ✅ Cache subscription data
+  const pollingIntervalRef = useRef(null);
 
   const hiddenRoutes = ["/meeting", "/generate-notes", "/live-meeting"];
 
@@ -106,13 +111,10 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
 
   const fetchSubscription = async () => {
     try {
+      console.log('📊 Fetching subscription data');
       const res = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/subscription`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setSubscription(res.data.data);
     } catch (err) {
@@ -120,24 +122,31 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     if (!token) return;
     fetchSubscription();
   }, [token]);
 
-  const shouldPoll =
-    location.pathname.startsWith("/meeting") ||
-    location.pathname.startsWith("/generate-notes") ||
-    location.pathname.startsWith("/live-meeting") ||
-    location.pathname.startsWith("/success");
-
   useEffect(() => {
-    if (!token || !shouldPoll) return;
-    const interval = setInterval(fetchSubscription, 10000);
-    return () => clearInterval(interval);
-  }, [token, shouldPoll]);
+    if (!socket || !isConnected) return;
 
+    console.log('🔌 Setting up subscription Socket listeners');
 
+    const handleSubscriptionUpdate = (data) => {
+      console.log('📊 Subscription updated via Socket:', data);
+      setSubscription(prev => ({
+        ...prev,
+        total_minutes: data.totalMinutes || prev?.total_minutes,
+        total_remaining_time: data.remainingMinutes || prev?.total_remaining_time
+      }));
+    };
+
+    socket.on('subscription-updated', handleSubscriptionUpdate);
+
+    return () => {
+      socket.off('subscription-updated', handleSubscriptionUpdate);
+    };
+  }, [socket, isConnected]);
 
   const handleLogout = async () => {
     await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`, {}, {
@@ -153,7 +162,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const handleNavClick = () => {
     if (isMobile) {
       setIsSidebarOpen(false);
-      setMobileMenuOpen(false); // Close mobile menu on nav click
+      setMobileMenuOpen(false);
     }
   };
 

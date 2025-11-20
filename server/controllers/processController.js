@@ -1,6 +1,8 @@
+// processController.js - Fixed version with Socket.IO
+
 const db = require("../config/db");
 const { processTranscript } = require("./deepseekController");
-const emailController = require("./emailController");
+const { refundUserMinutes } = require("../middlewares/minutesManager.js");
 
 const processController = {
     // Save headers and start MoM generation
@@ -22,6 +24,7 @@ const processController = {
                 ? headers
                 : ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"];
 
+            // Save headers
             await db.query(
                 `INSERT INTO meeting_headers (history_id, user_id, headers, is_default) 
                  VALUES (?, ?, ?, ?)
@@ -32,6 +35,7 @@ const processController = {
                 [historyId, userId, JSON.stringify(finalHeaders), useDefault ? 1 : 0]
             );
 
+            // Update history record
             await db.query(
                 `UPDATE history 
                  SET headers_set = 1, 
@@ -40,8 +44,11 @@ const processController = {
                 [historyId, userId]
             );
 
+            // Get history data
             const [historyRows] = await db.query(
-                `SELECT data, processing_status, processing_progress FROM history WHERE id = ? AND user_id = ?`,
+                `SELECT data, processing_status, processing_progress, deducted_minutes 
+                 FROM history 
+                 WHERE id = ? AND user_id = ?`,
                 [historyId, userId]
             );
 
@@ -54,6 +61,7 @@ const processController = {
 
             const history = historyRows[0];
             const currentProgress = history.processing_progress || 0;
+            const deductedMinutes = history.deducted_minutes || 0;
             let storedData = null;
 
             if (history.data) {
@@ -65,8 +73,9 @@ const processController = {
             }
 
             if (storedData && storedData.transcription) {
-                console.log(`🚀 Transcription available at ${currentProgress}%, starting MoM generation for history ${historyId}`);
+                console.log(`🚀 Transcription available, starting MoM generation for history ${historyId}`);
 
+                // Start MoM generation in background
                 startMoMGeneration({
                     finalTranscript: storedData.transcription,
                     headers: finalHeaders,
@@ -75,11 +84,13 @@ const processController = {
                     transcriptAudioId: storedData.transcriptAudioId,
                     detectLanguage: storedData.language,
                     historyID: historyId,
-                    storageKey: `meeting_${historyId}`,
-                    currentProgress: currentProgress
+                    currentProgress,
+                    deductedMinutes
+                }).catch(err => {
+                    console.error(`❌ MoM generation error for history ${historyId}:`, err);
                 });
             } else {
-                console.log(`⏳ Headers saved, waiting for transcription to complete for history ${historyId}`);
+                console.log(`⏳ Headers saved, waiting for transcription for history ${historyId}`);
 
                 await db.query(
                     `UPDATE processing_queue 
@@ -90,16 +101,14 @@ const processController = {
                 );
             }
 
-            console.log(`✅ Headers saved for history ${historyId}`);
-
             res.status(200).json({
                 success: true,
                 message: "Headers saved successfully!",
-                historyId: historyId
+                historyId
             });
 
         } catch (error) {
-            console.error("Error saving headers:", error);
+            console.error("❌ Error saving headers:", error);
             res.status(500).json({
                 success: false,
                 message: "Failed to save headers",
@@ -108,7 +117,7 @@ const processController = {
         }
     },
 
-    // Check processing status
+    // Check processing status (used only once, not in polling)
     async getProcessingStatus(req, res) {
         try {
             const { historyId } = req.params;
@@ -121,7 +130,9 @@ const processController = {
                     error_message, 
                     data,
                     awaiting_headers,
-                    headers_set
+                    headers_set,
+                    minutes_refunded,
+                    refunded_minutes
                  FROM history 
                  WHERE id = ? AND user_id = ?`,
                 [historyId, userId]
@@ -143,37 +154,25 @@ const processController = {
                 error: record.error_message,
                 awaitingHeaders: record.awaiting_headers === 1,
                 headersSet: record.headers_set === 1,
+                minutesRefunded: record.minutes_refunded === 1,
+                refundedMinutes: record.refunded_minutes,
                 data: record.data ? (typeof record.data === 'string' ? JSON.parse(record.data) : record.data) : null
             });
 
         } catch (error) {
-            console.error("Error getting processing status:", error);
+            console.error("❌ Error getting processing status:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to get processing status"
+                message: "Failed to get processing status",
+                error: error.message
             });
         }
     },
 
-    // Get all processing items for user
+    // Get all processing items (used only once initially, then Socket.IO takes over)
     async getUserProcessingItems(req, res) {
         try {
             const userId = req.user.id;
-
-            const [userRows] = await db.query(
-                `SELECT email, fullName FROM users WHERE id = ?`,
-                [userId]
-            );
-
-            if (userRows.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: "User not found"
-                });
-            }
-
-            const userEmail = userRows[0].email;
-            const userName = userRows[0].fullName || "Valued User";
 
             const [processingItems] = await db.query(
                 `SELECT 
@@ -186,7 +185,8 @@ const processController = {
                     h.error_message,
                     h.awaiting_headers,
                     h.headers_set,
-                    h.completion_email_sent,
+                    h.minutes_refunded,
+                    h.refunded_minutes,
                     q.progress as queue_progress,
                     q.task_type
                  FROM history h
@@ -200,9 +200,6 @@ const processController = {
                 [userId]
             );
 
-            // ✅ Check for completed items that need email notification
-            await checkAndSendCompletionEmails(userId, userEmail, userName);
-
             res.json({
                 success: true,
                 processingItems: processingItems.map(item => ({
@@ -215,20 +212,23 @@ const processController = {
                     error: item.error_message,
                     awaitingHeaders: item.awaiting_headers === 1,
                     headersSet: item.headers_set === 1,
-                    taskType: item.task_type
+                    taskType: item.task_type,
+                    minutesRefunded: item.minutes_refunded === 1,
+                    refundedMinutes: item.refunded_minutes
                 }))
             });
 
         } catch (error) {
-            console.error("Error getting processing items:", error);
+            console.error("❌ Error getting processing items:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to get processing items"
+                message: "Failed to get processing items",
+                error: error.message
             });
         }
     },
 
-    // Get saved headers for a history record
+    // Get saved headers
     async getHeaders(req, res) {
         try {
             const { historyId } = req.params;
@@ -258,14 +258,16 @@ const processController = {
             });
 
         } catch (error) {
-            console.error("Error getting headers:", error);
+            console.error("❌ Error getting headers:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to get headers"
+                message: "Failed to get headers",
+                error: error.message
             });
         }
     },
 
+    // Get last used headers
     async getLastUsedHeaders(req, res) {
         try {
             const userId = req.user.id;
@@ -300,7 +302,7 @@ const processController = {
             });
 
         } catch (error) {
-            console.error("Error getting last used headers:", error);
+            console.error("❌ Error getting last used headers:", error);
             res.status(500).json({
                 success: false,
                 message: "Failed to get last used headers",
@@ -310,64 +312,41 @@ const processController = {
     }
 };
 
-// ✅ IMPROVED: Check for completed items and send emails (with duplicate prevention)
-async function checkAndSendCompletionEmails(userId, userEmail, userName) {
+// ✅ Helper: Refund minutes with Socket.IO event
+async function refundMinutesOnError(userId, historyId, minutesToRefund, errorContext) {
     try {
-        console.log(`🔍 Checking for completion emails for user: ${userId}`);
+        console.log(`💰 Refunding ${minutesToRefund} minutes due to: ${errorContext}`);
 
-        // Get completed items that haven't had email sent yet
-        const [completedItems] = await db.query(
-            `SELECT 
-                id, 
-                title
-             FROM history 
-             WHERE user_id = ? 
-             AND processing_status = 'completed'
-             AND (completion_email_sent IS NULL OR completion_email_sent = 0)
-             AND uploadedAt >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-             ORDER BY uploadedAt DESC
-             LIMIT 10`,
-            [userId]
+        const refundResult = await refundUserMinutes(userId, minutesToRefund);
+
+        await db.query(
+            `UPDATE history 
+             SET error_message = CONCAT(IFNULL(error_message, ''), ' | Refunded: ${minutesToRefund} min'),
+                 minutes_refunded = 1,
+                 refunded_minutes = ?
+             WHERE id = ? AND user_id = ?`,
+            [minutesToRefund, historyId, userId]
         );
 
-        console.log(`📧 Found ${completedItems.length} items needing completion emails`);
-
-        for (const item of completedItems) {
-            try {
-                console.log(`📨 Sending completion email for: ${item.id} - "${item.title}"`);
-
-                const emailSent = await emailController.sendProcessingCompleteEmail(
-                    userEmail,
-                    userName,
-                    item.title,
-                    item.id
-                );
-
-                if (emailSent) {
-                    // Mark email as sent in database
-                    await db.query(
-                        `UPDATE history 
-                         SET completion_email_sent = 1,
-                             email_sent_at = NOW()
-                         WHERE id = ? AND user_id = ?`,
-                        [item.id, userId]
-                    );
-                    console.log(`✅ Email sent and marked for history ${item.id}`);
-                } else {
-                    console.log(`⚠️ Email controller returned false for history ${item.id}`);
-                }
-
-            } catch (emailError) {
-                console.error(`❌ Failed to send completion email for history ${item.id}:`, emailError);
-                // Continue with next item even if one fails
-            }
+        console.log(`✅ Refunded ${minutesToRefund} minutes`);
+        
+        // ✅ Emit subscription update
+        if (global.socketManager) {
+            global.socketManager.emitToUser(userId, 'subscription-updated', {
+                totalMinutes: refundResult.newBalance,
+                remainingMinutes: refundResult.newBalance,
+                refunded: true,
+                refundedAmount: minutesToRefund
+            });
         }
-    } catch (error) {
-        console.error("❌ Error in checkAndSendCompletionEmails:", error);
+        
+        return refundResult;
+    } catch (refundError) {
+        console.error(`❌ Failed to refund minutes:`, refundError);
     }
 }
 
-// ✅ SAFE UPDATE: Only update if new progress is HIGHER than current
+// ✅ Helper: Update MoM progress with Socket.IO event
 async function updateMoMProgress(historyId, userId, newProgress, status) {
     try {
         const [current] = await db.query(
@@ -394,15 +373,24 @@ async function updateMoMProgress(historyId, userId, newProgress, status) {
                 [newProgress, status, historyId, userId]
             );
 
-            console.log(`📊 Progress: ${currentProgress}% → ${newProgress}% (${status}) for history ${historyId}`);
-        } else {
-            console.log(`⚠️ Skipped update: ${newProgress}% is not higher than current ${currentProgress}%`);
+            console.log(`📊 Progress: ${currentProgress}% → ${newProgress}% (${status})`);
+
+            // ✅ Emit progress update
+            if (global.socketManager) {
+                global.socketManager.emitToUser(userId, 'processing-update', {
+                    historyId,
+                    progress: newProgress,
+                    status,
+                    message: status
+                });
+            }
         }
     } catch (error) {
-        console.error("Error updating MoM progress:", error);
+        console.error("❌ Error updating MoM progress:", error);
     }
 }
 
+// ✅ Start MoM generation
 async function startMoMGeneration(params) {
     const {
         finalTranscript,
@@ -412,25 +400,27 @@ async function startMoMGeneration(params) {
         transcriptAudioId,
         detectLanguage,
         historyID,
-        storageKey,
-        currentProgress = 0
+        currentProgress = 0,
+        deductedMinutes = 0
     } = params;
+
+    let currentStage = "MoM initialization";
 
     try {
         console.log(`🚀 Starting MoM generation for history ${historyID} from ${currentProgress}%`);
 
         let startProgress = currentProgress < 70 ? 70 : currentProgress;
-
+        currentStage = "MoM setup";
         await updateMoMProgress(historyID, userId, startProgress, 'generating_mom');
 
         const mockReq = {
             body: {
                 transcript: finalTranscript,
-                headers: headers,
+                headers,
                 audio_id: audioId,
-                userId: userId,
+                userId,
                 transcript_audio_id: transcriptAudioId,
-                detectLanguage: detectLanguage,
+                detectLanguage,
                 history_id: historyID
             }
         };
@@ -450,6 +440,7 @@ async function startMoMGeneration(params) {
 
         await updateMoMProgress(historyID, userId, Math.max(startProgress, 75), 'generating_mom');
 
+        currentStage = "AI processing";
         await processTranscript(mockReq, mockRes);
 
         if (mockRes.statusCode !== 200 || (mockRes.responseData && !mockRes.responseData.success)) {
@@ -458,29 +449,35 @@ async function startMoMGeneration(params) {
 
         await updateMoMProgress(historyID, userId, 90, 'generating_mom');
         await updateMoMProgress(historyID, userId, 95, 'generating_mom');
-
         await new Promise(resolve => setTimeout(resolve, 300));
-
         await updateMoMProgress(historyID, userId, 100, 'completed');
 
         console.log(`✅ MoM generation completed for history ${historyID}`);
 
-        // ✅ Send email immediately on completion
-        console.log(`📧 Attempting to send immediate completion email for history ${historyID}`);
-        try {
-            const emailSent = await sendCompletionEmailImmediately(historyID, userId);
-            if (emailSent) {
-                console.log(`✅ Immediate email sent successfully for history ${historyID}`);
-            } else {
-                console.log(`⚠️ Immediate email send returned false for history ${historyID}`);
-            }
-        } catch (emailError) {
-            console.error(`❌ Immediate email failed for history ${historyID}:`, emailError);
-            // Don't throw - email failure shouldn't break main process
+        // ✅ Emit completion event
+        if (global.socketManager) {
+            global.socketManager.emitToUser(userId, 'processing-completed', {
+                historyId: historyID,
+                message: 'MoM generation completed successfully'
+            });
         }
 
     } catch (error) {
-        console.error(`❌ MoM generation failed for history ${historyID}:`, error);
+        console.error(`❌ MoM generation failed at ${currentStage}:`, error);
+
+        // ✅ Emit failure event
+        if (global.socketManager) {
+            global.socketManager.emitToUser(userId, 'processing-failed', {
+                historyId: historyID,
+                error: error.message,
+                stage: currentStage,
+                refundedMinutes: deductedMinutes
+            });
+        }
+
+        if (deductedMinutes > 0) {
+            await refundMinutesOnError(userId, historyID, deductedMinutes, `${currentStage} failed`);
+        }
 
         await db.query(
             `UPDATE history 
@@ -488,79 +485,16 @@ async function startMoMGeneration(params) {
                  error_message = ?,
                  awaiting_headers = 0
              WHERE id = ? AND user_id = ?`,
-            [error.message, historyID, userId]
+            [`Failed at ${currentStage}: ${error.message}`, historyID, userId]
         );
 
         await db.query(
             `UPDATE processing_queue 
-             SET status = 'failed' 
-             WHERE history_id = ? AND user_id = ?`,
-            [historyID, userId]
+             SET status = 'failed',
+                 task_type = ?
+             WHERE history_id = ?`,
+            [`Failed: ${error.message}`, historyID]
         );
-    }
-}
-
-// ✅ Send email immediately when processing completes
-async function sendCompletionEmailImmediately(historyId, userId) {
-    try {
-        console.log(`📧 Sending immediate completion email for history ${historyId}`);
-        
-        // Check if email was already sent
-        const [emailCheck] = await db.query(
-            `SELECT completion_email_sent FROM history WHERE id = ? AND user_id = ?`,
-            [historyId, userId]
-        );
-
-        if (emailCheck[0]?.completion_email_sent === 1) {
-            console.log(`ℹ️ Email already sent for history ${historyId}, skipping`);
-            return true;
-        }
-
-        const [userRows] = await db.query(
-            `SELECT u.email, u.fullName, h.title 
-             FROM users u 
-             JOIN history h ON u.id = h.user_id 
-             WHERE u.id = ? AND h.id = ?`,
-            [userId, historyId]
-        );
-
-        if (userRows.length === 0) {
-            console.log(`❌ User or history not found: userId=${userId}, historyId=${historyId}`);
-            return false;
-        }
-
-        const userEmail = userRows[0].email;
-        const userName = userRows[0].fullName || "Valued User";
-        const meetingTitle = userRows[0].title || "Meeting";
-
-        console.log(`📨 Sending to: ${userEmail} for meeting: "${meetingTitle}"`);
-
-        const emailSent = await emailController.sendProcessingCompleteEmail(
-            userEmail,
-            userName,
-            meetingTitle,
-            historyId
-        );
-
-        if (emailSent) {
-            // Mark email as sent
-            await db.query(
-                `UPDATE history 
-                 SET completion_email_sent = 1,
-                     email_sent_at = NOW()
-                 WHERE id = ? AND user_id = ?`,
-                [historyId, userId]
-            );
-            console.log(`✅ Email sent and marked for history ${historyId}`);
-            return true;
-        } else {
-            console.log(`❌ Failed to send email for history ${historyId}`);
-            return false;
-        }
-
-    } catch (error) {
-        console.error(`❌ Error sending immediate completion email for history ${historyId}:`, error);
-        return false;
     }
 }
 

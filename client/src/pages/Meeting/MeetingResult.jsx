@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import TablePreview from "../../components/TablePreview/TablePreview";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react"; // Added useRef
 import { useToast } from "../../components/ToastContext";
 import { Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import Footer from "../../components/Footer/Footer";
@@ -23,6 +23,9 @@ export default function MeetingResult() {
     const [lastUsedHeaders, setLastUsedHeaders] = useState(null);
     const [loadingHeaders, setLoadingHeaders] = useState(true);
 
+    // Use ref to track if we've already shown error toast
+    const hasShownError = useRef(false);
+
     // Fetch last used headers
     useEffect(() => {
         const fetchLastUsedHeaders = async () => {
@@ -44,7 +47,6 @@ export default function MeetingResult() {
                 setLoadingHeaders(false);
             }
         };
-
         fetchLastUsedHeaders();
     }, [token]);
 
@@ -54,6 +56,7 @@ export default function MeetingResult() {
 
         let pollCount = 0;
         const maxPolls = 300;
+        hasShownError.current = false; // Reset error flag when effect runs
 
         const pollStatus = async () => {
             try {
@@ -71,7 +74,11 @@ export default function MeetingResult() {
                     clearInterval(interval);
                 } else if (status === 'failed') {
                     clearInterval(interval);
-                    addToast("error", error || "Processing failed. Please try again.");
+                    if (!hasShownError.current) {
+                        hasShownError.current = true;
+                        addToast("error", "Unable to process. Please try again.");
+                    }
+                    navigate('/generate-notes')
                 } else if (status === 'completed') {
                     clearInterval(interval);
                     navigate(`/momGenerate/${historyId}`);
@@ -80,13 +87,20 @@ export default function MeetingResult() {
                 pollCount++;
                 if (pollCount >= maxPolls) {
                     clearInterval(interval);
-                    addToast("error", "Processing is taking longer than expected. Please check back later.");
+                    if (!hasShownError.current) {
+                        hasShownError.current = true;
+                        addToast("error", "Processing is taking longer than expected. Please check back later.");
+                    }
                 }
             } catch (error) {
                 console.error("Error polling status:", error);
                 pollCount++;
                 if (pollCount >= maxPolls) {
                     clearInterval(interval);
+                    if (!hasShownError.current) {
+                        hasShownError.current = true;
+                        addToast("error", "Processing is taking longer than expected. Please check back later.");
+                    }
                 }
             }
         };
@@ -94,7 +108,10 @@ export default function MeetingResult() {
         const interval = setInterval(pollStatus, 2000);
         pollStatus();
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            hasShownError.current = false; // Cleanup
+        };
     }, [historyId, token, navigate, addToast]);
 
     const handleSaveHeaders = async (headers, useDefault = false) => {
@@ -115,10 +132,10 @@ export default function MeetingResult() {
 
             setIsSending(false);
             addToast("success", "Headers saved! MoM generation started in background.");
-            
+
             setTimeout(() => {
                 navigate('/generate-notes');
-            }, 1500);
+            }, 1000);
 
         } catch (error) {
             console.error("Error saving headers:", error);

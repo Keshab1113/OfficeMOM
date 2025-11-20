@@ -1,4 +1,4 @@
-// // uploadController.js
+// uploadController.js - Complete fixed version
 
 const db = require("../config/db");
 const uploadToFTP = require("../config/uploadToFTP");
@@ -7,15 +7,94 @@ const {
   getAudioDuration,
   checkUserMinutes,
   deductUserMinutes,
-  getQuickDurationEstimate,
+  refundUserMinutes,
   secondsToMinutes
 } = require("./../middlewares/minutesManager");
-const { convertMp4ToMp3 } = require("../utils/convertToMp3");
 const { processTranscript } = require("./deepseekController");
+
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
 const TRANSCRIPT_URL = process.env.ASSEMBLYAI_API_TRANSCRIPT_URL;
 
+// ✅ Helper: Refund minutes and emit socket event
+async function refundMinutesOnError(userId, historyId, minutesToRefund, errorContext) {
+  try {
+    console.log(`💰 Refunding ${minutesToRefund} minutes to user ${userId} due to: ${errorContext}`);
+
+    const refundResult = await refundUserMinutes(userId, minutesToRefund);
+
+    // Update history with refund info
+    await db.query(
+      `UPDATE history 
+       SET error_message = CONCAT(IFNULL(error_message, ''), ' | Refunded: ${minutesToRefund} min'),
+           minutes_refunded = 1,
+           refunded_minutes = ?
+       WHERE id = ? AND user_id = ?`,
+      [minutesToRefund, historyId, userId]
+    );
+
+    console.log(`✅ Successfully refunded ${minutesToRefund} minutes`);
+
+    // ✅ Emit subscription update via Socket.IO
+    if (global.socketManager) {
+      global.socketManager.emitToUser(userId, 'subscription-updated', {
+        totalMinutes: refundResult.newBalance,
+        remainingMinutes: refundResult.newBalance,
+        refunded: true,
+        refundedAmount: minutesToRefund
+      });
+    }
+
+    return refundResult;
+  } catch (refundError) {
+    console.error(`❌ Failed to refund minutes:`, refundError);
+  }
+}
+
+// ✅ Helper: Sanitize filename
+function sanitizeFileName(fileName) {
+  if (!fileName) fileName = `file_${Date.now()}.bin`;
+
+  fileName = fileName.split("/").pop().split("\\").pop();
+  fileName = fileName.trim().replace(/\s+/g, "_");
+
+  const lastDot = fileName.lastIndexOf(".");
+  let namePart = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+  let extPart = lastDot > 0 ? fileName.substring(lastDot) : "";
+
+  namePart = namePart.replace(/[^a-zA-Z0-9_-]/g, "");
+
+  if (!namePart.trim()) {
+    namePart = `file_${Date.now()}`;
+  }
+
+  if (!extPart || !/^\.[a-zA-Z0-9]+$/.test(extPart)) {
+    extPart = ".bin";
+  }
+
+  return `${namePart}${extPart}`;
+}
+
+// ✅ Helper: Extract Google Drive file ID
+function extractDriveFileId(driveUrl) {
+  const match = driveUrl.match(/\/d\/(.*?)\//);
+  if (!match) throw new Error("Invalid Google Drive URL format");
+  return match[1];
+}
+
+// ✅ Helper: Download from Google Drive
+async function downloadFromDrive(driveUrl) {
+  const fileId = extractDriveFileId(driveUrl);
+  const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+  const fileRes = await axios.get(directUrl, {
+    responseType: "arraybuffer",
+  });
+
+  return Buffer.from(fileRes.data);
+}
+
+// ✅ Helper: Create transcription
 async function createTranscription(audioUrl) {
   const res = await axios.post(
     TRANSCRIPT_URL,
@@ -34,6 +113,7 @@ async function createTranscription(audioUrl) {
   return res.data;
 }
 
+// ✅ Helper: Poll transcription
 async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
   const start = Date.now();
   while (true) {
@@ -48,631 +128,46 @@ async function pollTranscription(id, interval = 3000, timeout = 5 * 60 * 1000) {
   }
 }
 
-// 🔥 New function to extract Google Drive file ID
-function extractDriveFileId(driveUrl) {
-  const match = driveUrl.match(/\/d\/(.*?)\//);
-  if (!match) throw new Error("Invalid Google Drive URL format");
-  return match[1];
-}
-
-// 🔥 New function to download from Google Drive
-async function downloadFromDrive(driveUrl) {
-  const fileId = extractDriveFileId(driveUrl);
-  const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-  const fileRes = await axios.get(directUrl, {
-    responseType: "arraybuffer",
-  });
-
-  return Buffer.from(fileRes.data);
-}
-
-function sanitizeFileName(fileName) {
-  if (!fileName) fileName = `file_${Date.now()}.bin`;
-
-  // Remove path components if present
-  fileName = fileName.split("/").pop().split("\\").pop();
-
-  // Trim spaces from start/end and replace inner spaces with underscores
-  fileName = fileName.trim().replace(/\s+/g, "_");
-
-  // Split into name + extension
-  const lastDot = fileName.lastIndexOf(".");
-  let namePart = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
-  let extPart = lastDot > 0 ? fileName.substring(lastDot) : "";
-
-  // Remove any unsafe/special characters
-  namePart = namePart.replace(/[^a-zA-Z0-9_-]/g, "");
-
-  // Prevent empty names
-  if (!namePart.trim()) {
-    namePart = `file_${Date.now()}`;
-  }
-
-  // Default extension if missing
-  if (!extPart || !/^\.[a-zA-Z0-9]+$/.test(extPart)) {
-    extPart = ".bin";
-  }
-
-  return `${namePart}${extPart}`;
-}
-
-
-const uploadAudio = async (req, res) => {
-  const { source, driveUrl } = req.body;
-  console.log("Upload audio request received", req.body);
-
+// ✅ Helper: Update transcription progress and emit socket event
+async function updateTranscriptionProgress(historyId, userId, progress, status, message) {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: no user ID"
-      });
-    }
-
-    let buffer;
-    let originalName;
-    let actualSource = source || "upload";
-    let ftpUrlToUse = null;
-
-    // 🔥 Get audio buffer and name based on source
-    if (req.body.audioUrl) {
-      // Direct URL (e.g., FTP or any hosted URL)
-      ftpUrlToUse = req.body.audioUrl;
-      originalName = `remote_audio_${Date.now()}.mp3`;
-      actualSource = source || "url_audio";
-
-    } else if (driveUrl) {
-      // Google Drive URL
-      if (!driveUrl.includes("drive.google.com")) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid Google Drive URL"
-        });
-      }
-      buffer = await downloadFromDrive(driveUrl);
-      originalName = `drive_audio_${Date.now()}.mp3`;
-      actualSource = source || "google_drive";
-
-      // Replace the MP4 conversion section with this:
-
-    } else if (req.file) {
-      // Direct file upload
-      buffer = req.file.buffer;
-      originalName = req.file.originalname;
-
-      // Remove the MP4 conversion entirely
-      //   if (originalName.toLowerCase().endsWith(".mp4")) {
-      //   console.log("🎬 Detected MP4 file, converting to MP3 before upload...");
-      //   try {
-      //     buffer = await convertMp4ToMp3(buffer);
-      //     originalName = originalName.replace(/\.mp4$/i, ".mp3");
-      //     console.log("✅ MP4 successfully converted to MP3");
-      //   } catch (convErr) {
-      //     console.error("❌ MP4→MP3 conversion failed:", convErr.message);
-      //     throw new Error("FFmpeg conversion failed");
-      //   }
-      // }
-
-
-      if (!source) {
-        if (originalName.includes("recorded_audio")) {
-          actualSource = "Live Transcript Conversion";
-        } else {
-          actualSource = "Generate Notes Conversion";
-        }
-      }
-
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "No audio file uploaded, URL or Google Drive link provided"
-      });
-    }
-
-
-    console.log(`Processing audio - Source: ${actualSource}, File: ${originalName}`);
-
-    // ⏱️ STEP 1: Check audio duration and user minutes
-    // ⏱️ STEP 1: Get meeting duration from frontend or fallback to auto calculation
-    // ⏱️ STEP 1: Get audio duration in SECONDS
-    // ⏱️ STEP 1: Get audio duration in MINUTES
-    let audioDurationMinutes;
-    let isEstimated = false;
-
-    if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
-      audioDurationMinutes = parseFloat(req.body.meetingDuration);
-      console.log(`✅ Using frontend meeting duration: ${audioDurationMinutes} minutes`);
-    } else {
-      const durationResult = await getAudioDuration(buffer);
-      audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
-      isEstimated = typeof durationResult === 'object' ? durationResult.estimated : false;
-      console.log(`ℹ️ Using computed audio duration: ${audioDurationMinutes} minutes${isEstimated ? ' (estimated)' : ''}`);
-    }
-
-    // ⏱️ STEP 2: Check if user has sufficient minutes
-    // ⏱️ STEP 2: Check if user has sufficient minutes
-    const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
-
-    if (!minutesCheck.hasMinutes) {
-      // Check if it's a free user limit exceeded
-      if (minutesCheck.isFreeUserLimitExceeded) {
-        return res.status(403).json({
-          success: false,
-          message: minutesCheck.message,
-          requiredMinutes: minutesCheck.requiredMinutes,
-          maxFreeMinutes: minutesCheck.maxFreeMinutes,
-          isFreeUserLimitExceeded: true,
-          upgradeRequired: true,
-          upgradeUrl: "/pricing"
-        });
-      }
-
-      // Regular insufficient minutes error
-      return res.status(402).json({
-        success: false,
-        message: minutesCheck.message,
-        requiredMinutes: minutesCheck.requiredMinutes,
-        remainingMinutes: minutesCheck.remainingMinutes,
-        needsRecharge: true,
-        rechargeUrl: "/pricing"
-      });
-    }
-
-    // ✅ User has sufficient minutes, proceed with upload
-
-    // If we already have a URL, no need to upload
-    let ftpUrl;
-    // 🧼 Sanitize filename before uploading
-    originalName = sanitizeFileName(originalName);
-
-    if (ftpUrlToUse) {
-      ftpUrl = ftpUrlToUse;
-      console.log(`✅ Using existing audio URL: ${ftpUrl}`);
-    } else {
-      ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
-      console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
-    }
-
-
-
-    // Verify user exists
-    const [user] = await db.query("SELECT id FROM users WHERE id = ?", [userId]);
-    if (user.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    // Format current date
-    // Format current date
-    const curDate = new Date();
-    const year = curDate.getFullYear();
-    const month = String(curDate.getMonth() + 1).padStart(2, "0");
-    const day = String(curDate.getDate()).padStart(2, "0");
-    const hours = String(curDate.getHours()).padStart(2, "0");
-    const minutes = String(curDate.getMinutes()).padStart(2, "0");
-    const seconds = String(curDate.getSeconds()).padStart(2, "0");
-    const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-
-    // 🔥 Check if historyId already exists (from upload-audio-to-ftp)
-    let historyId;
-    if (req.body.historyId) {
-      historyId = req.body.historyId;
-      console.log(`✅ Using existing history_id: ${historyId}`);
-
-      // Update existing history record instead of inserting new one
-      await db.query(
-        "UPDATE history SET audioUrl = ?, isMoMGenerated = ?, source = ?, uploadedAt = ? WHERE id = ? AND user_id = ?",
-        [ftpUrl, false, actualSource, formattedDate, historyId, userId]
-      );
-    } else {
-      // Insert new history record
-      const [result] = await db.query(
-        "INSERT INTO history (user_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          userId,
-          originalName,
-          ftpUrl,
-          formattedDate,
-          false,
-          actualSource,
-          null,
-          null,
-        ]
-      );
-      historyId = result.insertId;
-      console.log(`✅ Created new history_id: ${historyId}`);
-    }
-
-    // Insert into user_audios table
-    const [uploadAudioResult] = await db.query(
-      "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
-      [
-        userId,
-        originalName,
-        ftpUrl,
-        formattedDate,
-        actualSource
-      ]
+    await db.query(
+      `UPDATE history SET processing_progress = ?, processing_status = ? WHERE id = ? AND user_id = ?`,
+      [progress, status, historyId, userId]
     );
 
-
-    // ⏱️ STEP 3: Deduct minutes BEFORE sending to AssemblyAI (pass seconds)
-    // ⏱️ STEP 3: Deduct minutes BEFORE sending to AssemblyAI
-    const deductionResult = await deductUserMinutes(userId, audioDurationMinutes);
-
-    console.log(`✅ Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
-
-    // 🔥 STEP 4: Now send to AssemblyAI for transcription
-    let assemblyUrl = ftpUrl;
-
-    if (ftpUrlToUse) {
-      try {
-        console.log(`🎧 Trying to send FTP URL directly to AssemblyAI: ${ftpUrl}`);
-
-        // Try sending the FTP/public URL directly to AssemblyAI
-        const testResponse = await axios.post(
-          TRANSCRIPT_URL,
-          {
-            audio_url: ftpUrl,
-            language_detection: true,
-            speaker_labels: true
-          },
-          { headers: { authorization: ASSEMBLY_KEY } }
-        );
-
-        if (testResponse.data && testResponse.data.id) {
-          console.log("✅ AssemblyAI accepted FTP URL directly.");
-          assemblyUrl = ftpUrl;
-        } else {
-          throw new Error("AssemblyAI did not accept URL properly");
-        }
-
-        // Wait for completion
-        const resultTranscript = await pollTranscription(testResponse.data.id);
-        var finalTranscript = resultTranscript;
-
-      } catch (err) {
-        console.warn("⚠️ AssemblyAI might not have fetched full audio, reuploading...");
-
-        // Fallback: fetch the FTP audio and upload manually to AssemblyAI
-        try {
-          const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
-          const uploadRes = await axios.post(
-            UPLOAD_URL,
-            audioRes.data,
-            {
-              headers: {
-                authorization: ASSEMBLY_KEY,
-                "content-type": "application/octet-stream",
-              },
-            }
-          );
-          assemblyUrl = uploadRes.data.upload_url;
-          console.log(`✅ Reuploaded to AssemblyAI successfully: ${assemblyUrl}`);
-
-          const created = await createTranscription(assemblyUrl);
-          const resultTranscript = await pollTranscription(created.id);
-          finalTranscript = resultTranscript;
-
-        } catch (uploadErr) {
-          console.error("❌ Fallback upload failed:", uploadErr.message);
-          throw new Error("AssemblyAI upload failed");
-        }
-      }
-    } else {
-      // Default flow for uploaded file or Google Drive
-      const created = await createTranscription(ftpUrl);
-      const resultTranscript = await pollTranscription(created.id);
-      finalTranscript = resultTranscript;
-    }
-
-
-    // 📝 Use plain transcript text
-    const speakerText = finalTranscript.text || "";
-
-    // 📝 Insert transcript into database
-    const [transcriptResult] = await db.query(
-      "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
-      [
-        uploadAudioResult.insertId,
-        userId,
-        JSON.stringify(finalTranscript),
-        finalTranscript.language_code || null,
-      ]
+    await db.query(
+      `UPDATE processing_queue SET progress = ?, task_type = ?, status = ? WHERE history_id = ?`,
+      [progress, message || status, status, historyId]
     );
 
+    console.log(`📊 Progress: ${progress}% - ${message || status}`);
 
-    // Success response with appropriate message based on source
-    let successMessage = "Audio uploaded and transcribed successfully";
-    if (driveUrl) {
-      successMessage = "Google Drive audio processed and transcribed successfully";
-    } else if (actualSource === "Live Transcript Conversion") {
-      successMessage = "Live recording transcribed successfully";
+    // ✅ Emit progress update via Socket.IO
+    if (global.socketManager) {
+      global.socketManager.emitToUser(userId, 'processing-update', {
+        historyId,
+        progress,
+        status,
+        message: message || status
+      });
     }
-
-    res.status(200).json({
-      success: true,
-      message: successMessage,
-      id: historyId,
-      userId,
-      audioId: uploadAudioResult.insertId,
-      transcriptAudioId: transcriptResult.insertId,
-      title: originalName,
-      audioUrl: ftpUrl,
-      isMoMGenerated: false,
-      uploadedAt: formattedDate,
-      transcription: speakerText,
-      full: finalTranscript,
-      language: finalTranscript.language_code,
-      source: actualSource,
-      // ⏱️ Include minutes info in response
-      minutesUsed: audioDurationMinutes,
-      remainingMinutes: deductionResult.remainingMinutes,
-    });
-
-  } catch (err) {
-    console.error("Upload audio error:", err);
-
-    // Better error messages
-    let errorMessage = "Unable to determine audio ";
-    let statusCode = 500;
-
-    if (err.message.includes("Unable to determine audio duration")) {
-      errorMessage = "Could not read audio file. Using estimated duration based on file size.";
-      statusCode = 400;
-    } else if (err.message.includes("Insufficient minutes")) {
-      errorMessage = err.message;
-      statusCode = 402;
-    } else if (err.message.includes("Invalid Google Drive")) {
-      errorMessage = err.message;
-      statusCode = 400;
-    }
-
-    res.status(statusCode).json({
-      success: false,
-      message: errorMessage,
-      error: err.message,
-    });
+  } catch (error) {
+    console.error("Error updating progress:", error);
   }
-};
+}
 
-const uploadAudioToFTPOnly = async (req, res) => {
-  console.log("response from uploadtoftp", req.body)
-  try {
-    const userId = req.user?.id;
-    const { meetingId, recordingTime: recordingTimeRaw } = req.body;
-    const recordingTime = recordingTimeRaw ? parseInt(recordingTimeRaw, 10) : 0; // ✅ Parse as integer
-
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: no user ID" });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ message: "No audio file uploaded" });
-    }
-
-    if (!meetingId) {
-      return res.status(400).json({ message: "Missing meeting ID" });
-    }
-
-    const buffer = req.file.buffer;
-    const originalName = sanitizeFileName(req.file.originalname);
-
-
-    console.log(`📤 Uploading meeting audio for meetingId: ${meetingId}`);
-
-    // Upload to FTP
-    const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
-
-    console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
-
-    // ✅ Determine final duration to save (Priority: Timer > Database > File)
-    let finalMinutesValue = 0;
-
-    if (recordingTime && recordingTime > 0) {
-      // Priority 1: Use timer duration from frontend (most accurate)
-      finalMinutesValue = secondsToMinutes(recordingTime);
-      console.log(`⏱️ Using timer duration: ${recordingTime}s = ${finalMinutesValue} minutes (rounded up)`);
-    } else {
-      // Priority 2: Check database for existing duration
-      try {
-        const [meeting] = await db.query(
-          "SELECT duration_minutes FROM meetings WHERE room_id = ?",
-          [meetingId]
-        );
-
-        if (meeting.length > 0 && meeting[0].duration_minutes > 0) {
-          finalMinutesValue = parseFloat(meeting[0].duration_minutes);
-          console.log(`✅ Using database duration: ${finalMinutesValue} minutes`);
-        } else {
-          // Priority 3: Calculate from uploaded file as last resort
-          console.log(`⚠️ No timer or database duration, calculating from file...`);
-          const durationResult = await getAudioDuration(buffer);
-          finalMinutesValue = typeof durationResult === "object" ? durationResult.minutes : durationResult;
-          console.log(`ℹ️ Calculated duration from file: ${finalMinutesValue} minutes (rounded up)`);
-        }
-      } catch (error) {
-        console.error("Error getting duration from database:", error);
-        // Fallback to file calculation
-        const durationResult = await getAudioDuration(buffer);
-        finalMinutesValue = typeof durationResult === "object" ? durationResult.minutes : durationResult;
-        console.log(`ℹ️ Fallback: Calculated from file: ${finalMinutesValue} minutes (rounded up)`);
-      }
-    }
-
-    // Update meeting record with final duration
-    const [updateResult] = await db.query(
-      `UPDATE meetings 
-   SET 
-     audio_url = ?,
-     duration_minutes = ?,
-     ended_at = NOW()
-   WHERE room_id = ?`,
-      [ftpUrl, finalMinutesValue, meetingId]
-    );
-    // 🔍 Get numeric meeting.id for this room_id
-    const [meetingRow] = await db.query(
-      `SELECT id FROM meetings WHERE room_id = ?`,
-      [meetingId]
-    );
-
-    if (!meetingRow.length) {
-      return res.status(404).json({ message: "Meeting not found for room_id" });
-    }
-
-    const meetingNumericId = meetingRow[0].id;
-
-
-
-
-    if (updateResult.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Meeting not found or not owned by user",
-      });
-    }
-
-
-    console.log(`✅ Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
-
-    // 📝 Also update or insert into history table
-    // 📝 Also update or insert into history table
-    let existingHistory = [];
-    let nullMeeting = [];
-
-    try {
-      const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
-
-      // 1️⃣ Try to find any history row with this meeting_id or same audioUrl
-      [existingHistory] = await db.query(
-        `SELECT id, meeting_id FROM history 
-     WHERE user_id = ? AND (meeting_id = ? OR audioUrl = ?) 
-     ORDER BY uploadedAt DESC LIMIT 1`,
-        [userId, meetingId, ftpUrl]
-      );
-
-      if (existingHistory.length > 0) {
-        // ✅ Update existing record
-        // ✅ Update existing record
-        await db.query(
-          `UPDATE history 
-   SET 
-     audioUrl = ?, 
-     uploadedAt = ?, 
-     meeting_id = ?, 
-     isMoMGenerated = 0, 
-     source = ?, 
-     title = ? 
-   WHERE id = ?`,
-          [ftpUrl, formattedDate, meetingNumericId, "Live Transcript Conversion", originalName, existingHistory[0].id]
-        );
-
-
-        console.log(`♻️ Updated existing history record with meeting_id ${meetingId}`);
-      } else {
-        // 2️⃣ If none found, check if there’s an old record missing meeting_id
-        const [nullMeeting] = await db.query(
-          `SELECT id FROM history 
-       WHERE user_id = ? AND meeting_id IS NULL 
-       AND audioUrl IS NULL 
-       ORDER BY created_at DESC LIMIT 1`,
-          [userId]
-        );
-
-        if (nullMeeting.length > 0) {
-          // 🧩 Backfill that record
-          await db.query(
-            `UPDATE history 
-   SET 
-     meeting_id = ?, 
-     audioUrl = ?, 
-     uploadedAt = ?, 
-     source = ?, 
-     title = ?,
-     isMoMGenerated = 0
-   WHERE id = ?`,
-            [meetingNumericId, ftpUrl, formattedDate, "Live Transcript Conversion", originalName, nullMeeting[0].id]
-          );
-
-
-          console.log(`🔗 Linked old NULL history record with meeting_id ${meetingId}`);
-        } else {
-          // 3️⃣ Insert fresh record
-          await db.query(
-            `INSERT INTO history 
-   (user_id, meeting_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) 
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              userId,
-              meetingNumericId,
-              originalName,
-              ftpUrl,
-              formattedDate,
-              false,
-              "Live Transcript Conversion",
-              null,
-              null
-            ]
-          );
-
-
-          console.log(`🆕 Inserted new history record for meeting ${meetingId}`);
-        }
-      }
-    } catch (historyErr) {
-      console.error("⚠️ Error inserting/updating history:", historyErr);
-    }
-
-    // ✅ Return correct history_id
-    let finalHistoryId = null;
-
-    if (existingHistory?.length > 0) {
-      finalHistoryId = existingHistory[0].id;
-    } else if (nullMeeting?.length > 0) {
-      finalHistoryId = nullMeeting[0].id;
-    } else {
-      const [insertedHistory] = await db.query(
-        `SELECT id FROM history 
-     WHERE user_id = ? AND meeting_id = ? 
-     ORDER BY uploadedAt DESC LIMIT 1`,
-        [userId, meetingNumericId]
-      );
-      if (insertedHistory.length > 0) {
-        finalHistoryId = insertedHistory[0].id;
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Audio uploaded, meeting and history updated successfully",
-      meetingId,
-      audioUrl: ftpUrl,
-      fileName: originalName,
-      durationMinutes: finalMinutesValue,
-      history_id: finalHistoryId, // ✅ Return history_id here
-    });
-
-
-  } catch (err) {
-    console.error("❌ FTP upload error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error uploading audio or updating meeting",
-      error: err.message,
-    });
-  }
-};
-
+// ✅ Main: Upload audio background
 const uploadAudioBackground = async (req, res) => {
   const { source, driveUrl } = req.body;
-  console.log("🔥 Background audio upload request received", req.body);
+  console.log("🔥 Background audio upload request received");
+
+  let historyId = null;
+  let deductedMinutes = 0;
+  let userId = null;
 
   try {
-    const userId = req.user?.id;
+    userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -685,7 +180,7 @@ const uploadAudioBackground = async (req, res) => {
     let actualSource = source || "upload";
     let ftpUrlToUse = null;
 
-    // Get audio buffer and name based on source
+    // Get audio buffer
     if (req.body.audioUrl) {
       ftpUrlToUse = req.body.audioUrl;
       originalName = `remote_audio_${Date.now()}.mp3`;
@@ -697,44 +192,51 @@ const uploadAudioBackground = async (req, res) => {
           message: "Invalid Google Drive URL"
         });
       }
-      buffer = await downloadFromDrive(driveUrl);
-      originalName = `drive_audio_${Date.now()}.mp3`;
-      actualSource = source || "google_drive";
+      try {
+        buffer = await downloadFromDrive(driveUrl);
+        originalName = `drive_audio_${Date.now()}.mp3`;
+        actualSource = source || "google_drive";
+      } catch (driveError) {
+        return res.status(400).json({
+          success: false,
+          message: "Failed to download from Google Drive",
+          error: driveError.message
+        });
+      }
     } else if (req.file) {
       buffer = req.file.buffer;
       originalName = req.file.originalname;
 
       if (!source) {
-        if (originalName.includes("recorded_audio")) {
-          actualSource = "Live Transcript Conversion";
-        } else {
-          actualSource = "Generate Notes Conversion";
-        }
+        actualSource = originalName.includes("recorded_audio")
+          ? "Live Transcript Conversion"
+          : "Generate Notes Conversion";
       }
     } else {
       return res.status(400).json({
         success: false,
-        message: "No audio file uploaded, URL or Google Drive link provided"
+        message: "No audio file provided"
       });
     }
 
-    console.log(`🎵 Processing audio - Source: ${actualSource}, File: ${originalName}`);
-
-    // ⏱️ STEP 1: Check audio duration
+    // Get duration
     let audioDurationMinutes;
-    let isEstimated = false;
-
-    if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
-      audioDurationMinutes = parseFloat(req.body.meetingDuration);
-      console.log(`✅ Using frontend meeting duration: ${audioDurationMinutes} minutes`);
-    } else {
-      const durationResult = await getAudioDuration(buffer);
-      audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
-      isEstimated = typeof durationResult === 'object' ? durationResult.estimated : false;
-      console.log(`ℹ️ Using computed audio duration: ${audioDurationMinutes} minutes${isEstimated ? ' (estimated)' : ''}`);
+    try {
+      if (req.body.meetingDuration && !isNaN(req.body.meetingDuration)) {
+        audioDurationMinutes = parseFloat(req.body.meetingDuration);
+      } else {
+        const durationResult = await getAudioDuration(buffer);
+        audioDurationMinutes = typeof durationResult === 'object' ? durationResult.minutes : durationResult;
+      }
+    } catch (durationError) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to determine audio duration",
+        error: durationError.message
+      });
     }
 
-    // ⏱️ STEP 2: Check if user has sufficient minutes
+    // Check minutes
     const minutesCheck = await checkUserMinutes(userId, audioDurationMinutes);
 
     if (!minutesCheck.hasMinutes) {
@@ -742,11 +244,7 @@ const uploadAudioBackground = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: minutesCheck.message,
-          requiredMinutes: minutesCheck.requiredMinutes,
-          maxFreeMinutes: minutesCheck.maxFreeMinutes,
-          isFreeUserLimitExceeded: true,
-          upgradeRequired: true,
-          upgradeUrl: "/pricing"
+          isFreeUserLimitExceeded: true
         });
       }
 
@@ -754,45 +252,74 @@ const uploadAudioBackground = async (req, res) => {
         success: false,
         message: minutesCheck.message,
         requiredMinutes: minutesCheck.requiredMinutes,
-        remainingMinutes: minutesCheck.remainingMinutes,
-        needsRecharge: true,
-        rechargeUrl: "/pricing"
+        remainingMinutes: minutesCheck.remainingMinutes
       });
     }
 
-    // ✅ User has sufficient minutes, create history record
+    // Create history record
     const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
     originalName = sanitizeFileName(originalName);
 
-    // ✅ Insert history record - AWAITING HEADERS (IMMEDIATELY)
-    const [historyResult] = await db.query(
-      `INSERT INTO history (
-                user_id, title, audioUrl, uploadedAt, isMoMGenerated, 
-                source, data, date, processing_status, processing_progress, 
-                headers_set, awaiting_headers
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId, originalName, null, formattedDate, false,
-        actualSource, null, null, 'awaiting_headers', 0,
-        0, 1  // ✅ awaiting_headers = 1 immediately
-      ]
-    );
+    try {
+      const [historyResult] = await db.query(
+        `INSERT INTO history (
+          user_id, title, audioUrl, uploadedAt, isMoMGenerated, 
+          source, data, date, processing_status, processing_progress, 
+          headers_set, awaiting_headers, deducted_minutes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId, originalName, null, formattedDate, false,
+          actualSource, null, null, 'awaiting_headers', 0,
+          0, 1, audioDurationMinutes
+        ]
+      );
 
-    const historyId = historyResult.insertId;
-    console.log(`✅ Created history record with ID: ${historyId} - Awaiting headers immediately`);
+      historyId = historyResult.insertId;
+      console.log(`✅ Created history record: ${historyId}`);
 
-    // Add to processing queue
-    const [queueResult] = await db.query(
-      `INSERT INTO processing_queue (history_id, user_id, task_type, status, progress) 
-             VALUES (?, ?, ?, ?, ?)`,
-      [historyId, userId, 'awaiting_headers', 'awaiting_headers', 0]
-    );
+      // Add to processing queue
+      await db.query(
+        `INSERT INTO processing_queue (history_id, user_id, task_type, status, progress) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [historyId, userId, 'awaiting_headers', 'awaiting_headers', 0]
+      );
 
-    // ⏱️ STEP 3: Deduct minutes immediately
-    const deductionResult = await deductUserMinutes(userId, audioDurationMinutes);
-    console.log(`✅ Minutes deducted: ${deductionResult.deductedMinutes}, Remaining: ${deductionResult.remainingMinutes}`);
+    } catch (dbError) {
+      console.error("❌ Database error:", dbError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to initialize upload",
+        error: dbError.message
+      });
+    }
 
-    // ✅ Start TRANSCRIPTION IN BACKGROUND (don't wait for it)
+    // Deduct minutes
+    try {
+      const deductionResult = await deductUserMinutes(userId, audioDurationMinutes);
+      deductedMinutes = audioDurationMinutes;
+      console.log(`✅ Minutes deducted: ${deductionResult.deductedMinutes}`);
+
+      // ✅ Emit subscription update
+      if (global.socketManager) {
+        global.socketManager.emitToUser(userId, 'subscription-updated', {
+          totalMinutes: deductionResult.newBalance,
+          remainingMinutes: deductionResult.remainingMinutes,
+          minutesUsed: audioDurationMinutes
+        });
+      }
+    } catch (deductError) {
+      // Rollback: Delete history
+      await db.query(`DELETE FROM history WHERE id = ?`, [historyId]);
+      await db.query(`DELETE FROM processing_queue WHERE history_id = ?`, [historyId]);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process payment",
+        error: deductError.message
+      });
+    }
+
+    // Start background processing
     processTranscriptionInBackground({
       buffer,
       originalName,
@@ -801,48 +328,47 @@ const uploadAudioBackground = async (req, res) => {
       audioDurationMinutes,
       userId,
       historyId,
-      queueId: queueResult.insertId
+      deductedMinutes
+    }).catch(err => {
+      console.error(`❌ Background processing error for history ${historyId}:`, err);
     });
 
-    // ✅ Return immediate response with historyId (don't wait for transcription)
+    // Return immediate response
+    const [remainingMinutes] = await db.query(
+      `SELECT total_remaining_time FROM user_subscription_details WHERE user_id = ?`,
+      [userId]
+    );
+
     res.status(200).json({
       success: true,
       message: "Upload successful! Redirecting to set headers...",
-      id: historyId,
       historyId: historyId,
       userId: userId,
       minutesUsed: audioDurationMinutes,
-      remainingMinutes: deductionResult.remainingMinutes,
+      remainingMinutes: remainingMinutes[0]?.total_remaining_time || 0,
       processing: true,
       awaitingHeaders: true
     });
 
   } catch (err) {
-    console.error("Upload audio error:", err);
+    console.error("❌ Upload error:", err);
 
-    let errorMessage = "Upload failed";
-    let statusCode = 500;
-
-    if (err.message.includes("Unable to determine audio duration")) {
-      errorMessage = "Could not read audio file";
-      statusCode = 400;
-    } else if (err.message.includes("Insufficient minutes")) {
-      errorMessage = err.message;
-      statusCode = 402;
-    } else if (err.message.includes("Invalid Google Drive")) {
-      errorMessage = err.message;
-      statusCode = 400;
+    // Refund minutes if deducted
+    if (historyId && deductedMinutes > 0 && userId) {
+      await refundMinutesOnError(userId, historyId, deductedMinutes, "Upload failed");
     }
 
-    res.status(statusCode).json({
+    res.status(500).json({
       success: false,
-      message: errorMessage,
+      message: "Upload failed",
       error: err.message,
+      minutesRefunded: deductedMinutes > 0
     });
   }
 };
 
-async function processFullWorkflowInBackground(params) {
+// ✅ Background processing function
+async function processTranscriptionInBackground(params) {
   const {
     buffer,
     originalName,
@@ -851,114 +377,212 @@ async function processFullWorkflowInBackground(params) {
     audioDurationMinutes,
     userId,
     historyId,
-    queueId
+    deductedMinutes
   } = params;
 
   let audioId = null;
   let transcriptAudioId = null;
+  let currentStage = "initialization";
 
   try {
-    console.log(`🚀 Starting FULL workflow for history ${historyId}`);
+    console.log(`🚀 Starting transcription for history ${historyId}`);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PHASE 1: UPLOAD TO FTP
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    await updateWorkflowProgress(historyId, userId, queueId, 10, 'transcribing', 'Uploading audio...');
+    // PHASE 1: Upload to FTP
+    currentStage = "FTP upload";
+    await updateTranscriptionProgress(historyId, userId, 10, 'transcribing', 'Uploading audio...');
 
     let ftpUrl;
-    if (ftpUrlToUse) {
-      ftpUrl = ftpUrlToUse;
-      console.log(`✅ Using existing audio URL: ${ftpUrl}`);
-    } else {
-      ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+    try {
+      if (ftpUrlToUse) {
+        ftpUrl = ftpUrlToUse;
+      } else {
+        ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+      }
       console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
+    } catch (ftpError) {
+      throw new Error(`FTP upload failed: ${ftpError.message}`);
     }
 
-    await updateWorkflowProgress(historyId, userId, queueId, 20, 'transcribing', 'Audio uploaded');
+    await updateTranscriptionProgress(historyId, userId, 20, 'transcribing', 'Audio uploaded');
+    await db.query(`UPDATE history SET audioUrl = ? WHERE id = ?`, [ftpUrl, historyId]);
 
-    // Update history with audio URL
-    await db.query(
-      `UPDATE history SET audioUrl = ? WHERE id = ?`,
-      [ftpUrl, historyId]
-    );
+    try {
+      const [uploadAudioResult] = await db.query(
+        "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
+        [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
+      );
+      audioId = uploadAudioResult.insertId;
+    } catch (audioDbError) {
+      throw new Error(`Database error: ${audioDbError.message}`);
+    }
 
-    // Insert into user_audios table
-    const [uploadAudioResult] = await db.query(
-      "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
-      [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
-    );
-    audioId = uploadAudioResult.insertId;
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PHASE 2: TRANSCRIPTION
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    await updateWorkflowProgress(historyId, userId, queueId, 30, 'transcribing', 'Sending to transcription service...');
+    // PHASE 2: Transcription
+    currentStage = "transcription";
+    await updateTranscriptionProgress(historyId, userId, 30, 'transcribing', 'Sending to transcription...');
 
     let finalTranscript;
-    let assemblyUrl = ftpUrl;
-
-    if (ftpUrlToUse) {
-      try {
-        console.log(`🎧 Sending FTP URL to AssemblyAI: ${ftpUrl}`);
-        const testResponse = await axios.post(
-          TRANSCRIPT_URL,
-          { audio_url: ftpUrl, language_detection: true, speaker_labels: true },
-          { headers: { authorization: ASSEMBLY_KEY } }
-        );
-
-        if (testResponse.data && testResponse.data.id) {
-          await updateWorkflowProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-          finalTranscript = await pollTranscription(testResponse.data.id);
-        } else {
-          throw new Error("AssemblyAI did not accept URL");
-        }
-      } catch (err) {
-        console.warn("⚠️ Reuploading to AssemblyAI...");
-        const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
-        const uploadRes = await axios.post(UPLOAD_URL, audioRes.data, {
-          headers: { authorization: ASSEMBLY_KEY, "content-type": "application/octet-stream" }
-        });
-        assemblyUrl = uploadRes.data.upload_url;
-        const created = await createTranscription(assemblyUrl);
-        await updateWorkflowProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-        finalTranscript = await pollTranscription(created.id);
-      }
-    } else {
+    try {
       const created = await createTranscription(ftpUrl);
-      await updateWorkflowProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
+      await updateTranscriptionProgress(historyId, userId, 50, 'transcribing', 'Transcribing audio...');
       finalTranscript = await pollTranscription(created.id);
+    } catch (transcriptionError) {
+      throw new Error(`Transcription failed: ${transcriptionError.message}`);
     }
 
-    await updateWorkflowProgress(historyId, userId, queueId, 70, 'transcribing', 'Transcription complete');
+    await updateTranscriptionProgress(historyId, userId, 80, 'transcribing', 'Transcription complete');
 
     const speakerText = finalTranscript.text || "";
 
-    // Insert transcript into database
-    const [transcriptResult] = await db.query(
-      "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
-      [audioId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
-    );
-    transcriptAudioId = transcriptResult.insertId;
+    try {
+      const [transcriptResult] = await db.query(
+        "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
+        [audioId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
+      );
+      transcriptAudioId = transcriptResult.insertId;
+    } catch (transcriptDbError) {
+      throw new Error(`Database error saving transcript: ${transcriptDbError.message}`);
+    }
 
     console.log(`✅ Transcription complete. Audio ID: ${audioId}, Transcript ID: ${transcriptAudioId}`);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PHASE 3: MOM GENERATION (AUTO-START)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    await updateWorkflowProgress(historyId, userId, queueId, 75, 'generating_mom', 'Starting MoM generation...');
+    // Check if headers are already set
+    const [historyCheck] = await db.query(
+      `SELECT headers_set FROM history WHERE id = ? AND user_id = ?`,
+      [historyId, userId]
+    );
 
-    // Use default headers
-    const defaultHeaders = ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"];
+    const headersSet = historyCheck[0]?.headers_set === 1;
+
+    if (headersSet) {
+      console.log(`🚀 Headers already set, starting MoM generation`);
+
+      const [headersRows] = await db.query(
+        `SELECT headers FROM meeting_headers WHERE history_id = ? AND user_id = ?`,
+        [historyId, userId]
+      );
+
+      const headers = headersRows.length > 0
+        ? (typeof headersRows[0].headers === 'string'
+          ? JSON.parse(headersRows[0].headers)
+          : headersRows[0].headers)
+        : ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"];
+
+      await startMoMGeneration({
+        finalTranscript: speakerText,
+        headers,
+        audioId,
+        userId,
+        transcriptAudioId,
+        detectLanguage: finalTranscript.language_code,
+        historyID: historyId,
+        deductedMinutes
+      });
+    } else {
+      console.log(`⏸️ Waiting for headers for history ${historyId}`);
+
+      await db.query(
+        `UPDATE history 
+         SET processing_status = 'awaiting_headers', 
+             processing_progress = 100,
+             awaiting_headers = 1,
+             data = JSON_OBJECT(
+                 'audioId', ?,
+                 'transcriptAudioId', ?,
+                 'transcription', ?,
+                 'language', ?
+             )
+         WHERE id = ? AND user_id = ?`,
+        [audioId, transcriptAudioId, speakerText, finalTranscript.language_code, historyId, userId]
+      );
+
+      await db.query(
+        `UPDATE processing_queue 
+         SET status = 'awaiting_headers', 
+             progress = 100, 
+             task_type = 'Transcription complete - Set headers'
+         WHERE history_id = ?`,
+        [historyId]
+      );
+
+      // ✅ Emit awaiting headers event
+      if (global.socketManager) {
+        global.socketManager.emitToUser(userId, 'processing-update', {
+          historyId,
+          progress: 100,
+          status: 'awaiting_headers',
+          message: 'Ready for headers'
+        });
+      }
+    }
+
+  } catch (error) {
+    console.error(`❌ Transcription failed at ${currentStage}:`, error);
+
+    // ✅ Emit failure event
+    if (global.socketManager) {
+      global.socketManager.emitToUser(userId, 'processing-failed', {
+        historyId,
+        title: originalName,
+        error: error.message,
+        stage: currentStage,
+        refundedMinutes: deductedMinutes
+      });
+    }
+
+    // Refund minutes
+    if (deductedMinutes > 0) {
+      await refundMinutesOnError(userId, historyId, deductedMinutes, `${currentStage} failed`);
+    }
+
+    await db.query(
+      `UPDATE history 
+       SET processing_status = 'failed', 
+           error_message = ?,
+           awaiting_headers = 0
+       WHERE id = ? AND user_id = ?`,
+      [`Failed at ${currentStage}: ${error.message}`, historyId, userId]
+    );
+
+    await db.query(
+      `UPDATE processing_queue 
+       SET status = 'failed',
+           task_type = ?
+       WHERE history_id = ?`,
+      [`Failed: ${error.message}`, historyId]
+    );
+  }
+}
+
+// ✅ MoM Generation function
+async function startMoMGeneration(params) {
+  const {
+    finalTranscript,
+    headers,
+    audioId,
+    userId,
+    transcriptAudioId,
+    detectLanguage,
+    historyID,
+    deductedMinutes
+  } = params;
+
+  let currentStage = "MoM initialization";
+
+  try {
+    console.log(`🚀 Starting MoM generation for history ${historyID}`);
+
+    currentStage = "MoM generation";
+    await updateTranscriptionProgress(historyID, userId, 75, 'generating_mom', 'Starting MoM generation...');
 
     const mockReq = {
       body: {
-        transcript: speakerText,
-        headers: defaultHeaders,
+        transcript: finalTranscript,
+        headers,
         audio_id: audioId,
-        userId: userId,
+        userId,
         transcript_audio_id: transcriptAudioId,
-        detectLanguage: finalTranscript.language_code,
-        history_id: historyId
+        detectLanguage,
+        history_id: historyID
       }
     };
 
@@ -975,675 +599,85 @@ async function processFullWorkflowInBackground(params) {
       }
     };
 
-    await updateWorkflowProgress(historyId, userId, queueId, 80, 'generating_mom', 'Generating MoM with AI...');
+    await updateTranscriptionProgress(historyID, userId, 85, 'generating_mom', 'Generating MoM with AI...');
 
-    // Process with DeepSeek
-    await processTranscript(mockReq, mockRes);
+    try {
+      await processTranscript(mockReq, mockRes);
 
-    if (mockRes.responseData && !mockRes.responseData.success) {
-      throw new Error(mockRes.responseData.error || "MoM generation failed");
+      if (mockRes.statusCode !== 200 || !mockRes.responseData?.success) {
+        throw new Error(mockRes.responseData?.error || "MoM generation failed");
+      }
+    } catch (momError) {
+      throw new Error(`AI processing error: ${momError.message}`);
     }
 
-    await updateWorkflowProgress(historyId, userId, queueId, 95, 'generating_mom', 'Finalizing MoM...');
+    await updateTranscriptionProgress(historyID, userId, 95, 'generating_mom', 'Finalizing...');
 
     // Update to completed
     await db.query(
-      `UPDATE history SET processing_status = 'completed', processing_progress = 100 WHERE id = ?`,
-      [historyId]
+      `UPDATE history 
+       SET processing_status = 'completed', 
+           processing_progress = 100,
+           awaiting_headers = 0
+       WHERE id = ?`,
+      [historyID]
     );
 
     await db.query(
-      `UPDATE processing_queue SET status = 'completed', progress = 100, task_type = 'completed' WHERE id = ?`,
-      [queueId]
+      `UPDATE processing_queue 
+       SET status = 'completed', 
+           progress = 100
+       WHERE history_id = ?`,
+      [historyID]
     );
 
-    console.log(`✅ FULL WORKFLOW COMPLETED for history ${historyId}`);
+    console.log(`✅ MoM generation completed for history ${historyID}`);
+
+    // ✅ Emit completion event
+    if (global.socketManager) {
+      global.socketManager.emitToUser(userId, 'processing-completed', {
+        historyId: historyID,
+        message: 'MoM generation completed successfully'
+      });
+    }
 
   } catch (error) {
-    console.error(`❌ Workflow failed for history ${historyId}:`, error);
+    console.error(`❌ MoM generation failed at ${currentStage}:`, error);
 
-    await db.query(
-      `UPDATE history SET processing_status = 'failed', error_message = ? WHERE id = ?`,
-      [error.message, historyId]
-    );
-
-    await db.query(
-      `UPDATE processing_queue SET status = 'failed' WHERE id = ?`,
-      [queueId]
-    );
-  }
-}
-
-async function processTranscriptionOnly(params) {
-    const {
-        buffer,
-        originalName,
-        ftpUrlToUse,
-        actualSource,
-        audioDurationMinutes,
-        userId,
-        historyId,
-        queueId
-    } = params;
-
-    let audioId = null;
-    let transcriptAudioId = null;
-
-    try {
-        console.log(`🚀 Starting TRANSCRIPTION ONLY for history ${historyId}`);
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PHASE 1: UPLOAD TO FTP
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        await updateTranscriptionProgress(historyId, userId, queueId, 10, 'transcribing', 'Uploading audio...');
-
-        let ftpUrl;
-        if (ftpUrlToUse) {
-            ftpUrl = ftpUrlToUse;
-            console.log(`✅ Using existing audio URL: ${ftpUrl}`);
-        } else {
-            ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
-            console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
-        }
-
-        await updateTranscriptionProgress(historyId, userId, queueId, 20, 'transcribing', 'Audio uploaded');
-
-        // Update history with audio URL
-        await db.query(
-            `UPDATE history SET audioUrl = ? WHERE id = ?`,
-            [ftpUrl, historyId]
-        );
-
-        // Insert into user_audios table
-        const [uploadAudioResult] = await db.query(
-            "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
-            [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
-        );
-        audioId = uploadAudioResult.insertId;
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PHASE 2: TRANSCRIPTION
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        await updateTranscriptionProgress(historyId, userId, queueId, 30, 'transcribing', 'Sending to transcription service...');
-
-        let finalTranscript;
-        let assemblyUrl = ftpUrl;
-
-        if (ftpUrlToUse) {
-            try {
-                console.log(`🎧 Sending FTP URL to AssemblyAI: ${ftpUrl}`);
-                const testResponse = await axios.post(
-                    TRANSCRIPT_URL,
-                    { audio_url: ftpUrl, language_detection: true, speaker_labels: true },
-                    { headers: { authorization: ASSEMBLY_KEY } }
-                );
-
-                if (testResponse.data && testResponse.data.id) {
-                    await updateTranscriptionProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-                    finalTranscript = await pollTranscription(testResponse.data.id);
-                } else {
-                    throw new Error("AssemblyAI did not accept URL");
-                }
-            } catch (err) {
-                console.warn("⚠️ Reuploading to AssemblyAI...");
-                const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
-                const uploadRes = await axios.post(UPLOAD_URL, audioRes.data, {
-                    headers: { authorization: ASSEMBLY_KEY, "content-type": "application/octet-stream" }
-                });
-                assemblyUrl = uploadRes.data.upload_url;
-                const created = await createTranscription(assemblyUrl);
-                await updateTranscriptionProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-                finalTranscript = await pollTranscription(created.id);
-            }
-        } else {
-            const created = await createTranscription(ftpUrl);
-            await updateTranscriptionProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-            finalTranscript = await pollTranscription(created.id);
-        }
-
-        await updateTranscriptionProgress(historyId, userId, queueId, 80, 'transcribing', 'Transcription complete');
-
-        const speakerText = finalTranscript.text || "";
-
-        // Insert transcript into database
-        const [transcriptResult] = await db.query(
-            "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
-            [audioId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
-        );
-        transcriptAudioId = transcriptResult.insertId;
-
-        console.log(`✅ Transcription complete. Audio ID: ${audioId}, Transcript ID: ${transcriptAudioId}`);
-
-        // ✅ Update to AWAITING_HEADERS status (paused)
-        await db.query(
-            `UPDATE history 
-             SET processing_status = 'awaiting_headers', 
-                 processing_progress = 100,
-                 awaiting_headers = 1,
-                 audioUrl = ?,
-                 data = JSON_OBJECT(
-                     'audioId', ?,
-                     'transcriptAudioId', ?,
-                     'transcription', ?,
-                     'language', ?
-                 )
-             WHERE id = ? AND user_id = ?`,
-            [ftpUrl, audioId, transcriptAudioId, speakerText, finalTranscript.language_code, historyId, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue 
-             SET status = 'awaiting_headers', 
-                 progress = 100, 
-                 task_type = 'Transcription complete - Set headers to continue'
-             WHERE id = ?`,
-            [queueId]
-        );
-
-        console.log(`⏸️ TRANSCRIPTION COMPLETE - Awaiting headers for history ${historyId}`);
-
-    } catch (error) {
-        console.error(`❌ Transcription failed for history ${historyId}:`, error);
-
-        await db.query(
-            `UPDATE history SET processing_status = 'failed', error_message = ?, awaiting_headers = 0 WHERE id = ? AND user_id = ?`,
-            [error.message, historyId, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue SET status = 'failed' WHERE id = ?`,
-            [queueId]
-        );
-    }
-}
-async function updateWorkflowProgress(historyId, userId, queueId, progress, status, message) {
-  try {
-    await db.query(
-      `UPDATE history SET processing_progress = ?, processing_status = ? WHERE id = ? AND user_id = ?`,
-      [progress, status, historyId, userId]
-    );
-
-    await db.query(
-      `UPDATE processing_queue SET progress = ?, task_type = ? WHERE id = ?`,
-      [progress, message || status, queueId]
-    );
-
-    console.log(`📊 Progress: ${progress}% - ${message || status}`);
-  } catch (error) {
-    console.error("Error updating progress:", error);
-  }
-}
-
-// Background audio processing function
-async function processAudioInBackground(params) {
-  const {
-    buffer,
-    originalName,
-    ftpUrlToUse,
-    actualSource,
-    audioDurationMinutes,
-    userId,
-    historyId,
-    queueId
-  } = params;
-
-  try {
-    console.log(`🚀 Starting background audio processing for history ${historyId}`);
-
-    // Update progress to 30%
-    await updateAudioProgress(historyId, userId, queueId, 30, 'transcribing');
-
-    let ftpUrl;
-
-    // Upload to FTP if needed
-    if (ftpUrlToUse) {
-      ftpUrl = ftpUrlToUse;
-      console.log(`✅ Using existing audio URL: ${ftpUrl}`);
-    } else {
-      ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
-      console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
+    // ✅ Emit failure event
+    if (global.socketManager) {
+      global.socketManager.emitToUser(userId, 'processing-failed', {
+        historyId: historyID,
+        error: error.message,
+        stage: currentStage,
+        refundedMinutes: deductedMinutes
+      });
     }
 
-    // Update progress to 50%
-    await updateAudioProgress(historyId, userId, queueId, 50, 'transcribing');
-
-    // Update history with audio URL
-    await db.query(
-      `UPDATE history SET audioUrl = ?, processing_progress = ? WHERE id = ?`,
-      [ftpUrl, 50, historyId]
-    );
-
-    // Insert into user_audios table
-    const [uploadAudioResult] = await db.query(
-      "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
-      [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
-    );
-
-    // Update progress to 70%
-    await updateAudioProgress(historyId, userId, queueId, 70, 'transcribing');
-
-    // 🔥 STEP 4: Send to AssemblyAI for transcription
-    let assemblyUrl = ftpUrl;
-    let finalTranscript;
-
-    if (ftpUrlToUse) {
-      try {
-        console.log(`🎧 Trying to send FTP URL directly to AssemblyAI: ${ftpUrl}`);
-        const testResponse = await axios.post(
-          TRANSCRIPT_URL,
-          {
-            audio_url: ftpUrl,
-            language_detection: true,
-            speaker_labels: true
-          },
-          { headers: { authorization: ASSEMBLY_KEY } }
-        );
-
-        if (testResponse.data && testResponse.data.id) {
-          console.log("✅ AssemblyAI accepted FTP URL directly.");
-          finalTranscript = await pollTranscription(testResponse.data.id);
-        } else {
-          throw new Error("AssemblyAI did not accept URL properly");
-        }
-      } catch (err) {
-        console.warn("⚠️ AssemblyAI might not have fetched full audio, reuploading...");
-        try {
-          const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
-          const uploadRes = await axios.post(
-            UPLOAD_URL,
-            audioRes.data,
-            {
-              headers: {
-                authorization: ASSEMBLY_KEY,
-                "content-type": "application/octet-stream",
-              },
-            }
-          );
-          assemblyUrl = uploadRes.data.upload_url;
-          console.log(`✅ Reuploaded to AssemblyAI successfully: ${assemblyUrl}`);
-
-          const created = await createTranscription(assemblyUrl);
-          finalTranscript = await pollTranscription(created.id);
-        } catch (uploadErr) {
-          throw new Error("AssemblyAI upload failed");
-        }
-      }
-    } else {
-      // Default flow for uploaded file or Google Drive
-      const created = await createTranscription(ftpUrl);
-      finalTranscript = await pollTranscription(created.id);
+    // Refund minutes
+    if (deductedMinutes > 0) {
+      await refundMinutesOnError(userId, historyID, deductedMinutes, `${currentStage} failed`);
     }
 
-    // Update progress to 90%
-    await updateAudioProgress(historyId, userId, queueId, 90, 'transcribing');
-
-    const speakerText = finalTranscript.text || "";
-
-    // 📝 Insert transcript into database
-    const [transcriptResult] = await db.query(
-      "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
-      [uploadAudioResult.insertId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
-    );
-
-    // Update history with transcription data and mark as ready for MoM
     await db.query(
       `UPDATE history 
-       SET processing_status = 'pending', 
-           processing_progress = 100,
-           audioUrl = ?,
-           isMoMGenerated = 0
-       WHERE id = ?`,
-      [ftpUrl, historyId]
-    );
-
-    // Update queue status
-    await db.query(
-      `UPDATE processing_queue SET status = 'completed', progress = 100 WHERE id = ?`,
-      [queueId]
-    );
-
-    console.log(`✅ Background audio processing completed for history ${historyId}`);
-    console.log(`📝 Transcription ready for MoM generation. Audio ID: ${uploadAudioResult.insertId}, Transcript ID: ${transcriptResult.insertId}`);
-
-  } catch (error) {
-    console.error(`❌ Background audio processing failed for history ${historyId}:`, error);
-
-    // Update status to failed
-    await db.query(
-      `UPDATE history SET processing_status = 'failed', error_message = ? WHERE id = ?`,
-      [error.message, historyId]
+       SET processing_status = 'failed', 
+           error_message = ?,
+           awaiting_headers = 0
+       WHERE id = ? AND user_id = ?`,
+      [`Failed at ${currentStage}: ${error.message}`, historyID, userId]
     );
 
     await db.query(
-      `UPDATE processing_queue SET status = 'failed' WHERE id = ?`,
-      [queueId]
+      `UPDATE processing_queue 
+       SET status = 'failed',
+           task_type = ?
+       WHERE history_id = ?`,
+      [`Failed: ${error.message}`, historyID]
     );
   }
 }
 
-async function updateAudioProgress(historyId, userId, queueId, progress, status) {
-  try {
-    // Update history
-    await db.query(
-      `UPDATE history SET processing_progress = ?, processing_status = ? WHERE id = ? AND user_id = ?`,
-      [progress, status, historyId, userId]
-    );
-
-    // Update queue
-    await db.query(
-      `UPDATE processing_queue SET progress = ? WHERE id = ?`,
-      [progress, queueId]
-    );
-
-    console.log(`📊 Audio progress updated: ${progress}% for history ${historyId}`);
-  } catch (error) {
-    console.error("Error updating audio progress:", error);
-  }
-}
-
-async function updateTranscriptionProgress(historyId, userId, queueId, progress, status, message) {
-    try {
-        await db.query(
-            `UPDATE history SET processing_progress = ?, processing_status = ? WHERE id = ? AND user_id = ?`,
-            [progress, status, historyId, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue SET progress = ?, task_type = ? WHERE id = ?`,
-            [progress, message || status, queueId]
-        );
-
-        console.log(`📊 Transcription Progress: ${progress}% - ${message || status}`);
-    } catch (error) {
-        console.error("Error updating progress:", error);
-    }
-}
-
-async function processTranscriptionInBackground(params) {
-    const {
-        buffer,
-        originalName,
-        ftpUrlToUse,
-        actualSource,
-        audioDurationMinutes,
-        userId,
-        historyId,
-        queueId
-    } = params;
-
-    let audioId = null;
-    let transcriptAudioId = null;
-
-    try {
-        console.log(`🚀 Starting BACKGROUND TRANSCRIPTION for history ${historyId}`);
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PHASE 1: UPLOAD TO FTP
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        await updateTranscriptionProgress(historyId, userId, queueId, 10, 'transcribing', 'Uploading audio...');
-
-        let ftpUrl;
-        if (ftpUrlToUse) {
-            ftpUrl = ftpUrlToUse;
-            console.log(`✅ Using existing audio URL: ${ftpUrl}`);
-        } else {
-            ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
-            console.log(`✅ Uploaded to FTP: ${ftpUrl}`);
-        }
-
-        await updateTranscriptionProgress(historyId, userId, queueId, 20, 'transcribing', 'Audio uploaded');
-
-        // Update history with audio URL
-        await db.query(
-            `UPDATE history SET audioUrl = ? WHERE id = ?`,
-            [ftpUrl, historyId]
-        );
-
-        // Insert into user_audios table
-        const [uploadAudioResult] = await db.query(
-            "INSERT INTO user_audios (userId, title, audioUrl, uploadedAt, source) VALUES (?, ?, ?, ?, ?)",
-            [userId, originalName, ftpUrl, new Date().toISOString().slice(0, 19).replace("T", " "), actualSource]
-        );
-        audioId = uploadAudioResult.insertId;
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PHASE 2: TRANSCRIPTION
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        await updateTranscriptionProgress(historyId, userId, queueId, 30, 'transcribing', 'Sending to transcription service...');
-
-        let finalTranscript;
-        let assemblyUrl = ftpUrl;
-
-        if (ftpUrlToUse) {
-            try {
-                console.log(`🎧 Sending FTP URL to AssemblyAI: ${ftpUrl}`);
-                const testResponse = await axios.post(
-                    TRANSCRIPT_URL,
-                    { audio_url: ftpUrl, language_detection: true, speaker_labels: true },
-                    { headers: { authorization: ASSEMBLY_KEY } }
-                );
-
-                if (testResponse.data && testResponse.data.id) {
-                    await updateTranscriptionProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-                    finalTranscript = await pollTranscription(testResponse.data.id);
-                } else {
-                    throw new Error("AssemblyAI did not accept URL");
-                }
-            } catch (err) {
-                console.warn("⚠️ Reuploading to AssemblyAI...");
-                const audioRes = await axios.get(ftpUrl, { responseType: "arraybuffer" });
-                const uploadRes = await axios.post(UPLOAD_URL, audioRes.data, {
-                    headers: { authorization: ASSEMBLY_KEY, "content-type": "application/octet-stream" }
-                });
-                assemblyUrl = uploadRes.data.upload_url;
-                const created = await createTranscription(assemblyUrl);
-                await updateTranscriptionProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-                finalTranscript = await pollTranscription(created.id);
-            }
-        } else {
-            const created = await createTranscription(ftpUrl);
-            await updateTranscriptionProgress(historyId, userId, queueId, 50, 'transcribing', 'Transcribing audio...');
-            finalTranscript = await pollTranscription(created.id);
-        }
-
-        await updateTranscriptionProgress(historyId, userId, queueId, 80, 'transcribing', 'Transcription complete');
-
-        const speakerText = finalTranscript.text || "";
-
-        // Insert transcript into database
-        const [transcriptResult] = await db.query(
-            "INSERT INTO transcript_audio_file (audio_id, userId, transcript, language) VALUES (?, ?, ?, ?)",
-            [audioId, userId, JSON.stringify(finalTranscript), finalTranscript.language_code || null]
-        );
-        transcriptAudioId = transcriptResult.insertId;
-
-        console.log(`✅ Transcription complete. Audio ID: ${audioId}, Transcript ID: ${transcriptAudioId}`);
-
-        // ✅ Store transcription data and check if headers are already set
-        const [historyCheck] = await db.query(
-            `SELECT headers_set FROM history WHERE id = ? AND user_id = ?`,
-            [historyId, userId]
-        );
-
-        const headersSet = historyCheck[0]?.headers_set === 1;
-
-        if (headersSet) {
-            // Headers are already set, start MoM generation immediately
-            console.log(`🚀 Headers already set, starting MoM generation for history ${historyId}`);
-            
-            // Get saved headers
-            const [headersRows] = await db.query(
-                `SELECT headers FROM meeting_headers WHERE history_id = ? AND user_id = ?`,
-                [historyId, userId]
-            );
-
-            const headers = headersRows.length > 0 
-                ? (typeof headersRows[0].headers === 'string' 
-                    ? JSON.parse(headersRows[0].headers) 
-                    : headersRows[0].headers)
-                : ["Discussion Summary", "Action Items", "Responsibility", "Target Date", "Status"];
-
-            // Start MoM generation
-            await startMoMGeneration({
-                finalTranscript: speakerText,
-                headers: headers,
-                audioId,
-                userId,
-                transcriptAudioId,
-                detectLanguage: finalTranscript.language_code,
-                historyID: historyId,
-                storageKey: `meeting_${historyId}`
-            });
-
-        } else {
-            // Headers not set yet, wait for them
-            console.log(`⏸️ Transcription complete, waiting for headers for history ${historyId}`);
-            
-            await db.query(
-                `UPDATE history 
-                 SET processing_status = 'awaiting_headers', 
-                     processing_progress = 100,
-                     awaiting_headers = 1,
-                     data = JSON_OBJECT(
-                         'audioId', ?,
-                         'transcriptAudioId', ?,
-                         'transcription', ?,
-                         'language', ?
-                     )
-                 WHERE id = ? AND user_id = ?`,
-                [audioId, transcriptAudioId, speakerText, finalTranscript.language_code, historyId, userId]
-            );
-
-            await db.query(
-                `UPDATE processing_queue 
-                 SET status = 'awaiting_headers', 
-                     progress = 100, 
-                     task_type = 'Transcription complete - Set headers to continue'
-                 WHERE id = ?`,
-                [queueId]
-            );
-        }
-
-        console.log(`✅ BACKGROUND TRANSCRIPTION COMPLETED for history ${historyId}`);
-
-    } catch (error) {
-        console.error(`❌ Background transcription failed for history ${historyId}:`, error);
-
-        await db.query(
-            `UPDATE history SET processing_status = 'failed', error_message = ?, awaiting_headers = 0 WHERE id = ? AND user_id = ?`,
-            [error.message, historyId, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue SET status = 'failed' WHERE id = ?`,
-            [queueId]
-        );
-    }
-}
-
-// Function to start MoM generation when transcription is ready
-async function startMoMGeneration(params) {
-    const {
-        finalTranscript,
-        headers,
-        audioId,
-        userId,
-        transcriptAudioId,
-        detectLanguage,
-        historyID,
-        storageKey
-    } = params;
-
-    try {
-        console.log(`🚀 Starting MoM generation for history ${historyID}`);
-
-        // Update progress to generating_mom
-        await updateTranscriptionProgress(historyID, userId, null, 30, 'generating_mom', 'Starting MoM generation...');
-
-        // Create a mock request object for processTranscript
-        const mockReq = {
-            body: {
-                transcript: finalTranscript,
-                headers: headers,
-                audio_id: audioId,
-                userId: userId,
-                transcript_audio_id: transcriptAudioId,
-                detectLanguage: detectLanguage,
-                history_id: historyID
-            }
-        };
-
-        const mockRes = {
-            statusCode: null,
-            responseData: null,
-            status: function (code) {
-                this.statusCode = code;
-                return this;
-            },
-            json: function (data) {
-                this.responseData = data;
-                return this;
-            }
-        };
-
-        // Process with DeepSeek
-        await processTranscript(mockReq, mockRes);
-
-        if (mockRes.statusCode !== 200 || (mockRes.responseData && !mockRes.responseData.success)) {
-            throw new Error(mockRes.responseData?.error || "MoM generation failed");
-        }
-
-        // Update progress to completed
-        await db.query(
-            `UPDATE history 
-             SET processing_status = 'completed', 
-                 processing_progress = 100,
-                 awaiting_headers = 0
-             WHERE id = ? AND user_id = ?`,
-            [historyID, userId]
-        );
-
-        // Update queue status
-        await db.query(
-            `UPDATE processing_queue 
-             SET status = 'completed', 
-                 progress = 100
-             WHERE history_id = ? AND user_id = ?`,
-            [historyID, userId]
-        );
-
-        console.log(`✅ MoM generation completed for history ${historyID}`);
-
-    } catch (error) {
-        console.error(`❌ MoM generation failed for history ${historyID}:`, error);
-
-        await db.query(
-            `UPDATE history 
-             SET processing_status = 'failed', 
-                 error_message = ?,
-                 awaiting_headers = 0
-             WHERE id = ? AND user_id = ?`,
-            [error.message, historyID, userId]
-        );
-
-        await db.query(
-            `UPDATE processing_queue 
-             SET status = 'failed' 
-             WHERE history_id = ? AND user_id = ?`,
-            [historyID, userId]
-        );
-    }
-}
-
-// Add this to your module.exports
 module.exports = {
-  uploadAudio,
-  uploadAudioToFTPOnly,
-  uploadAudioBackground // Add the new function
+  uploadAudioBackground,
 };
-
-
-// module.exports = {
-//   uploadAudio,
-//   uploadAudioToFTPOnly,
-// };

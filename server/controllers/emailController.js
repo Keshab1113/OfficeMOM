@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const Imap = require('imap');
+const Imap = require("imap");
 const uploadToFTP = require("../config/uploadToFTP.js");
 
 // Create reusable transporter
@@ -23,14 +23,14 @@ const saveToSentFolder = async (mailOptions) => {
     const imap = new Imap({
       user: process.env.MAIL_USER_NOREPLY,
       password: process.env.MAIL_PASS,
-      host: process.env.DEFAULT_IMAP_HOST || "email.quantumedu.in",
-      port: process.env.DEFAULT_IMAP_PORT || 1993,
+      host: process.env.DEFAULT_IMAP_HOST,
+      port: process.env.DEFAULT_IMAP_PORT,
       tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      authTimeout: 10000
+      authTimeout: 10000,
     });
 
-    imap.once('ready', () => {
+    imap.once("ready", () => {
       // Create the email RFC822 message
       const message = `From: ${mailOptions.from}
 To: ${mailOptions.to}
@@ -40,20 +40,20 @@ Date: ${new Date().toUTCString()}
 
 ${mailOptions.html || mailOptions.text}`;
 
-      imap.append(message, { mailbox: 'Sent' }, (err) => {
+      imap.append(message, { mailbox: "Sent" }, (err) => {
         imap.end();
         if (err) {
-          console.error('❌ Failed to save to Sent folder:', err);
+          console.error("❌ Failed to save to Sent folder:", err);
           reject(err);
         } else {
-          console.log('✅ Email saved to Sent folder');
+          console.log("✅ Email saved to Sent folder");
           resolve();
         }
       });
     });
 
-    imap.once('error', (err) => {
-      console.error('❌ IMAP connection error:', err);
+    imap.once("error", (err) => {
+      console.error("❌ IMAP connection error:", err);
       reject(err);
     });
 
@@ -65,22 +65,25 @@ ${mailOptions.html || mailOptions.text}`;
 const sendEmailWithCopy = async (mailOptions) => {
   try {
     // Step 1: Send the email via SMTP
-    console.log('📤 Sending email via SMTP...');
+    console.log("📤 Sending email via SMTP...");
     const smtpResult = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent via SMTP');
+    console.log("✅ Email sent via SMTP");
 
     // Step 2: Save copy to Sent folder via IMAP
     try {
       await saveToSentFolder(mailOptions);
-      console.log('✅ Email saved to Sent folder via IMAP');
+      console.log("✅ Email saved to Sent folder via IMAP");
     } catch (sentError) {
-      console.warn('⚠️ Could not save to Sent folder (email was still sent):', sentError.message);
+      console.warn(
+        "⚠️ Could not save to Sent folder (email was still sent):",
+        sentError.message
+      );
       // Don't throw error - email was sent successfully, just couldn't save copy
     }
 
     return smtpResult;
   } catch (error) {
-    console.error('❌ Email sending failed:', error);
+    console.error("❌ Email sending failed:", error);
     throw error;
   }
 };
@@ -168,9 +171,15 @@ const emailController = {
                   <tr>
                     <td style="background:#f8f9fa; padding:20px; text-align:center; font-size:14px; color:#666; border-top:1px solid #e9ecef;">
                       <p style="margin:0 0 10px 0;">
-                        <a href="${process.env.FRONTEND_URL}/features" style="color:#4a90e2; text-decoration:none; margin:0 10px;">Features</a> • 
-                        <a href="${process.env.FRONTEND_URL}/pricing" style="color:#4a90e2; text-decoration:none; margin:0 10px;">Pricing</a> • 
-                        <a href="${process.env.FRONTEND_URL}/help" style="color:#4a90e2; text-decoration:none; margin:0 10px;">Help Center</a>
+                        <a href="${
+                          process.env.FRONTEND_URL
+                        }/features" style="color:#4a90e2; text-decoration:none; margin:0 10px;">Features</a> • 
+                        <a href="${
+                          process.env.FRONTEND_URL
+                        }/pricing" style="color:#4a90e2; text-decoration:none; margin:0 10px;">Pricing</a> • 
+                        <a href="${
+                          process.env.FRONTEND_URL
+                        }/help" style="color:#4a90e2; text-decoration:none; margin:0 10px;">Help Center</a>
                       </p>
                       <p style="margin:0; font-size:12px;">
                         &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.<br/>
@@ -210,9 +219,10 @@ const emailController = {
     const parsedTableData = JSON.parse(tableData || "[]");
 
     if (!email || !Array.isArray(parsedTableData)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing email or invalid tableData" });
+      return res.status(400).json({
+        success: false,
+        message: "Missing email or invalid tableData",
+      });
     }
 
     let uploadedFiles = [];
@@ -246,20 +256,20 @@ const emailController = {
   </thead>
   <tbody>
     ${parsedTableData
-        .map(
-          (row, i) => `
+      .map(
+        (row, i) => `
       <tr>
         ${tableHeaders
-              .map(
-                (key) =>
-                  `<td style="border:1px solid #ddd; padding:8px; text-align:center; font-size:12px;">
+          .map(
+            (key) =>
+              `<td style="border:1px solid #ddd; padding:8px; text-align:center; font-size:12px;">
             ${key === "Sr No" ? i + 1 : row[key] ?? ""}
           </td>`
-              )
-              .join("")}
+          )
+          .join("")}
       </tr>`
-        )
-        .join("")}
+      )
+      .join("")}
   </tbody>
 </table>
 `;
@@ -345,21 +355,37 @@ const emailController = {
   },
 
   // NEW: Function to send processing completion email
-  sendProcessingCompleteEmail: async (userEmail, userName, meetingTitle, historyId) => {
+  sendProcessingCompleteEmail: async (
+    userEmail,
+    userName,
+    meetingTitle,
+    historyId
+  ) => {
     try {
       console.log(`📧 Preparing to send email to: ${userEmail}`);
 
       // Validate email parameters
       if (!userEmail || !userName || !meetingTitle || !historyId) {
-        console.error('❌ Missing email parameters:', { userEmail, userName, meetingTitle, historyId });
+        console.error("❌ Missing email parameters:", {
+          userEmail,
+          userName,
+          meetingTitle,
+          historyId,
+        });
         return false;
       }
 
       // Check environment variables
       if (!process.env.MAIL_USER_NOREPLY_VIEW || !process.env.FRONTEND_URL) {
-        console.error('❌ Missing required environment variables');
-        console.error('MAIL_USER_NOREPLY_VIEW:', process.env.MAIL_USER_NOREPLY_VIEW ? 'Set' : 'Not set');
-        console.error('FRONTEND_URL:', process.env.FRONTEND_URL ? 'Set' : 'Not set');
+        console.error("❌ Missing required environment variables");
+        console.error(
+          "MAIL_USER_NOREPLY_VIEW:",
+          process.env.MAIL_USER_NOREPLY_VIEW ? "Set" : "Not set"
+        );
+        console.error(
+          "FRONTEND_URL:",
+          process.env.FRONTEND_URL ? "Set" : "Not set"
+        );
         return false;
       }
 
@@ -412,7 +438,6 @@ const emailController = {
       console.log(`✅ Email sent successfully!`);
 
       return true;
-
     } catch (error) {
       console.error("❌ Error sending completion email:", error);
       console.error("Error details:", {
@@ -420,7 +445,7 @@ const emailController = {
         userName,
         meetingTitle,
         historyId,
-        errorMessage: error.message
+        errorMessage: error.message,
       });
       return false;
     }
@@ -445,7 +470,7 @@ const emailController = {
                     OfficeMoM Email Verification
                   </td></tr>
                   <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
-                    <p>Hello${fullName ? ` ${fullName}` : ''},</p>
+                    <p>Hello${fullName ? ` ${fullName}` : ""},</p>
                     <p>Thank you for signing up with <b>OfficeMoM</b>. Please verify your email using this OTP:</p>
                     <p style="text-align:center; margin:30px 0;">
                       <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
@@ -491,7 +516,7 @@ const emailController = {
                     OfficeMoM Resend OTP
                   </td></tr>
                   <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
-                    <p>Hello${fullName ? ` ${fullName}` : ''},</p>
+                    <p>Hello${fullName ? ` ${fullName}` : ""},</p>
                     <p>Your new OTP is:</p>
                     <p style="text-align:center; margin:30px 0;">
                       <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
@@ -667,7 +692,7 @@ const emailController = {
         invoice_pdf,
         receipt_url,
         type,
-        metadata
+        metadata,
       } = paymentData;
 
       // Prepare attachments
@@ -684,7 +709,7 @@ const emailController = {
       // Add receipt URL if available (for one-time payments)
       if (receipt_url) {
         attachments.push({
-          filename: `receipt_${plan_name || 'recharge'}.pdf`,
+          filename: `receipt_${plan_name || "recharge"}.pdf`,
           path: receipt_url,
         });
       }
@@ -692,21 +717,21 @@ const emailController = {
       // Determine email content based on payment type
       let emailSubject, emailHtml;
 
-      if (type === 'recharge') {
+      if (type === "recharge") {
         // Parse metadata to get minutes
         let minutes = 0;
-        if (typeof metadata === 'string') {
+        if (typeof metadata === "string") {
           try {
             const parsed = JSON.parse(metadata);
             minutes = parseInt(parsed.minutes) || 0;
           } catch (e) {
-            console.error('Error parsing metadata:', e);
+            console.error("Error parsing metadata:", e);
           }
         } else if (metadata) {
           minutes = parseInt(metadata.minutes) || 0;
         }
 
-        emailSubject = 'Payment Successful - Minutes Recharged - OfficeMoM';
+        emailSubject = "Payment Successful - Minutes Recharged - OfficeMoM";
         emailHtml = `
           <html>
           <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
@@ -718,7 +743,9 @@ const emailController = {
               </tr>
               <tr>
                 <td style="padding:30px; color:#333;">
-                  <p>Hello ${userData?.fullName || customer_name || 'Valued Customer'},</p>
+                  <p>Hello ${
+                    userData?.fullName || customer_name || "Valued Customer"
+                  },</p>
                   <p>Thank you for your recharge! Your payment has been processed successfully.</p>
                   
                   <div style="background:#f0f8ff; padding:15px; border-radius:5px; margin:20px 0;">
@@ -745,7 +772,7 @@ const emailController = {
         `;
       } else {
         // Subscription payment
-        emailSubject = 'Payment Successful - Subscription Active - OfficeMoM';
+        emailSubject = "Payment Successful - Subscription Active - OfficeMoM";
         emailHtml = `
           <html>
           <body style="font-family:Arial, sans-serif; background:#f8f9fa; padding:20px;">
@@ -757,7 +784,9 @@ const emailController = {
               </tr>
               <tr>
                 <td style="padding:30px; color:#333;">
-                  <p>Hello ${userData?.fullName || customer_name || 'Valued Customer'},</p>
+                  <p>Hello ${
+                    userData?.fullName || customer_name || "Valued Customer"
+                  },</p>
                   <p>Thank you for subscribing! Your payment has been processed successfully.</p>
                   
                   <div style="background:#f0f8ff; padding:15px; border-radius:5px; margin:20px 0;">
@@ -801,20 +830,26 @@ const emailController = {
       console.log(`✅ Payment success email sent to ${customer_email}`);
       return true;
     } catch (error) {
-      console.error('❌ Error sending payment success email:', error);
+      console.error("❌ Error sending payment success email:", error);
       return false;
     }
   },
 
   // NEW: Function to send subscription cancellation emails
-  sendSubscriptionCancellationEmails: async (userEmail, userData, subscription, reason, adminData) => {
+  sendSubscriptionCancellationEmails: async (
+    userEmail,
+    userData,
+    subscription,
+    reason,
+    adminData
+  ) => {
     try {
       const safeReason = reason ? String(reason) : "Not provided";
       const {
         total_used_time = 0,
         total_used_balance = 0,
         total_minutes = 0,
-        total_remaining_time = 0
+        total_remaining_time = 0,
       } = adminData || {};
 
       // User cancellation confirmation email
@@ -829,13 +864,21 @@ const emailController = {
             </tr>
             <tr>
               <td style="padding:30px; color:#333;">
-                <p>Hello ${userData?.fullName || 'Valued Customer'},</p>
-                <p>Your subscription for <b>${subscription.product_name || subscription.plan_name}</b> has been scheduled for cancellation.</p>
+                <p>Hello ${userData?.fullName || "Valued Customer"},</p>
+                <p>Your subscription for <b>${
+                  subscription.product_name || subscription.plan_name
+                }</b> has been scheduled for cancellation.</p>
                 <p><b>Plan:</b> ${subscription.plan_name}<br/>
                    <b>Billing Cycle:</b> ${subscription.billing_cycle}<br/>
-                   <b>Amount:</b> $${subscription.amount} ${subscription.currency}<br/>
-                   <b>Subscription ID:</b> ${subscription.stripe_subscription_id}<br/>
-                   <b>Valid Until:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+                   <b>Amount:</b> $${subscription.amount} ${
+        subscription.currency
+      }<br/>
+                   <b>Subscription ID:</b> ${
+                     subscription.stripe_subscription_id
+                   }<br/>
+                   <b>Valid Until:</b> ${new Date(
+                     subscription.current_period_end
+                   ).toLocaleString()}</p>
 
                 <p><b>Reason for cancellation:</b> ${safeReason}</p>
 
@@ -870,13 +913,21 @@ const emailController = {
             <tr>
               <td style="padding:30px; color:#333;">
                 <p><b>User Email:</b> ${userEmail}</p>
-                <p><b>Subscription ID:</b> ${subscription.stripe_subscription_id}</p>
+                <p><b>Subscription ID:</b> ${
+                  subscription.stripe_subscription_id
+                }</p>
                 <p><b>Plan:</b> ${subscription.plan_name}</p>
-                <p><b>Amount:</b> $${subscription.amount} ${subscription.currency}</p>
+                <p><b>Amount:</b> $${subscription.amount} ${
+        subscription.currency
+      }</p>
                 <p><b>Billing Cycle:</b> ${subscription.billing_cycle}</p>
-                <p><b>Current Period End:</b> ${new Date(subscription.current_period_end).toLocaleString()}</p>
+                <p><b>Current Period End:</b> ${new Date(
+                  subscription.current_period_end
+                ).toLocaleString()}</p>
                 <p><b>Reason for cancellation:</b> ${safeReason}</p>
-                <p><b>Invoice:</b> <a href="${subscription.invoice_pdf || '#'}" target="_blank">View PDF</a></p>
+                <p><b>Invoice:</b> <a href="${
+                  subscription.invoice_pdf || "#"
+                }" target="_blank">View PDF</a></p>
                 <p>Status: <b>Pending Refund</b></p>
                 <p><b>Total Used Time:</b> ${total_used_time} minutes</p>
                 <p><b>Total Used Balance:</b> $${total_used_balance}</p>
@@ -910,7 +961,7 @@ const emailController = {
       console.log(`✅ Cancellation emails sent to ${userEmail} and admin`);
       return true;
     } catch (error) {
-      console.error('❌ Error sending cancellation emails:', error);
+      console.error("❌ Error sending cancellation emails:", error);
       return false;
     }
   },

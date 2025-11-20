@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
-import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Clock, CheckCircle, XCircle, Loader2, PauseCircle, Sparkles } from "lucide-react";
+import { History, FileText, MoreVertical, Check, X, Pencil, Trash2, Clock, CheckCircle, XCircle, Loader2, PauseCircle, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { removeAudioPreview } from "../../redux/audioSlice";
 import { useToast } from "../ToastContext";
@@ -17,72 +17,6 @@ const playNotificationSound = () => {
   } catch (error) {
     console.log('Notification sound error:', error);
   }
-};
-
-// Custom hook for smooth progress animation
-const useSmoothProgress = (targetProgress, awaitingHeaders, status) => {
-  const [displayProgress, setDisplayProgress] = useState(0);
-  const animationRef = useRef(null);
-  const lastTargetRef = useRef(0);
-
-  useEffect(() => {
-    // Don't animate if awaiting headers
-    if (awaitingHeaders) {
-      setDisplayProgress(targetProgress);
-      return;
-    }
-
-    // Don't go backwards - only animate forward
-    if (targetProgress < lastTargetRef.current && status !== 'pending') {
-      return;
-    }
-
-    lastTargetRef.current = targetProgress;
-
-    // Clear any existing animation
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-
-    const startProgress = displayProgress;
-    const diff = targetProgress - startProgress;
-
-    // If difference is small, jump directly
-    if (Math.abs(diff) < 2) {
-      setDisplayProgress(targetProgress);
-      return;
-    }
-
-    const duration = Math.abs(diff) * 50; // 50ms per percentage point
-    const startTime = Date.now();
-
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      // Ease out animation
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      const currentProgress = startProgress + (diff * easeProgress);
-
-      setDisplayProgress(Math.round(currentProgress));
-
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        setDisplayProgress(targetProgress);
-      }
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [targetProgress, awaitingHeaders, status]);
-
-  return displayProgress;
 };
 
 // Skeleton Loading Component
@@ -143,10 +77,10 @@ const NewBadge = () => (
 
 // Processing Item Component
 const ProcessingItem = ({ item, onNavigate }) => {
-  // Use smooth progress hook
-  const smoothProgress = useSmoothProgress(item.progress || 0, item.awaitingHeaders, item.status);
-
   const getStatusIcon = (status, awaitingHeaders) => {
+    if (status === 'failed') {
+      return <XCircle className="w-7 h-7 text-red-500" />;
+    }
     if (awaitingHeaders) {
       return <PauseCircle className="w-5 h-5 text-yellow-500 animate-pulse" />;
     }
@@ -158,8 +92,6 @@ const ProcessingItem = ({ item, onNavigate }) => {
         return <Loader2 className="w-7 h-7 text-purple-500 animate-spin" />;
       case 'completed':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'failed':
-        return <XCircle className="w-5 h-5 text-red-500" />;
       case 'awaiting_headers':
         return <PauseCircle className="w-5 h-5 text-yellow-500 animate-pulse" />;
       default:
@@ -167,31 +99,26 @@ const ProcessingItem = ({ item, onNavigate }) => {
     }
   };
 
-  const getStatusText = (status, progress, awaitingHeaders, taskType) => {
-    if (awaitingHeaders) {
-      return '⏸️ Awaiting Headers';
+  const getStatusText = (status, awaitingHeaders, taskType, error) => {
+    if (status === 'failed') {
+      return '❌ Failed';
     }
-
+    if (awaitingHeaders) {
+      return '⸻ Awaiting Headers';
+    }
     if (taskType) {
       return taskType;
     }
 
-    if (status === 'transcribing') {
-      if (progress < 30) return 'Uploading...';
-      if (progress < 70) return 'Transcribing...';
-      return 'Processing transcript...';
-    }
-    if (status === 'generating_mom') {
-      if (progress < 85) return 'Generating MoM...';
-      return 'Finalizing...';
-    }
-    if (status === 'awaiting_headers') return '⏸️ Set Headers to Continue';
+    if (status === 'transcribing') return 'Transcribing...';
+    if (status === 'generating_mom') return 'Generating MoM...';
+    if (status === 'awaiting_headers') return '⸻ Set Headers to Continue';
     if (status === 'completed') return 'Completed ✓';
-    if (status === 'failed') return 'Failed';
     return 'Queued';
   };
 
-  const getProgressColor = (progress, awaitingHeaders) => {
+  const getProgressColor = (progress, status, awaitingHeaders) => {
+    if (status === 'failed') return 'bg-red-500';
     if (awaitingHeaders) return 'bg-yellow-500';
     if (progress < 30) return 'bg-blue-500';
     if (progress < 70) return 'bg-indigo-500';
@@ -205,6 +132,9 @@ const ProcessingItem = ({ item, onNavigate }) => {
     }
   };
 
+  const isFailed = item.status === 'failed';
+  const progress = item.progress || 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -212,7 +142,11 @@ const ProcessingItem = ({ item, onNavigate }) => {
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
       onClick={handleClick}
-      className={`bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 shadow-sm hover:shadow-lg transition-all ${item.awaitingHeaders ? 'cursor-pointer hover:border-yellow-400 ' : ''
+      className={`rounded-xl p-4 border shadow-sm transition-all ${isFailed
+        ? 'bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-300 dark:border-red-700/50'
+        : item.awaitingHeaders
+          ? 'bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-200 dark:border-yellow-700/50 cursor-pointer hover:border-yellow-400'
+          : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700/50'
         }`}
     >
       <div className="flex items-start justify-between mb-2">
@@ -222,49 +156,71 @@ const ProcessingItem = ({ item, onNavigate }) => {
             <h3 className="font-medium text-sm text-gray-800 dark:text-white truncate">
               {item.title || "Processing..."}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {getStatusText(item.status, smoothProgress, item.awaitingHeaders, item.taskType)}
+            <p className={`text-xs ${isFailed
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-gray-500 dark:text-gray-400'
+              }`}>
+              {getStatusText(item.status, item.awaitingHeaders, item.taskType, item.error)}
             </p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2 tabular-nums">
-          {smoothProgress}%
-        </span>
+        {!isFailed && (
+          <span className="text-xs font-semibold text-blue-600 dark:text-blue-300 ml-2 tabular-nums">
+            {progress}%
+          </span>
+        )}
       </div>
 
-      {/* Progress Bar */}
-      <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
-        <motion.div
-          className={`h-full ${getProgressColor(smoothProgress, item.awaitingHeaders)} transition-colors duration-300`}
-          initial={{ width: 0 }}
-          animate={{ width: `${smoothProgress}%` }}
-          transition={{
-            duration: 0.3,
-            ease: "easeOut"
-          }}
-        >
-          {smoothProgress > 95 && !item.awaitingHeaders && (
-            <div className="h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+      {/* Progress Bar - Hide for failed items */}
+      {!isFailed && (
+        <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden mb-2">
+          <motion.div
+            className={`h-full ${getProgressColor(progress, item.status, item.awaitingHeaders)} transition-colors duration-300`}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          />
+        </div>
+      )}
+
+      {/* Error Message */}
+      {isFailed && item.error && (
+        <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700/50">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-red-700 dark:text-red-300 font-medium mb-1">
+                Error Details:
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 break-words">
+                {item.error}
+              </p>
+            </div>
+          </div>
+
+          {/* Refund Info */}
+          {item.minutesRefunded && item.refundedMinutes > 0 && (
+            <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-700/50">
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                {item.refundedMinutes} minutes refunded automatically
+              </p>
+            </div>
           )}
-        </motion.div>
-      </div>
+        </div>
+      )}
 
-      {item.awaitingHeaders && (
+      {/* Awaiting Headers Message */}
+      {item.awaitingHeaders && !isFailed && (
         <div className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 font-semibold flex items-center gap-1">
           <PauseCircle className="w-3 h-3" />
           Click to set headers and continue
         </div>
       )}
 
-      {item.error && (
-        <p className="text-xs text-red-500 mt-2 truncate">
-          Error: {item.error}
-        </p>
-      )}
-
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+      {/* <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
         Source: {item.source}
-      </p>
+      </p> */}
     </motion.div>
   );
 };
@@ -284,11 +240,6 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
     : DateTime.fromSQL(utcDate, { zone: "utc" }).setZone(DateTime.local().zoneName);
 
   const formattedDate = localDate.toFormat("dd LLL yyyy, hh:mm:ss a");
-
-  // Debug: Check the actual value from database
-  // console.log("item: ",item);
-
-  // console.log('Item:', item.id, 'is_viewed:', item.is_viewed, 'type:', typeof item.is_viewed);
 
   // Mark as viewed only on click
   const handleClick = () => {
@@ -346,6 +297,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
 
   // Determine if item is new (not viewed)
   const isNew = !item.is_viewed;
+  const isFailed = item.status === 'failed';
 
   return (
     <motion.div
@@ -355,44 +307,52 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
       transition={{ duration: 0.3 }}
       onMouseEnter={() => onHoverChange(`${item.id}-${index}`)}
       onMouseLeave={() => onHoverChange(null)}
-      className={`relative rounded-xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 border ${isNew
+      className={`relative rounded-xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 border ${isFailed
+        ? "bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-200 dark:border-red-700/50"
+        : isNew
           ? "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-700/50 shadow-lg shadow-green-500/10 animate-pulse-slow"
           : isHovered === `${item.id}-${index}`
             ? "bg-white dark:bg-gray-800/50 border-purple-300 dark:border-purple-600/50 shadow-lg shadow-purple-500/10"
             : "bg-white dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/50"
         }`}
     >
-      {/* New Badge */}
-      {isNew && (
+      {/* New Badge - Only show for non-failed items */}
+      {isNew && !isFailed && (
         <div className="absolute top-3 -left-1 z-20 -rotate-45">
           <NewBadge />
         </div>
       )}
 
       {/* Glowing border effect for new items */}
-      {isNew && (
+      {isNew && !isFailed && (
         <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-green-400/20 to-emerald-400/20 dark:from-green-500/10 dark:to-emerald-500/10 animate-pulse" />
       )}
 
       <div className="relative z-10 flex justify-between items-start gap-3">
         <div className="flex gap-3 justify-start items-center flex-1 min-w-0">
           <motion.div
-            className={`p-2 rounded-lg ${isNew
+            className={`p-2 rounded-lg ${isFailed
+              ? "bg-gradient-to-br from-red-500 to-pink-500 shadow-lg shadow-red-500/30"
+              : isNew
                 ? "bg-gradient-to-br from-green-500 to-emerald-500 shadow-lg shadow-green-500/30"
                 : isHovered === `${item.id}-${index}`
                   ? "bg-gradient-to-br from-blue-500 to-blue-600 shadow-md"
                   : "bg-blue-100 dark:bg-blue-900/30"
               } transition-all duration-300`}
-            whileHover={{ scale: 1.05, rotate: 5 }}
+            whileHover={{ scale: 1.05, rotate: isFailed ? 0 : 5 }}
           >
-            <FileText
-              className={`w-5 h-5 ${isNew
+            {isFailed ? (
+              <XCircle className="w-5 h-5 text-white" />
+            ) : (
+              <FileText
+                className={`w-5 h-5 ${isNew
                   ? "text-white"
                   : isHovered === `${item.id}-${index}`
                     ? "text-white"
                     : "text-blue-600 dark:text-blue-400"
-                }`}
-            />
+                  }`}
+              />
+            )}
           </motion.div>
 
           {isEditing ? (
@@ -425,38 +385,63 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
             </div>
           ) : (
             <div className="flex-1 min-w-0">
-              <Link
-                to={`/momGenerate/${item.id}`}
-                onClick={handleClick}
-                className={`font-semibold transition-colors truncate block text-sm ${isNew
+              {isFailed ? (
+                <div
+                  className={`font-semibold transition-colors truncate block text-sm ${isFailed
+                    ? "text-red-800 dark:text-red-200"
+                    : ""}`}
+                >
+                  {item.title || item.source || "Unknown"}
+                </div>
+              ) : (
+                <Link
+                  to={`/momGenerate/${item.id}`}
+                  onClick={handleClick}
+                  className={`font-semibold transition-colors truncate block text-sm ${isNew
                     ? "text-green-800 dark:text-green-200 hover:text-emerald-600 dark:hover:text-emerald-400"
                     : "text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
-                  }`}
-              >
-                {item.title || item.source || "Unknown"}
-              </Link>
+                    }`}
+                >
+                  {item.title || item.source || "Unknown"}
+                </Link>
+              )}
               <div className="flex items-center gap-2 mt-1 flex-nowrap overflow-hidden">
-                <span className={`text-xs whitespace-nowrap flex-shrink-0 ${isNew
+                <span className={`text-xs whitespace-nowrap flex-shrink-0 ${isFailed
+                  ? "text-red-600 dark:text-red-400"
+                  : isNew
                     ? "text-green-600 dark:text-green-400"
                     : "text-gray-500 dark:text-gray-400"
                   }`}>
                   {formattedDate}
                 </span>
-                <span className={`w-1 h-1 rounded-full ${isNew
+                {/* <span className={`w-1 h-1 rounded-full ${isFailed
+                  ? "bg-red-400"
+                  : isNew
                     ? "bg-green-400"
                     : "bg-gray-300 dark:bg-gray-600"
-                  } flex-shrink-0`} />
-                <span className={`text-xs font-medium capitalize whitespace-nowrap truncate ${isNew
+                  } flex-shrink-0`} /> */}
+                {/* <span className={`text-xs font-medium capitalize whitespace-nowrap truncate ${isFailed
+                  ? "text-red-600 dark:text-red-400"
+                  : isNew
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-purple-600 dark:text-purple-400"
                   }`}>
                   {item.source}
-                </span>
+                </span> */}
+                {isFailed && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-red-400 flex-shrink-0" />
+                    <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                      Failed
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           )}
         </div>
 
+        {/* Menu button - Show for all items including failed ones */}
         {!isEditing && (
           <div className="menu-container relative">
             <motion.button
@@ -466,12 +451,16 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                 e.stopPropagation();
                 onMenuToggle(menuOpenId === item.id ? null : item.id);
               }}
-              className={`p-2 cursor-pointer rounded-lg transition-all duration-200 ${isNew
+              className={`p-2 cursor-pointer rounded-lg transition-all duration-200 ${isFailed
+                ? "hover:bg-red-100 dark:hover:bg-red-900/30"
+                : isNew
                   ? "hover:bg-green-100 dark:hover:bg-green-900/30"
                   : "hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
             >
-              <MoreVertical className={`w-4 h-4 ${isNew
+              <MoreVertical className={`w-4 h-4 ${isFailed
+                ? "text-red-600 dark:text-red-400"
+                : isNew
                   ? "text-green-600 dark:text-green-400"
                   : "text-gray-500 dark:text-gray-400"
                 }`} />
@@ -508,6 +497,23 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
           </div>
         )}
       </div>
+
+      {/* Error Message for failed completed items */}
+      {isFailed && item.error && (
+        <div className="mt-3 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700/50">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-red-700 dark:text-red-300 font-medium mb-1">
+                Error Details:
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 break-words">
+                {item.error}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
@@ -526,6 +532,15 @@ const UnifiedHistory = ({ NeedFor, height }) => {
   const { addToast } = useToast();
   const dispatch = useDispatch();
 
+  // Sort items by date (newest first)
+  const sortByDate = (items) => {
+    return items.sort((a, b) => {
+      const dateA = new Date(a.date || a.uploadedAt || a.createdAt);
+      const dateB = new Date(b.date || b.uploadedAt || b.createdAt);
+      return dateB - dateA; // Descending order (newest first)
+    });
+  };
+
   // Fetch completed history
   const fetchCompletedHistory = async () => {
     try {
@@ -534,20 +549,15 @@ const UnifiedHistory = ({ NeedFor, height }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // console.log('Raw history data:', res.data); // Debug log
-
       let filteredData = res.data.filter((item) => item.isMoMGenerated === 1);
-
-      // Debug: Check is_viewed values
-      // filteredData.forEach(item => {
-      //   console.log(`Item ${item.id}: is_viewed = ${item.is_viewed}, type = ${typeof item.is_viewed}`);
-      // });
 
       if (NeedFor) {
         filteredData = filteredData.filter((item) => item.source === NeedFor);
       }
 
-      setCompletedHistory(filteredData);
+      // Sort by date
+      const sortedData = sortByDate(filteredData);
+      setCompletedHistory(sortedData);
     } catch (err) {
       console.error("Get history error:", err);
     }
@@ -568,8 +578,11 @@ const UnifiedHistory = ({ NeedFor, height }) => {
         items = items.filter((item) => item.source === NeedFor);
       }
 
+      // Sort by date
+      const sortedItems = sortByDate(items);
+
       // Check for newly completed items
-      const currentProcessingIds = new Set(items.map(item => item.id));
+      const currentProcessingIds = new Set(sortedItems.map(item => item.id));
       const completedIds = [...previousProcessingIds].filter(id => !currentProcessingIds.has(id));
 
       // Show notification for completed items
@@ -582,7 +595,7 @@ const UnifiedHistory = ({ NeedFor, height }) => {
       });
 
       setPreviousProcessingIds(currentProcessingIds);
-      setProcessingItems(items);
+      setProcessingItems(sortedItems);
 
       // Refresh completed history when items complete
       if (completedIds.length > 0) {
@@ -608,8 +621,6 @@ const UnifiedHistory = ({ NeedFor, height }) => {
           item.id === historyId ? { ...item, is_viewed: true } : item
         )
       );
-
-      // console.log(`Marked item ${historyId} as viewed`); // Debug log
     } catch (error) {
       console.error('Error marking as viewed:', error);
     }
@@ -671,9 +682,7 @@ const UnifiedHistory = ({ NeedFor, height }) => {
   };
 
   const totalItems = processingItems.length + completedHistory.length;
-  const newItemsCount = completedHistory.filter(item => !item.is_viewed).length;
-
-  // console.log('New items count:', newItemsCount); // Debug log
+  const newItemsCount = completedHistory.filter(item => !item.is_viewed && item.status !== 'failed').length;
 
   return (
     <div
@@ -691,10 +700,7 @@ const UnifiedHistory = ({ NeedFor, height }) => {
               Meeting History
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {/* {processingItems.length > 0 && `${processingItems.length} processing`} */}
-              {/* {processingItems.length > 0 && completedHistory.length > 0 && ' • '} */}
               {completedHistory.length > 0 && `${completedHistory.length} completed`}
-              {/* {newItemsCount > 0 && ` • ${newItemsCount} new`} */}
             </p>
           </div>
         </div>

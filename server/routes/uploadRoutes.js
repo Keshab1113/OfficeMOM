@@ -19,21 +19,21 @@ const uploadTimeout = (req, res, next) => {
   next();
 };
 
-router.post(
-  "/upload-audio",
-  authMiddleware,
-  uploadTimeout,
-  upload.single("audio"),
-  uploadAudio
-);
+// router.post(
+//   "/upload-audio",
+//   authMiddleware,
+//   uploadTimeout,
+//   upload.single("audio"),
+//   uploadAudio
+// );
 
-router.post(
-  "/upload-audio-ftp",
-  authMiddleware,
-  uploadTimeout,
-  upload.single("audio"),
-  uploadAudioToFTPOnly
-);
+// router.post(
+//   "/upload-audio-ftp",
+//   authMiddleware,
+//   uploadTimeout,
+//   upload.single("audio"),
+//   uploadAudioToFTPOnly
+// );
 router.post(
   "/upload-audio-background",
   authMiddleware,

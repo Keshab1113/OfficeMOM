@@ -7,21 +7,26 @@ import { store, persistor } from "./redux/store.js";
 import { PersistGate } from "redux-persist/integration/react";
 import { ToastProvider } from "./components/ToastContext";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { SocketProvider } from './context/SocketContext.jsx';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={clientId}>
-    <BrowserRouter>
-      <Provider store={store}>
-        <PersistGate loading={null} persistor={persistor}>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </PersistGate>
-      </Provider>
-    </BrowserRouter>
-    </GoogleOAuthProvider>
+    
+      <GoogleOAuthProvider clientId={clientId}>
+        <BrowserRouter>
+          <Provider store={store}>
+            <PersistGate loading={null} persistor={persistor}>
+              <SocketProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+              </SocketProvider>
+            </PersistGate>
+          </Provider>
+        </BrowserRouter>
+      </GoogleOAuthProvider>
+    
   </StrictMode>
 );

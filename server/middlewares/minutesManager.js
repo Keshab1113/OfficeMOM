@@ -1,8 +1,4 @@
 
- 
-
-// middlewares/minutesManager.js
-
 const db = require("../config/db");
 const fs = require("fs").promises;
 const path = require("path");
@@ -17,49 +13,49 @@ const os = require("os");
 function detectFileType(buffer, filename = '') {
   // Check magic numbers
   if (buffer.length < 12) return { type: 'unknown', needsFfprobe: true };
-  
+
   // Get file extension
   const ext = filename ? path.extname(filename).toLowerCase().replace('.', '') : '';
-  
+
   // MP3: FF FB or FF F3 or FF F2 or ID3 tag
-  if ((buffer[0] === 0xFF && (buffer[1] & 0xE0) === 0xE0) || 
-      (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33)) {
+  if ((buffer[0] === 0xFF && (buffer[1] & 0xE0) === 0xE0) ||
+    (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33)) {
     return { type: 'mp3', needsFfprobe: false };
   }
-  
+
   // MP4/M4A/MPEG: Check for 'ftyp' at offset 4
   if (buffer.slice(4, 8).toString() === 'ftyp') {
     const ftypDetails = buffer.slice(8, 12).toString();
-    
+
     // M4A audio files
     if (ftypDetails.includes('M4A') || ext === 'm4a') {
       return { type: 'm4a', needsFfprobe: true };
     }
-    
+
     // MP4 video/audio
     if (ftypDetails.includes('mp4') || ftypDetails.includes('isom') || ext === 'mp4') {
       return { type: 'mp4', needsFfprobe: true };
     }
-    
+
     return { type: 'mp4', needsFfprobe: true };
   }
-  
+
   // MPEG (MPG/MPEG): 00 00 01 BA or 00 00 01 B3
-  if (buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0x01 && 
-      (buffer[3] === 0xBA || buffer[3] === 0xB3)) {
+  if (buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0x01 &&
+    (buffer[3] === 0xBA || buffer[3] === 0xB3)) {
     return { type: 'mpeg', needsFfprobe: true };
   }
-  
+
   // WebM/MKV: 1A 45 DF A3
   if (buffer[0] === 0x1A && buffer[1] === 0x45 && buffer[2] === 0xDF && buffer[3] === 0xA3) {
     return { type: 'webm', needsFfprobe: true };
   }
-  
+
   // WAV: RIFF....WAVE
   if (buffer.slice(0, 4).toString() === 'RIFF' && buffer.slice(8, 12).toString() === 'WAVE') {
     return { type: 'wav', needsFfprobe: false };
   }
-  
+
   // Fallback to extension if magic number detection fails
   if (ext) {
     const extensionMap = {
@@ -71,13 +67,13 @@ function detectFileType(buffer, filename = '') {
       'mpeg': { type: 'mpeg', needsFfprobe: true },
       'mpg': { type: 'mpeg', needsFfprobe: true }
     };
-    
+
     if (extensionMap[ext]) {
       console.log(`⚠️ Using extension-based detection: ${ext}`);
       return extensionMap[ext];
     }
   }
-  
+
   return { type: 'unknown', needsFfprobe: true };
 }
 
@@ -92,9 +88,9 @@ async function getAudioDuration(audioBuffer, filename = '') {
     const fileDetection = detectFileType(audioBuffer, filename);
     const fileType = fileDetection.type;
     const needsFfprobe = fileDetection.needsFfprobe;
-    
+
     console.log(`🔍 Detected file type: ${fileType} | Needs ffprobe: ${needsFfprobe}`);
-    
+
     // For video files and complex audio formats, ALWAYS use ffprobe first
     if (needsFfprobe || ['mp4', 'm4a', 'webm', 'mpeg'].includes(fileType)) {
       console.log('📹 Using ffprobe for accurate duration (video/complex format)...');
@@ -104,7 +100,7 @@ async function getAudioDuration(audioBuffer, filename = '') {
         console.log('⚠️ ffprobe failed, trying alternative methods...', ffprobeError.message);
       }
     }
-    
+
     // Method 1: WAV file - calculate from header
     if (fileType === 'wav') {
       try {
@@ -118,19 +114,19 @@ async function getAudioDuration(audioBuffer, filename = '') {
         console.log("📊 WAV header parsing failed, trying music-metadata...");
       }
     }
-    
+
     // Method 2: mp3-duration (ONLY for MP3 files)
     if (fileType === 'mp3') {
       try {
         const mp3Duration = require('mp3-duration');
-        
+
         const durationInSeconds = await new Promise((resolve, reject) => {
           mp3Duration(audioBuffer, (err, duration) => {
             if (err) reject(err);
             else resolve(duration);
           });
         });
-        
+
         if (durationInSeconds && durationInSeconds > 0) {
           const durationInMinutes = Math.ceil(durationInSeconds / 60);
           console.log(`✅ Duration obtained via mp3-duration: ${durationInMinutes} minutes (${durationInSeconds.toFixed(2)}s)`);
@@ -152,11 +148,11 @@ async function getAudioDuration(audioBuffer, filename = '') {
         'wav': 'audio/wav',
         'mpeg': 'video/mpeg'
       };
-      
-      const metadata = await parseBuffer(audioBuffer, { 
-        mimeType: mimeTypes[fileType] || 'audio/mpeg' 
+
+      const metadata = await parseBuffer(audioBuffer, {
+        mimeType: mimeTypes[fileType] || 'audio/mpeg'
       });
-      
+
       if (metadata.format.duration && metadata.format.duration > 0) {
         const durationInMinutes = Math.ceil(metadata.format.duration / 60);
         console.log(`✅ Duration obtained via music-metadata: ${durationInMinutes} minutes (${metadata.format.duration.toFixed(2)}s)`);
@@ -172,11 +168,11 @@ async function getAudioDuration(audioBuffer, filename = '') {
     } catch (ffprobeError) {
       console.log("⚠️ ffprobe failed:", ffprobeError.message);
     }
-    
+
     // Method 5: MP3 frame analysis (for MP3 only)
     if (fileType === 'mp3') {
       console.log("🔍 Analyzing MP3 frames for precise duration...");
-      
+
       const frameDuration = analyzeMp3Frames(audioBuffer);
       if (frameDuration > 0) {
         const durationInMinutes = Math.ceil(frameDuration / 60);
@@ -184,7 +180,7 @@ async function getAudioDuration(audioBuffer, filename = '') {
         return durationInMinutes;
       }
     }
-    
+
     // Method 6: Bitrate-based calculation (MP3 only)
     if (fileType === 'mp3') {
       const bitrate = detectMP3Bitrate(audioBuffer);
@@ -192,16 +188,16 @@ async function getAudioDuration(audioBuffer, filename = '') {
         const fileSizeInBytes = audioBuffer.length;
         const durationInSeconds = (fileSizeInBytes * 8) / (bitrate * 1000);
         const estimatedMinutes = Math.ceil(durationInSeconds / 60);
-        
+
         console.log(`📏 Estimated duration via bitrate: ${estimatedMinutes} minutes (${durationInSeconds.toFixed(2)}s, bitrate: ${bitrate}kbps)`);
         return estimatedMinutes;
       }
     }
-    
+
     // Method 7: Fallback estimation based on file type
     const fileSizeInMB = audioBuffer.length / (1024 * 1024);
     let estimatedBitrate = 64; // Default for unknown formats
-    
+
     // Better bitrate estimates by file type
     const bitrateEstimates = {
       'mp3': 128,
@@ -211,20 +207,20 @@ async function getAudioDuration(audioBuffer, filename = '') {
       'webm': 128,
       'mpeg': 192
     };
-    
+
     estimatedBitrate = bitrateEstimates[fileType] || 64;
     const estimatedMinutes = Math.ceil((fileSizeInMB * 8 * 60) / estimatedBitrate);
-    
+
     console.log(`📏 Fallback estimation: ${estimatedMinutes} minutes (${fileSizeInMB.toFixed(2)} MB @ ${estimatedBitrate}kbps)`);
-    
+
     return Math.max(1, estimatedMinutes);
-    
+
   } catch (error) {
     console.error("❌ All duration detection methods failed:", error);
-    
+
     const fileSizeInMB = audioBuffer.length / (1024 * 1024);
     const fallbackMinutes = Math.max(1, Math.ceil((fileSizeInMB * 8 * 60) / 64));
-    
+
     console.log(`⚠️ Using final fallback: ${fallbackMinutes} minutes`);
     return fallbackMinutes;
   }
@@ -238,41 +234,41 @@ async function getAudioDuration(audioBuffer, filename = '') {
 function getWavDuration(buffer) {
   try {
     // Verify RIFF header
-    if (buffer.slice(0, 4).toString() !== 'RIFF' || 
-        buffer.slice(8, 12).toString() !== 'WAVE') {
+    if (buffer.slice(0, 4).toString() !== 'RIFF' ||
+      buffer.slice(8, 12).toString() !== 'WAVE') {
       throw new Error('Not a valid WAV file');
     }
-    
+
     // Find the 'fmt ' chunk
     let offset = 12;
     while (offset < buffer.length - 8) {
       const chunkId = buffer.slice(offset, offset + 4).toString();
       const chunkSize = buffer.readUInt32LE(offset + 4);
-      
+
       if (chunkId === 'fmt ') {
         // Parse format chunk
         const sampleRate = buffer.readUInt32LE(offset + 12);
         const byteRate = buffer.readUInt32LE(offset + 16);
-        
+
         // Find the 'data' chunk
         let dataOffset = offset + 8 + chunkSize;
         while (dataOffset < buffer.length - 8) {
           const dataChunkId = buffer.slice(dataOffset, dataOffset + 4).toString();
           const dataChunkSize = buffer.readUInt32LE(dataOffset + 4);
-          
+
           if (dataChunkId === 'data') {
             // Calculate duration
             const duration = dataChunkSize / byteRate;
             return duration;
           }
-          
+
           dataOffset += 8 + dataChunkSize;
         }
       }
-      
+
       offset += 8 + chunkSize;
     }
-    
+
     throw new Error('Could not find required WAV chunks');
   } catch (error) {
     console.error('Error parsing WAV file:', error);
@@ -287,18 +283,18 @@ function getWavDuration(buffer) {
  */
 async function getDurationViaFfprobe(audioBuffer) {
   let tempFilePath = null;
-  
+
   try {
     const tempDir = os.tmpdir();
     const tempFileName = `temp_audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.tmp`;
     tempFilePath = path.join(tempDir, tempFileName);
-    
+
     await fs.writeFile(tempFilePath, audioBuffer);
-    
+
     const { exec } = require("child_process");
     const { promisify } = require("util");
     const execPromise = promisify(exec);
-    
+
     // Try system ffprobe first
     let durationInSeconds;
     try {
@@ -306,9 +302,9 @@ async function getDurationViaFfprobe(audioBuffer) {
         `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempFilePath}"`,
         { timeout: 30000 } // 30 second timeout
       );
-      
+
       durationInSeconds = parseFloat(stdout.trim());
-      
+
       if (!isNaN(durationInSeconds) && durationInSeconds > 0) {
         const durationInMinutes = Math.ceil(durationInSeconds / 60);
         console.log(`✅ Duration obtained via system ffprobe: ${durationInMinutes} minutes (${durationInSeconds.toFixed(2)}s)`);
@@ -316,23 +312,23 @@ async function getDurationViaFfprobe(audioBuffer) {
       }
     } catch (systemError) {
       console.log("📊 System ffprobe failed, trying installed ffprobe...");
-      
+
       // Try @ffprobe-installer package
       const ffprobePath = require("@ffprobe-installer/ffprobe").path;
       const command = `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempFilePath}"`;
-      
+
       const { stdout } = await execPromise(command, { timeout: 30000 });
       durationInSeconds = parseFloat(stdout.trim());
-      
+
       if (!isNaN(durationInSeconds) && durationInSeconds > 0) {
         const durationInMinutes = Math.ceil(durationInSeconds / 60);
         console.log(`✅ Duration obtained via installed ffprobe: ${durationInMinutes} minutes (${durationInSeconds.toFixed(2)}s)`);
         return durationInMinutes;
       }
     }
-    
+
     throw new Error("ffprobe returned invalid duration");
-    
+
   } catch (error) {
     console.error("❌ ffprobe failed:", error.message);
     throw error;
@@ -360,14 +356,14 @@ function analyzeMp3Frames(buffer) {
       [1, 2], // MPEG 2
       [1, 1]  // MPEG 1
     ];
-    
+
     const layers = [
       null, // reserved
       [3, 384],  // Layer 3
       [2, 1152], // Layer 2
       [1, 1152]  // Layer 1
     ];
-    
+
     const bitrates = {
       'V1L1': [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448],
       'V1L2': [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384],
@@ -376,17 +372,17 @@ function analyzeMp3Frames(buffer) {
       'V2L2': [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160],
       'V2L3': [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160]
     };
-    
+
     const sampleRates = [
       [44100, 22050, 11025], // MPEG 1
       [48000, 24000, 12000], // MPEG 2
       [32000, 16000, 8000]   // MPEG 2.5
     ];
-    
+
     let offset = 0;
     let duration = 0;
     let frameCount = 0;
-    
+
     while (offset < buffer.length - 4) {
       // Look for frame sync (11 bits set)
       if (buffer[offset] === 0xFF && (buffer[offset + 1] & 0xE0) === 0xE0) {
@@ -395,44 +391,44 @@ function analyzeMp3Frames(buffer) {
         const bitrateIndex = (buffer[offset + 2] >> 4) & 0x0F;
         const sampleRateIndex = (buffer[offset + 2] >> 2) & 0x03;
         const padding = (buffer[offset + 2] >> 1) & 0x01;
-        
+
         const version = versions[versionBits];
         const layer = layers[layerBits];
-        
+
         if (!version || !layer || bitrateIndex === 0 || bitrateIndex === 15 || sampleRateIndex === 3) {
           offset++;
           continue;
         }
-        
+
         const key = `V${version[0]}L${layer[0]}`;
         const bitrate = bitrates[key] ? bitrates[key][bitrateIndex] : 0;
         const sampleRate = sampleRates[version[1] - 1] ? sampleRates[version[1] - 1][sampleRateIndex] : 0;
-        
+
         if (bitrate === 0 || sampleRate === 0) {
           offset++;
           continue;
         }
-        
+
         // Calculate frame length
         const samplesPerFrame = layer[1];
         const frameLength = Math.floor((samplesPerFrame / 8 * bitrate * 1000) / sampleRate) + padding;
-        
+
         // Calculate frame duration
         const frameDuration = samplesPerFrame / sampleRate;
         duration += frameDuration;
-        
+
         frameCount++;
         offset += frameLength;
       } else {
         offset++;
       }
     }
-    
+
     if (frameCount > 0) {
       console.log(`🎵 Analyzed ${frameCount} MP3 frames, total duration: ${duration.toFixed(2)}s`);
       return duration;
     }
-    
+
     return 0;
   } catch (error) {
     console.error("Error analyzing MP3 frames:", error);
@@ -450,11 +446,11 @@ function detectMP3Bitrate(buffer) {
     const bitrateTable = [
       0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320
     ];
-    
+
     for (let i = 0; i < Math.min(buffer.length - 4, 10000); i++) {
       if (buffer[i] === 0xFF && (buffer[i + 1] & 0xE0) === 0xE0) {
         const bitrateIndex = (buffer[i + 2] >> 4) & 0x0F;
-        
+
         if (bitrateIndex > 0 && bitrateIndex < bitrateTable.length) {
           const bitrate = bitrateTable[bitrateIndex];
           console.log(`🔍 Detected MP3 bitrate: ${bitrate} kbps`);
@@ -462,7 +458,7 @@ function detectMP3Bitrate(buffer) {
         }
       }
     }
-    
+
     return 0;
   } catch (error) {
     console.error("Error detecting MP3 bitrate:", error);
@@ -480,17 +476,17 @@ async function getAudioDurationFromUrl(audioUrl) {
     const { exec } = require("child_process");
     const { promisify } = require("util");
     const execPromise = promisify(exec);
-    
+
     const ffprobePath = require("@ffprobe-installer/ffprobe").path;
     const command = `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioUrl}"`;
-    
+
     const { stdout } = await execPromise(command);
     const durationInSeconds = parseFloat(stdout.trim());
-    
+
     if (isNaN(durationInSeconds) || durationInSeconds <= 0) {
       throw new Error("Invalid duration from URL");
     }
-    
+
     return Math.ceil(durationInSeconds / 60);
   } catch (error) {
     console.error("Error getting duration from URL:", error);
@@ -522,20 +518,20 @@ async function isFreePlanUser(userId) {
     );
 
     if (subscription.length === 0) return true; // No subscription = free user
-    
+
     const planId = subscription[0].plan_id;
-    
+
     // Check if plan is free (plan_id = 1 or plan name contains 'free')
     const [plan] = await db.query(
       "SELECT id, name, price FROM plans WHERE id = ?",
       [planId]
     );
-    
+
     if (plan.length === 0) return true;
-    
+
     // Free plan is typically id=1 or price=0
     return plan[0].id === 1 || plan[0].price === 0 || plan[0].name.toLowerCase().includes('free');
-    
+
   } catch (error) {
     console.error("Error checking free plan status:", error);
     return true; // Default to free user on error
@@ -552,7 +548,7 @@ async function checkUserMinutes(userId, requiredMinutes) {
   try {
     // Check if user is on free plan
     const isFreeUser = await isFreePlanUser(userId);
-    
+
     // Free users can only upload files up to 30 minutes
     if (isFreeUser && requiredMinutes > 30) {
       return {
@@ -565,7 +561,7 @@ async function checkUserMinutes(userId, requiredMinutes) {
         details: null,
       };
     }
-    
+
     const [subscription] = await db.query(
       "SELECT * FROM user_subscription_details WHERE user_id = ?",
       [userId]
@@ -624,7 +620,7 @@ async function deductUserMinutes(userId, minutesToDeduct) {
     }
 
     const currentSub = subscription[0];
-    
+
     const newRemainingTime = parseFloat((currentSub.total_remaining_time - minutesToDeduct).toFixed(2));
     const newUsedTime = parseFloat((currentSub.total_used_time + minutesToDeduct).toFixed(2));
     const newMonthlyUsed = parseFloat((currentSub.monthly_used + minutesToDeduct).toFixed(2));
@@ -659,17 +655,88 @@ async function deductUserMinutes(userId, minutesToDeduct) {
   }
 }
 
+async function refundUserMinutes(userId, minutesToRefund, reason = "Processing failed") {
+  try {
+    console.log(`💰 Refunding ${minutesToRefund} minutes to user ${userId}. Reason: ${reason}`);
+
+    const [subscription] = await db.query(
+      "SELECT * FROM user_subscription_details WHERE user_id = ?",
+      [userId]
+    );
+
+    if (subscription.length === 0) {
+      throw new Error("Subscription not found for refund");
+    }
+
+    const currentSub = subscription[0];
+
+    // Add minutes back to remaining time
+    const newRemainingTime = parseFloat((currentSub.total_remaining_time + minutesToRefund).toFixed(2));
+
+    // Subtract from used time
+    const newUsedTime = Math.max(0, parseFloat((currentSub.total_used_time - minutesToRefund).toFixed(2)));
+
+    // Subtract from monthly used
+    const newMonthlyUsed = Math.max(0, parseFloat((currentSub.monthly_used - minutesToRefund).toFixed(2)));
+
+    // Add back to monthly remaining
+    const newMonthlyRemaining = parseFloat((currentSub.monthly_remaining + minutesToRefund).toFixed(2));
+
+    // Update the subscription
+    await db.query(
+      `UPDATE user_subscription_details 
+       SET total_remaining_time = ?,
+           total_used_time = ?,
+           monthly_used = ?,
+           monthly_remaining = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = ?`,
+      [
+        newRemainingTime,
+        newUsedTime,
+        newMonthlyUsed,
+        newMonthlyRemaining,
+        userId,
+      ]
+    );
+
+    // Log the refund for audit trail
+    try {
+      await db.query(
+        `INSERT INTO minutes_usage_log (user_id, audio_id, minutes_used, source, action, created_at, reason) 
+         VALUES (?, NULL, ?, 'system', 'refunded', CURRENT_TIMESTAMP, ?)`,
+        [userId, minutesToRefund, reason]
+      );
+    } catch (logError) {
+      console.error("Error logging refund (non-critical):", logError);
+    }
+
+    console.log(`✅ Successfully refunded ${minutesToRefund} minutes to user ${userId}. New balance: ${newRemainingTime}`);
+
+    return {
+      success: true,
+      refundedMinutes: minutesToRefund,
+      newBalance: newRemainingTime,
+      previousBalance: currentSub.total_remaining_time,
+      message: `Successfully refunded ${minutesToRefund} minutes. New balance: ${newRemainingTime} minutes`,
+    };
+  } catch (error) {
+    console.error("❌ Error refunding user minutes:", error);
+    throw new Error(`Failed to refund minutes: ${error.message}`);
+  }
+}
+
 /**
  * Express middleware to check and validate audio minutes before processing
  */
 const validateAudioMinutes = async (req, res, next) => {
   try {
     const userId = req.user?.id;
-    
+
     if (!userId) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: "Unauthorized: no user ID" 
+        message: "Unauthorized: no user ID"
       });
     }
 
@@ -680,9 +747,9 @@ const validateAudioMinutes = async (req, res, next) => {
       const axios = require("axios");
       const fileId = driveUrl.match(/\/d\/(.*?)\//)?.[1];
       if (!fileId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          message: "Invalid Google Drive URL format" 
+          message: "Invalid Google Drive URL format"
         });
       }
       const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
@@ -691,9 +758,9 @@ const validateAudioMinutes = async (req, res, next) => {
     } else if (req.file) {
       audioBuffer = req.file.buffer;
     } else {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "No audio file or Drive URL provided" 
+        message: "No audio file or Drive URL provided"
       });
     }
 
@@ -755,4 +822,5 @@ module.exports = {
   logMinutesUsage,
   secondsToMinutes,
   isFreePlanUser,
+  refundUserMinutes,
 };
