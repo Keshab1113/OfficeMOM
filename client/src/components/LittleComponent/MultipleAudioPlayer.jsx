@@ -17,6 +17,7 @@ import {
   updateAudioDuration,
 } from "../../redux/audioSlice";
 import { DateTime } from "luxon";
+import * as mm from 'music-metadata-browser';
 
 export default function MultipleAudioPlayer({
   onContinue,
@@ -24,6 +25,7 @@ export default function MultipleAudioPlayer({
 }) {
   const [audioData, setAudioData] = useState([]);
   const [loading, setLoading] = useState(true);
+   const [loadingDurations, setLoadingDurations] = useState(false);
   const [processingId, setProcessingId] = useState(null);
   const [playingStates, setPlayingStates] = useState({});
   const [currentTimes, setCurrentTimes] = useState({});
@@ -39,26 +41,108 @@ export default function MultipleAudioPlayer({
   const { previews } = useSelector((state) => state.audio);
   const lastPreview = previews.at(-1);
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/history/meeting-audios`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+const fetchAudioDuration = (url) => {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.preload = "metadata";
+      
+      audio.addEventListener("loadedmetadata", () => {
+        resolve(audio.duration);
+      });
+      
+      audio.addEventListener("error", () => {
+        resolve(0);
+      });
+      
+      // Timeout after 10 seconds
+      const timeout = setTimeout(() => {
+        resolve(0);
+      }, 10000);
+      
+      audio.addEventListener("loadedmetadata", () => {
+        clearTimeout(timeout);
+      });
+      
+      audio.src = url;
+    });
+  };
+   
 
-        const allMeetings = res.data.meetings || [];
-        setAudioData(allMeetings);
-        setLoading(false);
-      } catch (err) {
-        console.error("Get history error:", err);
-        setLoading(false);
+
+//   useEffect(() => {
+//     const fetchHistory = async () => {
+//       try {
+//         const res = await axios.get(
+//           `${import.meta.env.VITE_BACKEND_URL}/api/history/meeting-audios`,
+//           { headers: { Authorization: `Bearer ${token}` } }
+//         );
+
+//         const allMeetings = res.data.meetings || [];
+
+// // Fetch durations for all audios in parallel
+// setAudioData(
+//   allMeetings.map(a => ({ ...a, duration: 0 }))
+// );
+
+
+
+
+//         setLoading(false);
+//       } catch (err) {
+//         console.error("Get history error:", err);
+//         setLoading(false);
+//       }
+//     };
+
+//     // Only fetch on mount, not when previews change during recording
+//     fetchHistory();
+//   }, [token]); // Removed 'previews' dependency
+
+useEffect(() => {
+  const fetchHistory = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/history/meeting-audios`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const allMeetings = res.data.meetings || [];
+      setAudioData(allMeetings);
+      setLoading(false);
+      
+      // Fetch durations asynchronously after displaying the list
+      if (allMeetings.length > 0) {
+        setLoadingDurations(true);
+        
+        // Fetch all durations in parallel
+        Promise.all(
+          allMeetings.map(async (meeting, index) => {
+            try {
+              const duration = await fetchAudioDuration(meeting.audioUrl);
+              return { index, duration };
+            } catch (err) {
+              console.error(`Failed to get duration for audio ${meeting.id}:`, err);
+              return { index, duration: 0 };
+            }
+          })
+        ).then((results) => {
+          const durationsMap = {};
+          results.forEach(({ index, duration }) => {
+            durationsMap[index] = duration;
+          });
+          setDurations(durationsMap);
+          setLoadingDurations(false);
+        });
       }
-    };
+    } catch (err) {
+      console.error("Get history error:", err);
+      setLoading(false);
+      setLoadingDurations(false);
+    }
+  };
 
-    // Only fetch on mount, not when previews change during recording
-    fetchHistory();
-  }, [token]); // Removed 'previews' dependency
+  fetchHistory();
+}, [token]);
 
   useEffect(() => {
     if (!isPreviewProcessing) {
@@ -90,26 +174,28 @@ export default function MultipleAudioPlayer({
 
   const handleLoadedMetadata = (audioId) => {
     const audio = audioRefs.current[audioId];
-    if (audio) {
-      setDurations((prev) => ({ ...prev, [audioId]: audio.duration }));
+    if (audio && isFinite(audio.duration) && audio.duration > 0) {
+      setDurations((prev) => ({
+        ...prev,
+        [audioId]: audio.duration,
+      }));
     }
   };
 
+
+
   const handleTimeUpdate = (audioId) => {
-    const audio = audioRefs.current[audioId];
-    if (audio) {
-      setCurrentTimes((prev) => ({ ...prev, [audioId]: audio.currentTime }));
-      if (isFinite(audio.duration)) {
-        const preview = audioData[audioId];
-        if (preview && !preview.duration) {
-          dispatch(
-            updateAudioDuration({ id: preview.id, duration: audio.duration })
-          );
-        }
-        setDurations((prev) => ({ ...prev, [audioId]: audio.duration }));
-      }
+  const audio = audioRefs.current[audioId];
+  if (audio) {
+    setCurrentTimes((prev) => ({ ...prev, [audioId]: audio.currentTime }));
+
+    // Update duration if it hasn’t been set yet
+    if (!durations[audioId] && isFinite(audio.duration)) {
+      setDurations((prev) => ({ ...prev, [audioId]: audio.duration }));
     }
-  };
+  }
+};
+
 
   const handleError = (e, audioId) => {
     // Silently remove the failed audio from the list
@@ -159,8 +245,8 @@ export default function MultipleAudioPlayer({
   };
 
 
-  const formatTime = (time) => {
-    if (!time || !isFinite(time)) return "0:00";
+ const formatTime = (time) => {
+    if (!time || !isFinite(time) || time === 0) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -218,7 +304,7 @@ export default function MultipleAudioPlayer({
     dispatch(clearAudioPreviews());
   };
 
-  if (loading) {
+ if (loading) {
     return (
       <div className="my-8 flex justify-center">
         <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
@@ -346,42 +432,27 @@ export default function MultipleAudioPlayer({
                       <span className=" md:block hidden">Delete</span>
                       <Trash className="w-4 h-4" />
                     </button>
-                    {/* <button
-                      onClick={async () => {
-                        setProcessingId(audio.id);
-                        await onContinue(audio.audioUrl);
-                        handleDelete(audio.id);
-                      }}
-                      disabled={processingId !== null || isLastPreview}
-                      className="flex cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center md:ml-4 ml-2 gap-2 md:px-4 px-2 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
-                    >
-                      {processingId === audio.id ? (
-                        <>
-                          <Loader2 className="w-6 h-6 animate-spin" />
-                          <span className=" md:block hidden">
-                            Processing...
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className=" md:block hidden">Create MoM</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button> */}
+                    
                   </div>
 
-                  <audio
-                    ref={(el) => (audioRefs.current[index] = el)}
-                    src={audio.audioUrl}
-                    onTimeUpdate={() => handleTimeUpdate(index)}
-                    onLoadedMetadata={() => handleLoadedMetadata(index)}
-                    onError={(e) => handleError(e, index)}
-                    onEnded={() =>
-                      setPlayingStates((prev) => ({ ...prev, [index]: false }))
-                    }
-                    className="hidden"
-                  />
+                 <audio
+  ref={(el) => (audioRefs.current[index] = el)}
+  src={audio.audioUrl}
+  preload="metadata"
+  onLoadedMetadata={() => {
+    const audioEl = audioRefs.current[index];
+    if (audioEl && audioEl.duration && isFinite(audioEl.duration)) {
+      // Only update if we don't already have a duration
+      if (!durations[index]) {
+        setDurations(prev => ({ ...prev, [index]: audioEl.duration }));
+      }
+    }
+  }}
+  onTimeUpdate={() => handleTimeUpdate(index)}
+  onError={(e) => handleError(e, index)}
+  onEnded={() => setPlayingStates(prev => ({ ...prev, [index]: false }))}
+  className="hidden"
+/>
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => togglePlayPause(index)}
@@ -404,9 +475,11 @@ export default function MultipleAudioPlayer({
                           style={{ width: `${getProgressPercent(index)}%` }}
                         />
                       </div>
-                      <div className="flex justify-between mt-2 text-xs text-gray-600 dark:text-gray-400">
+                     <div className="flex justify-between mt-2 text-xs text-gray-600 dark:text-gray-400">
                         <span>{formatTime(currentTimes[index])}</span>
-                        <span>{formatTime(durations[index])}</span>
+                        <span>
+                          {durations[index] ? formatTime(durations[index]) : "..."}
+                        </span>
                       </div>
                     </div>
 

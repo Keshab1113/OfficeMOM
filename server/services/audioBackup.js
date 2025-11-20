@@ -1,247 +1,114 @@
-// // backend/services/audioBackup.js
-// const axios = require('axios');
-// const FormData = require('form-data');
 
-// class AudioBackupService {
-//   constructor() {
-//     this.activeMeetings = new Map();
-//   }
-
-//   initMeeting(roomId, hostId) {
-//     this.activeMeetings.set(roomId, {
-//       roomId,
-//       hostId,
-//       participants: new Map(),
-//       startTime: Date.now(),
-//       isRecording: false,
-//         isShuttingDown: false, 
-//     });
-//     console.log(`✅ Backup initialized for meeting ${roomId}`);
-//   }
-
-//   addParticipant(roomId, socketId, name) {
-//     const meeting = this.activeMeetings.get(roomId);
-//     if (!meeting) return;
-
-//     meeting.participants.set(socketId, {
-//       name,
-//       audioChunks: [],
-//     });
-//     console.log(`✅ Added ${name} (${socketId}) to backup for ${roomId}`);
-//   }
-
-//   // storeChunk(roomId, socketId, chunkBuffer) {
-//   //   const meeting = this.activeMeetings.get(roomId);
-//   //   if (!meeting || !meeting.isRecording) {
-//   //     console.log(`❌ BACKUP: Cannot store chunk - meeting ${roomId} not found or not recording`);
-//   //     return;
-//   //   }
-
-//   //   const participant = meeting.participants.get(socketId);
-//   //   if (participant) {
-//   //     participant.audioChunks.push(chunkBuffer);
-//   //     console.log(`✅ BACKUP: Stored chunk for ${participant.name} (${socketId}) in room ${roomId}, total chunks: ${participant.audioChunks.length}`);
-//   //   } else {
-//   //     console.log(`❌ BACKUP: Participant ${socketId} not found in room ${roomId}`);
-//   //   }
-//   // }
-
-//   storeChunk(roomId, socketId, chunkBuffer) {
-//   const meeting = this.activeMeetings.get(roomId);
-  
-//   // 🔥 FIXED: Accept chunks even during shutdown
-//   if (!meeting) {
-//     console.log(`❌ BACKUP: Cannot store chunk - meeting ${roomId} not found`);
-//     return;
-//   }
-
-//   if (!meeting.isRecording && !meeting.isShuttingDown) {
-//     console.log(`❌ BACKUP: Cannot store chunk - meeting ${roomId} not recording`);
-//     return;
-//   }
-
-//   const participant = meeting.participants.get(socketId);
-//   if (participant) {
-//     participant.audioChunks.push(chunkBuffer);
-//     console.log(`✅ BACKUP: Stored chunk for ${participant.name} (${socketId}) in room ${roomId}, total chunks: ${participant.audioChunks.length}`);
-//   } else {
-//     console.log(`❌ BACKUP: Participant ${socketId} not found in room ${roomId}`);
-//   }
-// }
-
-//   startRecording(roomId) {
-//     const meeting = this.activeMeetings.get(roomId);
-//     if (meeting) {
-//       meeting.isRecording = true;
-//       meeting.recordingStartTime = Date.now();
-//       console.log(`🎙️ BACKUP: Recording started for room ${roomId}, participants: ${meeting.participants.size}`);
-//     } else {
-//       console.log(`❌ BACKUP: Cannot start recording - meeting ${roomId} not found`);
-//     }
-//   }
-
-//   // async stopRecording(roomId, backendUrl, token) {
-//   //   const meeting = this.activeMeetings.get(roomId);
-//   //   if (!meeting) return null;
-
-//   //   meeting.isRecording = false;
-
-//   //   const allChunks = [];
-//   //   meeting.participants.forEach((participant) => {
-//   //     allChunks.push(...participant.audioChunks);
-//   //   });
-
-//   //   if (allChunks.length === 0) {
-//   //     console.log('⚠️ No audio chunks to save');
-//   //     return null;
-//   //   }
-
-//   //   try {
-//   //     const combinedBuffer = Buffer.concat(allChunks);
-//   //     const fileName = `backup_${roomId}_${Date.now()}.webm`;
-      
-//   //     const formData = new FormData();
-//   //     formData.append('audio', combinedBuffer, {
-//   //       filename: fileName,
-//   //       contentType: 'audio/webm',
-//   //     });
-
-//   //     const response = await axios.post(
-//   //       `${backendUrl}/api/upload/upload-audio-ftp`,
-//   //       formData,
-//   //       {
-//   //         headers: {
-//   //           ...formData.getHeaders(),
-//   //           Authorization: `Bearer ${token}`,
-//   //         },
-//   //       }
-//   //     );
-
-//   //     if (response.data?.audioUrl) {
-//   //       console.log(`✅ Backup uploaded: ${response.data.audioUrl}`);
-//   //       return response.data.audioUrl;
-//   //     }
-
-//   //     return null;
-//   //   } catch (error) {
-//   //     console.error('❌ Backup upload failed:', error.message);
-//   //     return null;
-//   //   }
-//   // }
+// // // backend/services/audioBackup.js
 
 
-//   async stopRecording(roomId, backendUrl, token) {
-//   const meeting = this.activeMeetings.get(roomId);
-//   if (!meeting) {
-//     console.log(`⚠️ No meeting found for ${roomId} to stop`);
-//     return null;
-//   }
-
-//   // 🔥 ADD THESE TWO LINES
-//   meeting.isShuttingDown = true;
-//   meeting.isRecording = false;
-  
-//   console.log(`🛑 Stopping recording for ${roomId}, waiting for final chunks...`);
-
-//   // 🔥 ADD THIS LINE - Wait for any final chunks to arrive
-//   await new Promise(resolve => setTimeout(resolve, 1000));
-
-//   const allChunks = [];
-//   meeting.participants.forEach((participant) => {
-//     allChunks.push(...participant.audioChunks);
-//     console.log(`📊 ${participant.name}: ${participant.audioChunks.length} chunks`);
-//   });
-
-//   if (allChunks.length === 0) {
-//     console.log('⚠️ No audio chunks to save');
-//     return null;
-//   }
-
-//   try {
-//     const combinedBuffer = Buffer.concat(allChunks);
-//     const fileName = `backup_${roomId}_${Date.now()}.webm`;
-    
-//     console.log(`📁 Starting upload: ${fileName}`);
-//     console.log(`📦 File size: ${(combinedBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-    
-//     const formData = new FormData();
-//     formData.append('audio', combinedBuffer, {
-//       filename: fileName,
-//       contentType: 'audio/webm',
-//     });
-
-//     const response = await axios.post(
-//       `${backendUrl}/api/upload/upload-audio-ftp`,
-//       formData,
-//       {
-//         headers: {
-//           ...formData.getHeaders(),
-//           Authorization: `Bearer ${token}`,
-//         },
-//       }
-//     );
-
-//     if (response.data?.audioUrl) {
-//       console.log(`✅ Backup uploaded: ${response.data.audioUrl}`);
-//       return response.data.audioUrl;
-//     }
-
-//     return null;
-//   } catch (error) {
-//     console.error('❌ Backup upload failed:', error.message);
-//     return null;
-//   }
-// }
-
-//   getMeetingStatus(roomId) {
-//     const meeting = this.activeMeetings.get(roomId);
-//     if (!meeting) return null;
-
-//     return {
-//       roomId,
-//       isRecording: meeting.isRecording,
-//       participants: Array.from(meeting.participants.keys()).length,
-//       duration: meeting.isRecording 
-//         ? Date.now() - meeting.recordingStartTime 
-//         : 0,
-//     };
-//   }
-
-//   removeParticipant(roomId, socketId) {
-//     const meeting = this.activeMeetings.get(roomId);
-//     if (meeting) {
-//       meeting.participants.delete(socketId);
-//       console.log(`👋 Removed participant ${socketId} from backup`);
-//     }
-//   }
-
-//   cleanup(roomId) {
-//     this.activeMeetings.delete(roomId);
-//     console.log(`🗑️ Cleaned up meeting ${roomId}`);
-//   }
-// }
-
-// module.exports = new AudioBackupService();
-
-// backend/services/audioBackup.js
+ 
 const axios = require('axios');
 const FormData = require('form-data');
+const fs = require('fs').promises;
+const path = require('path');
+const pool = require('../config/db');
 
 class AudioBackupService {
   constructor() {
     this.activeMeetings = new Map();
+    this.tempDir = path.join(__dirname, '../../temp_audio');
+    this.ensureTempDir();
+    this.hostSockets = new Map(); // Track host socket per room
   }
 
-  initMeeting(roomId, hostId) {
+  async ensureTempDir() {
+    try {
+      await fs.mkdir(this.tempDir, { recursive: true });
+      console.log('✅ Temp directory ready:', this.tempDir);
+    } catch (error) {
+      console.error('❌ Error creating temp directory:', error);
+    }
+  }
+
+  async initMeeting(roomId, hostId, userId) {
+  if (this.activeMeetings.has(roomId)) {
+    const meeting = this.activeMeetings.get(roomId);
+    
+    const oldHostId = this.hostSockets.get(roomId);
+    if (oldHostId !== hostId) {
+      console.log(`🔄 Host socket changed: ${oldHostId} → ${hostId}`);
+      this.hostSockets.set(roomId, hostId);
+      meeting.hostId = hostId;
+    }
+    
+    console.log(`♻️ Reconnected to existing meeting: ${roomId} (${meeting.chunkCounter} chunks)`);
+    return meeting.meetingDbId;
+  }
+
+  const existingMeeting = await this.getMeetingFromDB(roomId);
+  
+  let meetingDbId;
+  let startTime;
+  
+  if (existingMeeting) {
+    meetingDbId = existingMeeting.id;
+    // ✅ FIX: Use created_at for start time
+    startTime = new Date(existingMeeting.created_at).getTime();
+    console.log(`📄 Resuming meeting from DB: ${roomId} (ID: ${meetingDbId})`);
+  } else {
+    const [result] = await pool.query(
+      `INSERT INTO meetings (room_id, host_user_id, status, created_at) 
+       VALUES (?, ?, 'active', NOW())`,
+      [roomId, userId]
+    );
+    meetingDbId = result.insertId;
+    startTime = Date.now();
+    console.log(`✅ Created new meeting in DB: ${roomId} (ID: ${meetingDbId})`);
+  }
+
+    const tempFilePath = path.join(this.tempDir, `${roomId}_temp.webm`);
+    
+    // Check if temp file exists from previous session
+    let existingChunkCount = 0;
+    try {
+      const stats = await fs.stat(tempFilePath);
+      existingChunkCount = existingMeeting?.chunk_count || 0;
+      console.log(`📁 Found existing temp file: ${(stats.size / 1024).toFixed(2)} KB, ${existingChunkCount} chunks`);
+    } catch (error) {
+      // Create new temp file
+      await fs.writeFile(tempFilePath, Buffer.alloc(0));
+      console.log('✅ Created new temp file:', tempFilePath);
+    }
+
     this.activeMeetings.set(roomId, {
       roomId,
       hostId,
+      meetingDbId,
+      userId,
       participants: new Map(),
-      startTime: Date.now(),
-      isRecording: false,
+      chunkCounter: existingChunkCount,
+      startTime,
+      isRecording: existingMeeting?.status === 'recording',
       isShuttingDown: false,
+      tempFilePath,
     });
-    console.log(`✅ Backup initialized for meeting ${roomId}`);
+
+    this.hostSockets.set(roomId, hostId);
+    console.log(`✅ Backup service initialized for meeting ${roomId}`);
+    return meetingDbId;
+  }
+
+  async getMeetingFromDB(roomId) {
+    try {
+      const [rows] = await pool.query(
+        `SELECT id, host_user_id, created_at, status, chunk_count, duration_seconds 
+         FROM meetings 
+         WHERE room_id = ? 
+         ORDER BY created_at DESC 
+         LIMIT 1`,
+        [roomId]
+      );
+      return rows[0] || null;
+    } catch (error) {
+      console.error('❌ Error fetching meeting from DB:', error);
+      return null;
+    }
   }
 
   addParticipant(roomId, socketId, name) {
@@ -250,85 +117,124 @@ class AudioBackupService {
 
     meeting.participants.set(socketId, {
       name,
-      audioChunks: [],
+      joinedAt: Date.now(),
     });
-    console.log(`✅ Added ${name} (${socketId}) to backup for ${roomId}`);
+    console.log(`✅ Added ${name} (${socketId}) to meeting ${roomId}`);
   }
 
-  storeChunk(roomId, socketId, chunkBuffer) {
+  async storeChunk(roomId, chunkBuffer) {
     const meeting = this.activeMeetings.get(roomId);
     
-    // 🔥 IMPROVED: Accept chunks even during shutdown for grace period
     if (!meeting) {
-      console.log(`❌ BACKUP: Cannot store chunk - meeting ${roomId} not found`);
+      console.log(`❌ Cannot store chunk - meeting ${roomId} not found`);
       return;
     }
 
-    if (!meeting.isRecording && !meeting.isShuttingDown) {
-      console.log(`❌ BACKUP: Cannot store chunk - meeting ${roomId} not recording`);
-      return;
-    }
+    try {
+      await fs.appendFile(meeting.tempFilePath, chunkBuffer);
+      meeting.chunkCounter++;
+      
+      if (meeting.chunkCounter % 10 === 0) {
+        await this.saveProgressToDB(roomId);
+      }
 
-    const participant = meeting.participants.get(socketId);
-    if (participant) {
-      participant.audioChunks.push(chunkBuffer);
-      console.log(`✅ BACKUP: Stored chunk for ${participant.name} (${socketId}) in room ${roomId}, total chunks: ${participant.audioChunks.length}`);
-    } else {
-      console.log(`❌ BACKUP: Participant ${socketId} not found in room ${roomId}`);
+      if (meeting.chunkCounter % 50 === 0) {
+        console.log(`📊 Progress: ${meeting.chunkCounter} chunks stored for ${roomId}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error storing chunk for ${roomId}:`, error);
     }
   }
 
-  startRecording(roomId) {
+  async saveProgressToDB(roomId) {
     const meeting = this.activeMeetings.get(roomId);
-    if (meeting) {
-      meeting.isRecording = true;
-      meeting.recordingStartTime = Date.now();
-      console.log(`🎙️ BACKUP: Recording started for room ${roomId}, participants: ${meeting.participants.size}`);
-    } else {
-      console.log(`❌ BACKUP: Cannot start recording - meeting ${roomId} not found`);
+    if (!meeting) return;
+
+    try {
+      const duration = Math.floor((Date.now() - meeting.startTime) / 1000);
+      
+      await pool.query(
+        `UPDATE meetings 
+         SET duration_seconds = ?, 
+             chunk_count = ?,
+             last_updated = NOW()
+         WHERE id = ?`,
+        [duration, meeting.chunkCounter, meeting.meetingDbId]
+      );
+
+      console.log(`💾 Progress saved: ${roomId} - ${duration}s, ${meeting.chunkCounter} chunks`);
+    } catch (error) {
+      console.error('❌ Error saving progress:', error);
     }
   }
 
-  async stopRecording(roomId, backendUrl, token) {
+  async startRecording(roomId) {
+    const meeting = this.activeMeetings.get(roomId);
+    if (!meeting) {
+      console.log(`❌ Cannot start recording - meeting ${roomId} not found`);
+      return;
+    }
+
+    meeting.isRecording = true;
+    
+    if (!meeting.recordingStartTime) {
+      meeting.recordingStartTime = Date.now();
+    }
+    
+    await pool.query(
+      `UPDATE meetings SET status = 'recording', started_at = NOW() WHERE id = ?`,
+      [meeting.meetingDbId]
+    );
+
+    console.log(`🎙️ Recording started for room ${roomId}`);
+  }
+
+  async stopRecording(roomId, backendUrl, token, recordingTime) {
     const meeting = this.activeMeetings.get(roomId);
     if (!meeting) {
       console.log(`⚠️ No meeting found for ${roomId} to stop`);
       return null;
     }
 
-    // 🔥 Mark as shutting down to accept final chunks
     meeting.isShuttingDown = true;
     meeting.isRecording = false;
     
     console.log(`🛑 Stopping recording for ${roomId}, waiting for final chunks...`);
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // 🔥 INCREASED: Wait longer for any final chunks to arrive (2.5 seconds)
-    await new Promise(resolve => setTimeout(resolve, 2500));
-
-    const allChunks = [];
-    meeting.participants.forEach((participant) => {
-      allChunks.push(...participant.audioChunks);
-      console.log(`📊 ${participant.name}: ${participant.audioChunks.length} chunks`);
-    });
-
-    if (allChunks.length === 0) {
-      console.log('⚠️ No audio chunks to save');
-      return null;
-    }
+    await this.saveProgressToDB(roomId);
 
     try {
-      const combinedBuffer = Buffer.concat(allChunks);
-      const fileName = `backup_${roomId}_${Date.now()}.webm`;
+      // Check if temp file exists
+      try {
+        await fs.access(meeting.tempFilePath);
+      } catch (error) {
+        console.error(`❌ Temp file not found: ${meeting.tempFilePath}`);
+        return null;
+      }
+
+      const audioBuffer = await fs.readFile(meeting.tempFilePath);
       
-      console.log(`📁 Starting upload: ${fileName}`);
-      console.log(`📦 File size: ${(combinedBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-      console.log(`📦 Total chunks combined: ${allChunks.length}`);
+      if (audioBuffer.length === 0) {
+        console.log('⚠️ No audio data to save');
+        await this.cleanup(roomId);
+        return null;
+      }
+
+      const fileName = `meeting_${roomId}_${Date.now()}.webm`;
+      const fileSizeMB = (audioBuffer.length / 1024 / 1024).toFixed(2);
+      
+      console.log(`📤 Uploading: ${fileName}`);
+      console.log(`📦 Size: ${fileSizeMB} MB, Chunks: ${meeting.chunkCounter}`);
       
       const formData = new FormData();
-      formData.append('audio', combinedBuffer, {
+      formData.append('audio', audioBuffer, {
         filename: fileName,
         contentType: 'audio/webm',
       });
+      formData.append('meetingId', roomId);
+      formData.append('source', 'Live Meeting');
+      formData.append('recordingTime', recordingTime || Math.floor((Date.now() - meeting.startTime) / 1000));
 
       const response = await axios.post(
         `${backendUrl}/api/upload/upload-audio-ftp`,
@@ -338,45 +244,90 @@ class AudioBackupService {
             ...formData.getHeaders(),
             Authorization: `Bearer ${token}`,
           },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+          timeout: 600000, // 10 minutes
         }
       );
 
       if (response.data?.audioUrl) {
-        console.log(`✅ Backup uploaded: ${response.data.audioUrl}`);
+        await pool.query(
+          `UPDATE meetings 
+           SET audio_url = ?, 
+               status = 'completed',
+               completed_at = NOW(),
+               duration_seconds = ?
+           WHERE id = ?`,
+          [response.data.audioUrl, recordingTime, meeting.meetingDbId]
+        );
+
+        console.log(`✅ Meeting saved: ${response.data.audioUrl}`);
+        
+        // NOW cleanup after successful save
+        await this.cleanup(roomId);
+        
         return response.data.audioUrl;
       }
 
       return null;
     } catch (error) {
-      console.error('❌ Backup upload failed:', error.message);
+      console.error('❌ Error saving recording:', error.message);
+      // DON'T cleanup on error - keep temp file for recovery
       return null;
     }
   }
 
-  getMeetingStatus(roomId) {
+  async getRecordingState(roomId) {
     const meeting = this.activeMeetings.get(roomId);
-    if (!meeting) return null;
+    if (meeting) {
+      return {
+        isRecording: meeting.isRecording,
+        duration: Math.floor((Date.now() - meeting.startTime) / 1000),
+        chunkCount: meeting.chunkCounter,
+        participants: meeting.participants.size,
+      };
+    }
 
-    return {
-      roomId,
-      isRecording: meeting.isRecording,
-      participants: Array.from(meeting.participants.keys()).length,
-      duration: meeting.isRecording 
-        ? Date.now() - meeting.recordingStartTime 
-        : 0,
-    };
+    const dbMeeting = await this.getMeetingFromDB(roomId);
+    if (dbMeeting && dbMeeting.status === 'recording') {
+      return {
+        isRecording: true,
+        duration: dbMeeting.duration_seconds || 0,
+        chunkCount: dbMeeting.chunk_count || 0,
+        fromDatabase: true,
+      };
+    }
+
+    return null;
   }
 
   removeParticipant(roomId, socketId) {
     const meeting = this.activeMeetings.get(roomId);
     if (meeting) {
       meeting.participants.delete(socketId);
-      console.log(`👋 Removed participant ${socketId} from backup`);
+      console.log(`👋 Removed participant ${socketId} from ${roomId}`);
     }
   }
 
-  cleanup(roomId) {
+  // ✅ NEW: Check if socket is the current host
+  isCurrentHost(roomId, socketId) {
+    const currentHostId = this.hostSockets.get(roomId);
+    return currentHostId === socketId;
+  }
+
+  async cleanup(roomId) {
+    const meeting = this.activeMeetings.get(roomId);
+    if (meeting) {
+      try {
+        await fs.unlink(meeting.tempFilePath);
+        console.log(`🗑️ Deleted temp file for ${roomId}`);
+      } catch (error) {
+        console.error('⚠️ Could not delete temp file:', error.message);
+      }
+    }
+    
     this.activeMeetings.delete(roomId);
+    this.hostSockets.delete(roomId);
     console.log(`🗑️ Cleaned up meeting ${roomId}`);
   }
 }
