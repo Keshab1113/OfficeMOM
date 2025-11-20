@@ -232,7 +232,7 @@ const GenerateNotesHome = () => {
                                         <button
                                             onClick={handleStartMakingNotes}
                                             disabled={isProcessing || (activeTab === "computer" ? !selectedFile : !driveUrl)}
-                                            className={`mt-6 w-full py-4 rounded-lg text-white font-semibold transition-colors ${isProcessing || (activeTab === "computer" ? !selectedFile : !driveUrl) ? "bg-gray-500 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"} flex items-center justify-center`}
+                                            className={`mt-6 w-full py-4  rounded-lg text-white font-semibold transition-colors ${isProcessing || (activeTab === "computer" ? !selectedFile : !driveUrl) ? "bg-gray-500 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"} flex items-center justify-center cursor-pointer`}
                                         >
                                             {isProcessing ? (
                                                 <>

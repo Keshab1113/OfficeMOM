@@ -410,7 +410,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={saveRename}
-                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                className="p-2 hover:bg-green-100 cursor-pointer dark:hover:bg-green-900/30 rounded-lg transition-colors"
               >
                 <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
               </motion.button>
@@ -418,7 +418,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={cancelEditing}
-                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                className="p-2 hover:bg-red-100 cursor-pointer dark:hover:bg-red-900/30 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4 text-red-600 dark:text-red-400" />
               </motion.button>
@@ -484,7 +484,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -5 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 border dark:border-gray-700 border-gray-200 rounded-xl shadow-xl z-[9999] overflow-hidden"
+                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 border dark:border-gray-700 border-gray-200 rounded-xl shadow-xl z-[100] overflow-hidden"
                 >
                   <div className="py-1">
                     <button

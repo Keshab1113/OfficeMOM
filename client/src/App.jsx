@@ -76,7 +76,7 @@ function App() {
             }
           />
           <Route
-            path="/live-meeting/:meetingId/result"
+            path="/live-meeting/meeting-result/:historyId"
             element={
               <ProtectedRoute>
                 <MeetingResult />
@@ -96,6 +96,7 @@ function App() {
 
           <Route path="/generate-notes" element={<ProtectedRoute><GenerateNotesHome /></ProtectedRoute>} />
           <Route path="/generate-notes/meeting-result/:historyId" element={<ProtectedRoute><MeetingResult /></ProtectedRoute>} />
+          
           <Route
             path="/profile"
             element={
