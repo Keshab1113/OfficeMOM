@@ -410,7 +410,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={saveRename}
-                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                className="p-2 hover:bg-green-100 cursor-pointer dark:hover:bg-green-900/30 rounded-lg transition-colors"
               >
                 <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
               </motion.button>
@@ -418,7 +418,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={cancelEditing}
-                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                className="p-2 hover:bg-red-100 cursor-pointer dark:hover:bg-red-900/30 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4 text-red-600 dark:text-red-400" />
               </motion.button>
