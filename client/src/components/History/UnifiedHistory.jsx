@@ -212,7 +212,7 @@ const ProcessingItem = ({ item, onNavigate }) => {
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
       onClick={handleClick}
-      className={`bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 shadow-sm hover:shadow-lg transition-all ${item.awaitingHeaders ? 'cursor-pointer hover:border-yellow-400 hover:scale-[1.02]' : ''
+      className={`bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 shadow-sm hover:shadow-lg transition-all ${item.awaitingHeaders ? 'cursor-pointer hover:border-yellow-400 ' : ''
         }`}
     >
       <div className="flex items-start justify-between mb-2">
@@ -484,7 +484,7 @@ const CompletedItem = ({ item, index, isHovered, onHoverChange, onEdit, onDelete
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -5 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 border dark:border-gray-700 border-gray-200 rounded-xl shadow-xl z-[100] overflow-hidden"
+                  className="absolute right-8 -top-8 mt-2 w-48 bg-white dark:bg-gray-800 border dark:border-gray-700 border-gray-200 rounded-xl shadow-xl z-[9999] overflow-hidden"
                 >
                   <div className="py-1">
                     <button
@@ -629,7 +629,7 @@ const UnifiedHistory = ({ NeedFor, height }) => {
   useEffect(() => {
     if (processingItems.length === 0) return;
 
-    const interval = setInterval(fetchProcessingItems, 3000);
+    const interval = setInterval(fetchProcessingItems, 10000);
     return () => clearInterval(interval);
   }, [processingItems.length]);
 
@@ -691,10 +691,10 @@ const UnifiedHistory = ({ NeedFor, height }) => {
               Meeting History
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {processingItems.length > 0 && `${processingItems.length} processing`}
-              {processingItems.length > 0 && completedHistory.length > 0 && ' • '}
+              {/* {processingItems.length > 0 && `${processingItems.length} processing`} */}
+              {/* {processingItems.length > 0 && completedHistory.length > 0 && ' • '} */}
               {completedHistory.length > 0 && `${completedHistory.length} completed`}
-              {newItemsCount > 0 && ` • ${newItemsCount} new`}
+              {/* {newItemsCount > 0 && ` • ${newItemsCount} new`} */}
             </p>
           </div>
         </div>

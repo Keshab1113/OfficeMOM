@@ -193,7 +193,7 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
         <div className=" rounded-xl border border-gray-200 dark:border-gray-700 border-solid overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 animate-slide-up">
           <div className="overflow-x-auto overflow-y-visible scrollbar-thin scrollbar-track-gray-300 dark:scrollbar-track-gray-700 scrollbar-thumb-blue-500 scrollbar-thumb-rounded">
             <div
-              className={`${columns.length > 3 ? "min-w-[800px]" : "w-full"
+              className={`${columns.length > 5 ? "min-w-[800px]" : "w-full"
                 } transition-all duration-300`}>
               <div className="flex dark:bg-gray-900   animate-slide-down">
                 <div className="w-16 md:w-24 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 flex items-center justify-center flex-shrink-0  transition-colors duration-200">
@@ -211,7 +211,7 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
                     onDragEnter={(e) => handleDragEnter(e, index)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, index)}
-                    className={`group border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative ${columns.length > 3 ? "w-60" : "flex-1"
+                    className={`group border-b border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative ${columns.length > 5 ? "w-60" : "flex-1"
                       } min-w-[200px] p-3 sm:p-4 cursor-move transition-all duration-300 ease-out select-none ${dragOverIndex === index
                         ? " transform scale-[1.02] shadow-lg animate-pulse-fast"
                         : ""
@@ -345,7 +345,7 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
                     {columns.map((column) => (
                       <div
                         key={`cell-${column.id}-${rowIndex}`}
-                        className={`border-b border-r border-gray-200 dark:border-gray-700 ${columns.length > 3 ? "w-60" : "flex-1"
+                        className={`border-b border-r border-gray-200 dark:border-gray-700 ${columns.length > 5 ? "w-60" : "flex-1"
                           } min-w-[200px] transition-all duration-200 ${rowIndex === 0
                             ? "dark:bg-[#162130] bg-[#a8aeb7]"
                             : rowIndex === 1

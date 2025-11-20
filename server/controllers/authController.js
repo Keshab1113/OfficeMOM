@@ -2,7 +2,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db.js");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 const {
   signupSchema,
   loginSchema,
@@ -10,19 +9,7 @@ const {
 } = require("../validations/authValidation.js");
 const { OAuth2Client } = require("google-auth-library");
 const uploadToFTP = require("../config/uploadToFTP.js");
-
-const transporter = nodemailer.createTransport({
-  host: process.env.MAILTRAP_HOST,
-  port: process.env.MAILTRAP_PORT,
-  secure: true,
-  auth: {
-    user: process.env.MAIL_USER_NOREPLY,
-    pass: process.env.MAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const emailController = require("./emailController.js");
 
 const signup = async (req, res) => {
   const connection = await db.getConnection(); // get a connection from the pool
@@ -62,45 +49,28 @@ const signup = async (req, res) => {
        VALUES (?,?, ?, ?, ?, ?, ?, ?, ?)`,
       [userId, 1, null, 100, 100, 0, 0, 0, 0]
     );
-    // Try sending OTP email
-    await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
-      to: email,
-      replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
-      subject: "Verify your email - OfficeMoM",
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8" /><title>Email Verification</title></head>
-        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f5f5f5;">
-          <table align="center" cellpadding="0" cellspacing="0" width="100%" style="padding:20px 0;">
-            <tr><td align="center">
-              <table cellpadding="0" cellspacing="0" width="600" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
-                <tr><td style="background-color:#4a90e2; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
-                  OfficeMoM Email Verification
-                </td></tr>
-                <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
-                  <p>Hello,</p>
-                  <p>Thank you for signing up with <b>OfficeMoM</b>. Please verify your email using this OTP:</p>
-                  <p style="text-align:center; margin:30px 0;">
-                    <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
-                  </p>
-                  <p>This OTP is valid for <b>10 minutes</b>.</p>
-                  <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
-                </td></tr>
-                <tr><td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#777777;">
-                  &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.
-                </td></tr>
-              </table>
-            </td></tr>
-          </table>
-        </body>
-        </html>`,
-    });
+
+    // Try sending OTP email using emailController
+    const otpEmailSent = await emailController.sendVerificationOtp(email, fullName, otp);
+
+    if (!otpEmailSent) {
+      await connection.rollback();
+      return res.status(500).json({ message: "Failed to send verification email" });
+    }
+
+    // Send welcome email (don't block registration if this fails)
+    const welcomeEmailSent = await emailController.sendWelcomeEmail(email, fullName);
+    if (!welcomeEmailSent) {
+      console.warn("⚠️ Welcome email failed to send, but registration continues");
+    }
 
     await connection.commit();
 
-    res.status(201).json({ message: "OTP sent to email", email });
+    res.status(201).json({
+      message: "OTP sent to email",
+      email,
+      welcomeEmailSent: welcomeEmailSent
+    });
   } catch (err) {
     if (connection) await connection.rollback();
     console.error("❌ Signup error:", err);
@@ -135,7 +105,6 @@ const login = async (req, res) => {
       { id: user[0].id, email: user[0].email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" } // Longer expiry, we'll manage refresh on frontend
-      // { expiresIn: "2m" } // 2 minutes for testing
     );
     await db.query("UPDATE users SET active_token = ? WHERE id = ?", [token, user[0].id]);
     const [subscription] = await db.query(
@@ -183,118 +152,6 @@ const logout = async (req, res) => {
     res.status(500).json({ message: "Server error during logout" });
   }
 };
-
-// const refreshToken = async (req, res) => {
-//   try {
-//     const oldToken = req.headers.authorization?.split(" ")[1];
-//     if (!oldToken) {
-//       return res.status(401).json({ message: "No token provided" });
-//     }
-
-//     let decoded;
-//     try {
-//       // Verify token (will throw if expired or invalid)
-//       decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
-//     } catch (err) {
-//       if (err.name === 'TokenExpiredError') {
-//         // Token expired - try to decode without verification to get user id
-//         decoded = jwt.decode(oldToken);
-//         if (!decoded || !decoded.id) {
-//           return res.status(401).json({ message: "Invalid token" });
-//         }
-
-//         // Check if this token was the active one (allow refresh for recently expired tokens)
-//         const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
-//         if (!user.length || user[0].active_token !== oldToken) {
-//           return res.status(401).json({ message: "Session expired. Please login again." });
-//         }
-//       } else {
-//         return res.status(401).json({ message: "Invalid token" });
-//       }
-//     }
-
-//     // For non-expired tokens, verify it's still active in database
-//     if (decoded.exp && decoded.exp * 1000 > Date.now()) {
-//       const [user] = await db.query("SELECT active_token FROM users WHERE id = ?", [decoded.id]);
-//       if (!user.length || user[0].active_token !== oldToken) {
-//         return res.status(401).json({ message: "Session expired. Please login again." });
-//       }
-//     }
-
-//     // Generate new token
-//     const newToken = jwt.sign(
-//       { id: decoded.id, email: decoded.email },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "1d" }
-//     );
-
-//     // Update active token in database
-//     await db.query("UPDATE users SET active_token = ? WHERE id = ?", [newToken, decoded.id]);
-
-//     res.json({ token: newToken });
-//   } catch (err) {
-//     console.error("Refresh token error:", err);
-//     res.status(401).json({ message: "Token refresh failed" });
-//   }
-// };
-
-
-// const refreshToken = async (req, res) => {
-//   try {
-//     const oldToken = req.headers.authorization?.split(" ")[1];
-//     if (!oldToken) {
-//       return res.status(401).json({ message: "No token provided" });
-//     }
-
-//     let decoded;
-//     try {
-//       // Verify token
-//       decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
-//     } catch (err) {
-//       if (err.name === 'TokenExpiredError') {
-//         // Allow refresh for recently expired tokens (within 7 days)
-//         decoded = jwt.decode(oldToken);
-//         if (!decoded || !decoded.id) {
-//           return res.status(401).json({ message: "Invalid token" });
-//         }
-//       } else {
-//         return res.status(401).json({ message: "Invalid token" });
-//       }
-//     }
-
-//     // Check if token is still active in database
-//     const [user] = await db.query(
-//       "SELECT active_token, id, email FROM users WHERE id = ?", 
-//       [decoded.id]
-//     );
-
-//     if (!user.length || user[0].active_token !== oldToken) {
-//       return res.status(401).json({ 
-//         message: "Session expired. Please login again." 
-//       });
-//     }
-
-//     // Generate new token with fresh expiration (7 days from now)
-//     const newToken = jwt.sign(
-//       { id: user[0].id, email: user[0].email },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "7d" }
-//       // { expiresIn: "2m" } // 2 minutes for testing
-//     );
-
-//     // Update active token in database
-//     await db.query("UPDATE users SET active_token = ? WHERE id = ?", [
-//       newToken, 
-//       user[0].id
-//     ]);
-
-//     res.json({ token: newToken });
-//   } catch (err) {
-//     console.error("Refresh token error:", err);
-//     res.status(401).json({ message: "Token refresh failed" });
-//   }
-// };
-
 
 const refreshToken = async (req, res) => {
   try {
@@ -410,7 +267,6 @@ const refreshToken = async (req, res) => {
   }
 };
 
-
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -441,7 +297,7 @@ const verifyOtp = async (req, res) => {
 const resendOtp = async (req, res) => {
   try {
     const { email } = req.body;
-    const [user] = await db.query("SELECT id FROM users WHERE email = ?", [
+    const [user] = await db.query("SELECT id, fullName FROM users WHERE email = ?", [
       email,
     ]);
 
@@ -452,41 +308,12 @@ const resendOtp = async (req, res) => {
     const otp = crypto.randomInt(100000, 1000000);
     await db.query("UPDATE users SET otp = ? WHERE email = ?", [otp, email]);
 
-    await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
-      to: email,
-      subject: "Resend OTP",
-      replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
-      subject: "Resend OTP - OfficeMoM",
-      html: `
-      <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8" /><title>Resend OTP</title></head>
-        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f5f5f5;">
-          <table align="center" cellpadding="0" cellspacing="0" width="100%" style="padding:20px 0;">
-            <tr><td align="center">
-              <table cellpadding="0" cellspacing="0" width="600" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
-                <tr><td style="background-color:#4a90e2; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
-                  OfficeMoM Resend OTP
-                </td></tr>
-                <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
-                  <p>Hello,</p>
-                  <p>Your new OTP is:</p>
-                  <p style="text-align:center; margin:30px 0;">
-                    <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
-                  </p>
-                  <p>This OTP is valid for <b>10 minutes</b>.</p>
-                  <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
-                </td></tr>
-                <tr><td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#777777;">
-                  &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.
-                </td></tr>
-              </table>
-            </td></tr>
-          </table>
-        </body>
-        </html>`,
-    });
+    // Use emailController to send resend OTP email
+    const emailSent = await emailController.sendResendOtp(email, user[0].fullName, otp);
+
+    if (!emailSent) {
+      return res.status(500).json({ message: "Failed to resend OTP email" });
+    }
 
     res.json({ message: "OTP resent successfully" });
   } catch (err) {
@@ -589,40 +416,15 @@ const sendPasswordResetOtp = async (req, res) => {
       [otp, expires, email]
     );
 
-    await transporter.sendMail({
-      from: `"OfficeMoM" <${process.env.MAIL_USER_NOREPLY_VIEW}>`,
-      to: email,
-      replyTo: process.env.MAIL_USER_NOREPLY_VIEW,
-      subject: "Password Reset OTP - OfficeMoM",
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8" /><title>OfficeMoM Password Reset</title></head>
-        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f5f5f5;">
-          <table align="center" cellpadding="0" cellspacing="0" width="100%" style="padding:20px 0;">
-            <tr><td align="center">
-              <table cellpadding="0" cellspacing="0" width="600" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
-                <tr><td style="background-color:#4a90e2; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
-                  OfficeMoM Password Reset
-                </td></tr>
-                <tr><td style="padding:30px; color:#333333; font-size:16px; line-height:1.5;">
-                  <p>Hello${rows[0].fullName ? ` ${rows[0].fullName}` : ""},</p>
-                  <p>Use the OTP below to reset your password. It is valid for <b>10 minutes</b>:</p>
-                  <p style="text-align:center; margin:30px 0;">
-                    <span style="display:inline-block; padding:15px 30px; font-size:22px; font-weight:bold; color:#ffffff; background-color:#4a90e2; border-radius:6px;">${otp}</span>
-                  </p>
-                  <p style="margin-top:30px;">Best regards,<br/>The OfficeMoM Team</p>
-                </td></tr>
-                <tr><td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#777777;">
-                  &copy; ${new Date().getFullYear()} OfficeMoM. All rights reserved.
-                </td></tr>
-              </table>
-            </td></tr>
-          </table>
-        </body>
-        </html>
-      `,
-    });
+    // Use emailController to send password reset OTP email
+    const emailSent = await emailController.sendPasswordResetOtpEmail(email, rows[0].fullName, otp);
+
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send password reset email"
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -636,7 +438,6 @@ const sendPasswordResetOtp = async (req, res) => {
     });
   }
 };
-
 
 const resetPasswordWithOtp = async (req, res) => {
   try {

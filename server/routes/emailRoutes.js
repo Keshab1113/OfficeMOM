@@ -1,11 +1,11 @@
 const express = require("express");
 const multer = require("multer");
-const sendMeetingEmail = require("../controllers/emailController.js");
+const emailController = require("../controllers/emailController");
 
 const router = express.Router();
 const upload = multer(); // In-memory storage
 
 // Handle multipart/form-data (files + JSON)
-router.post("/", upload.array("files"), sendMeetingEmail);
+router.post("/", upload.array("files"), emailController.sendMeetingEmail);
 
 module.exports = router;

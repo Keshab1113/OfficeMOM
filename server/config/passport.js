@@ -26,7 +26,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           );
 
           if (existingUser.length > 0) {
-            return done(null, existingUser[0]);
+            return done(null, { ...existingUser[0], isNewUser: false });
           } else {
             const [insertResult] = await db.query(
               "INSERT INTO users (fullName, email, profilePic, isGoogleUser) VALUES (?, ?, ?, ?)",
@@ -36,7 +36,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
               "SELECT * FROM users WHERE id = ?",
               [insertResult.insertId]
             );
-            return done(null, newUser[0]);
+            return done(null, { ...newUser[0], isNewUser: true });
           }
         } catch (error) {
           console.error("❌ Error in Google Strategy:", error);
@@ -65,9 +65,9 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
       async (accessToken, refreshToken, profile, done) => {
         try {
           console.log("Facebook profile received:", profile);
-          
+
           let email = profile.emails?.[0]?.value;
-          
+
           // Check if it's a placeholder email from previous login
           if (!email || email.includes('@placeholder.com')) {
             // Check if user exists with Facebook ID pattern
@@ -76,11 +76,11 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
               "SELECT * FROM users WHERE email = ? OR email LIKE ?",
               [placeholderEmail, `facebook_${profile.id}@%`]
             );
-            
+
             if (existingUser.length > 0) {
               return done(null, existingUser[0]);
             }
-            
+
             // Create new user with placeholder
             email = placeholderEmail;
           }
@@ -122,7 +122,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
   );
 }
 
-passport.serializeUser(() => {});
-passport.deserializeUser(() => {});
+passport.serializeUser(() => { });
+passport.deserializeUser(() => { });
 
 module.exports = passport;
