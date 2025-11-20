@@ -2,7 +2,7 @@
 // // // backend/services/audioBackup.js
 
 
- 
+
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs').promises;
@@ -27,43 +27,43 @@ class AudioBackupService {
   }
 
   async initMeeting(roomId, hostId, userId) {
-  if (this.activeMeetings.has(roomId)) {
-    const meeting = this.activeMeetings.get(roomId);
-    
-    const oldHostId = this.hostSockets.get(roomId);
-    if (oldHostId !== hostId) {
-      console.log(`🔄 Host socket changed: ${oldHostId} → ${hostId}`);
-      this.hostSockets.set(roomId, hostId);
-      meeting.hostId = hostId;
-    }
-    
-    console.log(`♻️ Reconnected to existing meeting: ${roomId} (${meeting.chunkCounter} chunks)`);
-    return meeting.meetingDbId;
-  }
+    if (this.activeMeetings.has(roomId)) {
+      const meeting = this.activeMeetings.get(roomId);
 
-  const existingMeeting = await this.getMeetingFromDB(roomId);
-  
-  let meetingDbId;
-  let startTime;
-  
-  if (existingMeeting) {
-    meetingDbId = existingMeeting.id;
-    // ✅ FIX: Use created_at for start time
-    startTime = new Date(existingMeeting.created_at).getTime();
-    console.log(`📄 Resuming meeting from DB: ${roomId} (ID: ${meetingDbId})`);
-  } else {
-    const [result] = await pool.query(
-      `INSERT INTO meetings (room_id, host_user_id, status, created_at) 
+      const oldHostId = this.hostSockets.get(roomId);
+      if (oldHostId !== hostId) {
+        console.log(`🔄 Host socket changed: ${oldHostId} → ${hostId}`);
+        this.hostSockets.set(roomId, hostId);
+        meeting.hostId = hostId;
+      }
+
+      console.log(`♻️ Reconnected to existing meeting: ${roomId} (${meeting.chunkCounter} chunks)`);
+      return meeting.meetingDbId;
+    }
+
+    const existingMeeting = await this.getMeetingFromDB(roomId);
+
+    let meetingDbId;
+    let startTime;
+
+    if (existingMeeting) {
+      meetingDbId = existingMeeting.id;
+      // ✅ FIX: Use created_at for start time
+      startTime = new Date(existingMeeting.created_at).getTime();
+      console.log(`📄 Resuming meeting from DB: ${roomId} (ID: ${meetingDbId})`);
+    } else {
+      const [result] = await pool.query(
+        `INSERT INTO meetings (room_id, host_user_id, status, created_at) 
        VALUES (?, ?, 'active', NOW())`,
-      [roomId, userId]
-    );
-    meetingDbId = result.insertId;
-    startTime = Date.now();
-    console.log(`✅ Created new meeting in DB: ${roomId} (ID: ${meetingDbId})`);
-  }
+        [roomId, userId]
+      );
+      meetingDbId = result.insertId;
+      startTime = Date.now();
+      console.log(`✅ Created new meeting in DB: ${roomId} (ID: ${meetingDbId})`);
+    }
 
     const tempFilePath = path.join(this.tempDir, `${roomId}_temp.webm`);
-    
+
     // Check if temp file exists from previous session
     let existingChunkCount = 0;
     try {
@@ -124,7 +124,7 @@ class AudioBackupService {
 
   async storeChunk(roomId, chunkBuffer) {
     const meeting = this.activeMeetings.get(roomId);
-    
+
     if (!meeting) {
       console.log(`❌ Cannot store chunk - meeting ${roomId} not found`);
       return;
@@ -133,7 +133,7 @@ class AudioBackupService {
     try {
       await fs.appendFile(meeting.tempFilePath, chunkBuffer);
       meeting.chunkCounter++;
-      
+
       if (meeting.chunkCounter % 10 === 0) {
         await this.saveProgressToDB(roomId);
       }
@@ -152,7 +152,7 @@ class AudioBackupService {
 
     try {
       const duration = Math.floor((Date.now() - meeting.startTime) / 1000);
-      
+
       await pool.query(
         `UPDATE meetings 
          SET duration_seconds = ?, 
@@ -176,11 +176,11 @@ class AudioBackupService {
     }
 
     meeting.isRecording = true;
-    
+
     if (!meeting.recordingStartTime) {
       meeting.recordingStartTime = Date.now();
     }
-    
+
     await pool.query(
       `UPDATE meetings SET status = 'recording', started_at = NOW() WHERE id = ?`,
       [meeting.meetingDbId]
@@ -198,7 +198,7 @@ class AudioBackupService {
 
     meeting.isShuttingDown = true;
     meeting.isRecording = false;
-    
+
     console.log(`🛑 Stopping recording for ${roomId}, waiting for final chunks...`);
     await new Promise(resolve => setTimeout(resolve, 3000));
 
@@ -214,7 +214,7 @@ class AudioBackupService {
       }
 
       const audioBuffer = await fs.readFile(meeting.tempFilePath);
-      
+
       if (audioBuffer.length === 0) {
         console.log('⚠️ No audio data to save');
         await this.cleanup(roomId);
@@ -223,10 +223,10 @@ class AudioBackupService {
 
       const fileName = `meeting_${roomId}_${Date.now()}.webm`;
       const fileSizeMB = (audioBuffer.length / 1024 / 1024).toFixed(2);
-      
+
       console.log(`📤 Uploading: ${fileName}`);
       console.log(`📦 Size: ${fileSizeMB} MB, Chunks: ${meeting.chunkCounter}`);
-      
+
       const formData = new FormData();
       formData.append('audio', audioBuffer, {
         filename: fileName,
@@ -262,10 +262,10 @@ class AudioBackupService {
         );
 
         console.log(`✅ Meeting saved: ${response.data.audioUrl}`);
-        
+
         // NOW cleanup after successful save
         await this.cleanup(roomId);
-        
+
         return response.data.audioUrl;
       }
 
@@ -325,7 +325,7 @@ class AudioBackupService {
         console.error('⚠️ Could not delete temp file:', error.message);
       }
     }
-    
+
     this.activeMeetings.delete(roomId);
     this.hostSockets.delete(roomId);
     console.log(`🗑️ Cleaned up meeting ${roomId}`);

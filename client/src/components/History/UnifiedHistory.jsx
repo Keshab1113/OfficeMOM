@@ -581,31 +581,55 @@ const UnifiedHistory = ({ NeedFor, height }) => {
       // Sort by date
       const sortedItems = sortByDate(items);
 
-      // Check for newly completed items
-      const currentProcessingIds = new Set(sortedItems.map(item => item.id));
-      const completedIds = [...previousProcessingIds].filter(id => !currentProcessingIds.has(id));
+      // Create a map of current processing items for easy lookup
+      const currentItemsMap = new Map(sortedItems.map(item => [item.id, item]));
 
-      // Show notification for completed items
-      completedIds.forEach(id => {
-        const completedItem = processingItems.find(item => item.id === id);
-        if (completedItem && completedItem.status !== 'failed') {
-          playNotificationSound();
-          addToast("success", `🎉 Your MoM "${completedItem.title}" is ready!`, 5000);
+      // Check for items that were in previous state but not in current
+      const disappearedItems = [...previousProcessingIds].filter(id => !currentItemsMap.has(id));
+
+      // For disappeared items, we need to check if they completed successfully or failed
+      if (disappearedItems.length > 0) {
+        try {
+          // Fetch the current state of these items from the completed history
+          const historyResponse = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/history`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          const allHistoryItems = historyResponse.data || [];
+
+          disappearedItems.forEach(disappearedId => {
+            const historyItem = allHistoryItems.find(item => item.id === disappearedId);
+
+            if (historyItem) {
+              // Only show success notification if the item is actually completed (isMoMGenerated === 1)
+              // and not failed
+              if (historyItem.isMoMGenerated === 1 && historyItem.processing_status !== 'failed') {
+                playNotificationSound();
+                addToast("success", `🎉 Your MoM "${historyItem.title}" is ready!`, 5000);
+              } else {
+                // Optionally, you can show a failure toast here if desired
+                addToast("error", `❌ Processing failed, Please try again later.`, 5000);
+              }
+              // If it's failed, we don't show any success notification
+            }
+          });
+        } catch (historyError) {
+          console.error('Error checking history status:', historyError);
         }
-      });
+      }
 
-      setPreviousProcessingIds(currentProcessingIds);
+      setPreviousProcessingIds(new Set(sortedItems.map(item => item.id)));
       setProcessingItems(sortedItems);
 
-      // Refresh completed history when items complete
-      if (completedIds.length > 0) {
+      // Always refresh completed history when items disappear from processing
+      if (disappearedItems.length > 0) {
         await fetchCompletedHistory();
       }
     } catch (error) {
       console.error('Error fetching processing status:', error);
     }
   };
-
   // Mark item as viewed
   const markAsViewed = async (historyId) => {
     try {

@@ -33,7 +33,7 @@ export const SocketProvider = ({ children }) => {
     }
 
     // Create socket connection
-    const newSocket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001', {
+    const newSocket = io(import.meta.env.VITE_BACKEND_URL, {
       reconnection: true,
       reconnectionAttempts: maxReconnectAttempts,
       reconnectionDelay: 1000,

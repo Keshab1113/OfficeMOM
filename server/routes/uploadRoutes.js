@@ -27,13 +27,13 @@ const uploadTimeout = (req, res, next) => {
 //   uploadAudio
 // );
 
-// router.post(
-//   "/upload-audio-ftp",
-//   authMiddleware,
-//   uploadTimeout,
-//   upload.single("audio"),
-//   uploadAudioToFTPOnly
-// );
+router.post(
+  "/upload-audio-ftp",
+  authMiddleware,
+  uploadTimeout,
+  upload.single("audio"),
+  uploadAudioToFTPOnly
+);
 router.post(
   "/upload-audio-background",
   authMiddleware,

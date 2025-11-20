@@ -678,6 +678,234 @@ async function startMoMGeneration(params) {
   }
 }
 
+const uploadAudioToFTPOnly = async (req, res) => {
+  console.log("response from uploadtoftp", req.body)
+  try {
+    const userId = req.user?.id;
+    const { meetingId, recordingTime: recordingTimeRaw } = req.body;
+    const recordingTime = recordingTimeRaw ? parseInt(recordingTimeRaw, 10) : 0; // âœ… Parse as integer
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: no user ID" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No audio file uploaded" });
+    }
+
+    if (!meetingId) {
+      return res.status(400).json({ message: "Missing meeting ID" });
+    }
+
+    const buffer = req.file.buffer;
+    const originalName = sanitizeFileName(req.file.originalname);
+
+
+    console.log(`ðŸ“¤ Uploading meeting audio for meetingId: ${meetingId}`);
+
+    // Upload to FTP
+    const ftpUrl = await uploadToFTP(buffer, originalName, "audio_files");
+
+    console.log(`âœ… Uploaded to FTP: ${ftpUrl}`);
+
+    // âœ… Determine final duration to save (Priority: Timer > Database > File)
+    let finalMinutesValue = 0;
+
+    if (recordingTime && recordingTime > 0) {
+      // Priority 1: Use timer duration from frontend (most accurate)
+      finalMinutesValue = secondsToMinutes(recordingTime);
+      console.log(`â±ï¸ Using timer duration: ${recordingTime}s = ${finalMinutesValue} minutes (rounded up)`);
+    } else {
+      // Priority 2: Check database for existing duration
+      try {
+        const [meeting] = await db.query(
+          "SELECT duration_minutes FROM meetings WHERE room_id = ?",
+          [meetingId]
+        );
+
+        if (meeting.length > 0 && meeting[0].duration_minutes > 0) {
+          finalMinutesValue = parseFloat(meeting[0].duration_minutes);
+          console.log(`âœ… Using database duration: ${finalMinutesValue} minutes`);
+        } else {
+          // Priority 3: Calculate from uploaded file as last resort
+          console.log(`âš ï¸ No timer or database duration, calculating from file...`);
+          const durationResult = await getAudioDuration(buffer);
+          finalMinutesValue = typeof durationResult === "object" ? durationResult.minutes : durationResult;
+          console.log(`â„¹ï¸ Calculated duration from file: ${finalMinutesValue} minutes (rounded up)`);
+        }
+      } catch (error) {
+        console.error("Error getting duration from database:", error);
+        // Fallback to file calculation
+        const durationResult = await getAudioDuration(buffer);
+        finalMinutesValue = typeof durationResult === "object" ? durationResult.minutes : durationResult;
+        console.log(`â„¹ï¸ Fallback: Calculated from file: ${finalMinutesValue} minutes (rounded up)`);
+      }
+    }
+
+    // Update meeting record with final duration
+    const [updateResult] = await db.query(
+      `UPDATE meetings 
+   SET 
+     audio_url = ?,
+     duration_minutes = ?,
+     ended_at = NOW()
+   WHERE room_id = ?`,
+      [ftpUrl, finalMinutesValue, meetingId]
+    );
+    // ðŸ” Get numeric meeting.id for this room_id
+    const [meetingRow] = await db.query(
+      `SELECT id FROM meetings WHERE room_id = ?`,
+      [meetingId]
+    );
+
+    if (!meetingRow.length) {
+      return res.status(404).json({ message: "Meeting not found for room_id" });
+    }
+
+    const meetingNumericId = meetingRow[0].id;
+
+
+
+
+    if (updateResult.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Meeting not found or not owned by user",
+      });
+    }
+
+
+    console.log(`âœ… Meeting ${meetingId} updated with audio URL and ${finalMinutesValue} minutes`);
+
+    // ðŸ“ Also update or insert into history table
+    // ðŸ“ Also update or insert into history table
+    let existingHistory = [];
+    let nullMeeting = [];
+
+    try {
+      const formattedDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+      // 1ï¸âƒ£ Try to find any history row with this meeting_id or same audioUrl
+      [existingHistory] = await db.query(
+        `SELECT id, meeting_id FROM history 
+     WHERE user_id = ? AND (meeting_id = ? OR audioUrl = ?) 
+     ORDER BY uploadedAt DESC LIMIT 1`,
+        [userId, meetingId, ftpUrl]
+      );
+
+      if (existingHistory.length > 0) {
+        // âœ… Update existing record
+        // âœ… Update existing record
+        await db.query(
+          `UPDATE history 
+   SET 
+     audioUrl = ?, 
+     uploadedAt = ?, 
+     meeting_id = ?, 
+     isMoMGenerated = 0, 
+     source = ?, 
+     title = ? 
+   WHERE id = ?`,
+          [ftpUrl, formattedDate, meetingNumericId, "Live Transcript Conversion", originalName, existingHistory[0].id]
+        );
+
+
+        console.log(`â™»ï¸ Updated existing history record with meeting_id ${meetingId}`);
+      } else {
+        // 2ï¸âƒ£ If none found, check if thereâ€™s an old record missing meeting_id
+        const [nullMeeting] = await db.query(
+          `SELECT id FROM history 
+       WHERE user_id = ? AND meeting_id IS NULL 
+       AND audioUrl IS NULL 
+       ORDER BY created_at DESC LIMIT 1`,
+          [userId]
+        );
+
+        if (nullMeeting.length > 0) {
+          // ðŸ§© Backfill that record
+          await db.query(
+            `UPDATE history 
+   SET 
+     meeting_id = ?, 
+     audioUrl = ?, 
+     uploadedAt = ?, 
+     source = ?, 
+     title = ?,
+     isMoMGenerated = 0
+   WHERE id = ?`,
+            [meetingNumericId, ftpUrl, formattedDate, "Live Transcript Conversion", originalName, nullMeeting[0].id]
+          );
+
+
+          console.log(`ðŸ”— Linked old NULL history record with meeting_id ${meetingId}`);
+        } else {
+          // 3ï¸âƒ£ Insert fresh record
+          await db.query(
+            `INSERT INTO history 
+   (user_id, meeting_id, title, audioUrl, uploadedAt, isMoMGenerated, source, data, date) 
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              userId,
+              meetingNumericId,
+              originalName,
+              ftpUrl,
+              formattedDate,
+              false,
+              "Live Transcript Conversion",
+              null,
+              null
+            ]
+          );
+
+
+          console.log(`ðŸ†• Inserted new history record for meeting ${meetingId}`);
+        }
+      }
+    } catch (historyErr) {
+      console.error("âš ï¸ Error inserting/updating history:", historyErr);
+    }
+
+    // âœ… Return correct history_id
+    let finalHistoryId = null;
+
+    if (existingHistory?.length > 0) {
+      finalHistoryId = existingHistory[0].id;
+    } else if (nullMeeting?.length > 0) {
+      finalHistoryId = nullMeeting[0].id;
+    } else {
+      const [insertedHistory] = await db.query(
+        `SELECT id FROM history 
+     WHERE user_id = ? AND meeting_id = ? 
+     ORDER BY uploadedAt DESC LIMIT 1`,
+        [userId, meetingNumericId]
+      );
+      if (insertedHistory.length > 0) {
+        finalHistoryId = insertedHistory[0].id;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Audio uploaded, meeting and history updated successfully",
+      meetingId,
+      audioUrl: ftpUrl,
+      fileName: originalName,
+      durationMinutes: finalMinutesValue,
+      history_id: finalHistoryId, // âœ… Return history_id here
+    });
+
+
+  } catch (err) {
+    console.error("âŒ FTP upload error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error uploading audio or updating meeting",
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   uploadAudioBackground,
+  uploadAudioToFTPOnly,
 };

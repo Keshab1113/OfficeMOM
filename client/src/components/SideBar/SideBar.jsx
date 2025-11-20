@@ -125,7 +125,7 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
  useEffect(() => {
     if (!token) return;
     fetchSubscription();
-  }, [token]);
+  }, [token, navigate]);
 
   useEffect(() => {
     if (!socket || !isConnected) return;

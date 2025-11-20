@@ -30,6 +30,7 @@ import MeetingInstruction from "../../components/MeetingInstructions/MeetingInst
 import { useNavigate } from "react-router-dom";
 import { useMeetingRecovery } from '../../hooks/useMeetingRecovery';
 import ResumeMeetingModal from '../../components/LittleComponent/ResumeMeetingModal';
+import UnifiedHistory from "../../components/History/UnifiedHistory";
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 const breadcrumbItems = [
   { label: "Live Meeting" }
@@ -1234,7 +1235,7 @@ const LiveMeeting = () => {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Navigate to result page with background processing
-        navigate(`/live-meeting/meeting-result/${finalHistoryId}`, { 
+        navigate(`/live-meeting/meeting-result/${finalHistoryId}`, {
           state: {
             historyID: finalHistoryId,
             processing: true,
@@ -1807,10 +1808,11 @@ const LiveMeeting = () => {
                     isPreviewProcessing={isPreviewProcessing}
                   /> */}
                 </div>
-                <div className="lg:col-span-1 w-full">
-                  <div className="h-80 sm:h-96 lg:h-[27rem] w-full">
-                    <AllHistory NeedFor="Live Transcript Conversion" height="100%" />
-                  </div>
+                <div className="lg:col-span-1">
+                  <UnifiedHistory
+                    NeedFor="Live Transcript Conversion"
+                    height="26.8rem"
+                  />
                 </div>
               </div>
               <div className="w-full">
