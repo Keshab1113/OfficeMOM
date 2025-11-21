@@ -20,7 +20,6 @@ export default function DataTable({
   React.useEffect(() => {
     setTableData(data);
   }, [data]);
-  // console.log("tableData: ",tableData);
 
   const toCamelCase = (str) =>
     str
@@ -33,13 +32,13 @@ export default function DataTable({
   const formatBulletPoints = (content) => {
     if (!content || content === "Click to Edit") return content;
 
-    if (content?.includes("•") && content?.includes("\n")) {
+    if (content?.includes("â€¢") && content?.includes("\n")) {
       const points = content.split("\n").filter((point) => point.trim() !== "");
       return (
         <ul className="list-disc pl-5 space-y-1">
           {points.map((point, index) => (
             <li key={index} className="text-sm">
-              {point.replace(/^•\s*/, "").trim()}
+              {point.replace(/^â€¢\s*/, "").trim()}
             </li>
           ))}
         </ul>
@@ -59,11 +58,9 @@ export default function DataTable({
     return content;
   };
 
-  // Handle cell edit commit
   const handleProcessRowUpdate = (newRow, oldRow) => {
     const updatedRow = { ...newRow };
 
-    // Find which field changed and update via onEditRow
     header.forEach((h) => {
       const field = toCamelCase(h);
       if (newRow[field] !== oldRow[field]) {
@@ -110,7 +107,6 @@ export default function DataTable({
                 });
               }}
               onKeyDown={(e) => {
-                // Prevent default DataGrid keyboard behavior
                 e.stopPropagation();
               }}
               variant="standard"
@@ -190,7 +186,6 @@ export default function DataTable({
     );
   };
 
-
   return (
     <ThemeProvider theme={theme}>
       <Paper
@@ -229,6 +224,52 @@ export default function DataTable({
             color: theme.palette.mode === "dark" ? "#e0e0e0" : "#000",
             backgroundColor: "transparent",
 
+            // Fix for the header filler/empty space background
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "transparent !important",
+              color: theme.palette.mode === "dark" ? "#90caf9" : "#0d47a1",
+              borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
+            },
+
+            // Target the inner header container
+            "& .MuiDataGrid-columnHeadersInner": {
+              backgroundColor: "transparent !important",
+            },
+
+            // Target the scrollable container within headers
+            "& .MuiDataGrid-columnHeadersInner > div": {
+              backgroundColor: "transparent !important",
+            },
+
+            "& .MuiDataGrid-columnHeader": {
+              backgroundColor: "transparent !important",
+            },
+
+            // This targets the filler element that appears when columns don't fill width
+            "& .MuiDataGrid-filler": {
+              backgroundColor: "transparent !important",
+            },
+
+            // Also target any scroll filler
+            "& .MuiDataGrid-scrollbarFiller": {
+              backgroundColor: "transparent !important",
+            },
+
+            // Target the header row specifically
+            "& .MuiDataGrid-columnHeaderRow": {
+              backgroundColor: "transparent !important",
+            },
+
+            "& .MuiDataGrid-columnHeaderTitle": {
+              fontWeight: "bold",
+              fontSize: "0.95rem",
+              backgroundColor: "transparent",
+            },
+
+            "& .MuiDataGrid-columnHeaderTitleContainer": {
+              backgroundColor: "transparent",
+            },
+
             "& .MuiDataGrid-cell": {
               borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
               whiteSpace: "pre-wrap",
@@ -261,26 +302,6 @@ export default function DataTable({
               },
             },
 
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "transparent", // Make header background transparent
-              color: theme.palette.mode === "dark" ? "#90caf9" : "#0d47a1",
-              borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
-            },
-
-            "& .MuiDataGrid-columnHeader": {
-              backgroundColor: "transparent", // Make individual column headers transparent
-            },
-
-            "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: "bold",
-              fontSize: "0.95rem",
-              backgroundColor: "transparent", // Make header title background transparent
-            },
-
-            "& .MuiDataGrid-columnHeaderTitleContainer": {
-              backgroundColor: "transparent", // Make header title container transparent
-            },
-
             "& .MuiDataGrid-footerContainer": {
               backgroundColor: "transparent",
               borderTop: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e0e0e0"}`,
@@ -299,6 +320,19 @@ export default function DataTable({
             },
 
             "& .MuiDataGrid-main": {
+              backgroundColor: "transparent",
+            },
+
+            // Additional catch-all for any remaining backgrounds
+            "& .MuiDataGrid-root": {
+              backgroundColor: "transparent",
+            },
+
+            "& .MuiDataGrid-virtualScrollerContent": {
+              backgroundColor: "transparent",
+            },
+
+            "& .MuiDataGrid-virtualScrollerRenderZone": {
               backgroundColor: "transparent",
             },
           }}

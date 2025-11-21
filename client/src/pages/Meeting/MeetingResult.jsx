@@ -12,7 +12,8 @@ const breadcrumbItems = [{ label: "Set Headers" }];
 
 export default function MeetingResult() {
     const { historyId } = useParams();
-    const { state } = useLocation();
+    const location = useLocation();
+    const fullPath = location.pathname;
     const navigate = useNavigate();
     const { addToast } = useToast();
     const { token } = useSelector((s) => s.auth);
@@ -25,6 +26,16 @@ export default function MeetingResult() {
 
     // Use ref to track if we've already shown error toast
     const hasShownError = useRef(false);
+
+    let source = "";
+
+    if (fullPath.startsWith("/live-meeting")) {
+        source = "live-meeting";
+    } else if (fullPath.startsWith("/meeting")) {
+        source = "meeting";
+    } else if (fullPath.startsWith("/generate-notes")) {
+        source = "generate-notes";
+    }
 
     // Fetch last used headers
     useEffect(() => {
@@ -78,7 +89,7 @@ export default function MeetingResult() {
                         hasShownError.current = true;
                         addToast("error", "Unable to process. Please try again.");
                     }
-                    navigate('/generate-notes')
+                    navigate(`/${source}`);
                 } else if (status === 'completed') {
                     clearInterval(interval);
                     navigate(`/momGenerate/${historyId}`);
@@ -134,7 +145,7 @@ export default function MeetingResult() {
             addToast("success", "Headers saved! MoM generation started in background.");
 
             setTimeout(() => {
-                navigate('/generate-notes');
+                navigate(`/${source}`);
             }, 1000);
 
         } catch (error) {

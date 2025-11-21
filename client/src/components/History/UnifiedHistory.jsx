@@ -128,7 +128,7 @@ const ProcessingItem = ({ item, onNavigate }) => {
 
   const handleClick = () => {
     if (item.awaitingHeaders) {
-      onNavigate(`/generate-notes/meeting-result/${item.id}`);
+      onNavigate(`meeting-result/${item.id}`);
     }
   };
 

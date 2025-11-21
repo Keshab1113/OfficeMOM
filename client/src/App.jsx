@@ -33,12 +33,10 @@ import Recharge from "./pages/Recharge/Recharge";
 import TokenRefreshHandler from './components/LittleComponent/TokenRefreshHandler';
 
 function App() {
-  
-
 
   return (
     <>
-     <TokenRefreshHandler />
+      <TokenRefreshHandler />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
@@ -59,7 +57,7 @@ function App() {
             }
           />
           <Route
-            path="/meeting/:meetingId/result"
+            path="/meeting/meeting-result/:historyId"
             element={
               <ProtectedRoute>
                 <MeetingResult />
@@ -96,7 +94,7 @@ function App() {
 
           <Route path="/generate-notes" element={<ProtectedRoute><GenerateNotesHome /></ProtectedRoute>} />
           <Route path="/generate-notes/meeting-result/:historyId" element={<ProtectedRoute><MeetingResult /></ProtectedRoute>} />
-          
+
           <Route
             path="/profile"
             element={

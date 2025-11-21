@@ -329,7 +329,7 @@ async function refundMinutesOnError(userId, historyId, minutesToRefund, errorCon
         );
 
         console.log(`✅ Refunded ${minutesToRefund} minutes`);
-        
+
         // ✅ Emit subscription update
         if (global.socketManager) {
             global.socketManager.emitToUser(userId, 'subscription-updated', {
@@ -339,7 +339,7 @@ async function refundMinutesOnError(userId, historyId, minutesToRefund, errorCon
                 refundedAmount: minutesToRefund
             });
         }
-        
+
         return refundResult;
     } catch (refundError) {
         console.error(`❌ Failed to refund minutes:`, refundError);
@@ -497,5 +497,7 @@ async function startMoMGeneration(params) {
         );
     }
 }
+
+
 
 module.exports = processController;

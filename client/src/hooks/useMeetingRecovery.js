@@ -24,7 +24,6 @@ export const useMeetingRecovery = (token) => {
         if (response.data?.activeMeeting) {
           const meeting = response.data.activeMeeting;
           console.log('📋 Found active meeting:', meeting);
-          
           // Only show dialog if meeting is in 'active' or 'recording' status
           if (meeting.status === 'active' || meeting.status === 'recording') {
             setPendingMeeting(meeting);

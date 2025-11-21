@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { setTableData } from "../../redux/meetingSlice";
-// import { useToast } from "../ToastContext";
 
 const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
   const [columns, setColumns] = useState(() => {
@@ -40,6 +39,8 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [editingHeading, setEditingHeading] = useState(null);
   const [menuOpen, setMenuOpen] = useState(null);
+  const [hoveredHeader, setHoveredHeader] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const dropdownRef = useRef(null);
 
   // const { addToast } = useToast();
@@ -166,6 +167,19 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
     // addToast("success", "Header updated successfully");
   };
 
+  const handleHeaderHover = (e, column) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoveredHeader(column);
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    });
+  };
+
+  const handleHeaderLeave = () => {
+    setHoveredHeader(null);
+  };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -246,7 +260,9 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingHeading(column.id);
-                          }}>
+                          }}
+                          onMouseEnter={(e) => handleHeaderHover(e, column)}
+                          onMouseLeave={handleHeaderLeave}>
                           <GripVertical className="w-3 h-3 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0 mr-2 group-hover:text-blue-500 transition-colors duration-200 animate-pulse-slow" />
                           <h3 className="dark:text-white text-gray-700 text-sm sm:text-lg font-bold flex-1 truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
                             {column.heading}
@@ -365,6 +381,22 @@ const TablePreview = ({ onSaveHeaders, isSending, initialHeaders }) => {
             </div>
           </div>
         </div>
+        
+        {/* Tooltip/Popover */}
+        {hoveredHeader && (
+          <div
+            className="fixed z-50 px-3 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-lg shadow-sm tooltip animate-fade-in"
+            style={{
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y}px`,
+              transform: 'translateX(-50%) translateY(-100%)'
+            }}
+          >
+            {hoveredHeader.heading}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+          </div>
+        )}
+
         <div
           className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up"
           style={{ animationDelay: "600ms", animationFillMode: "both" }}>

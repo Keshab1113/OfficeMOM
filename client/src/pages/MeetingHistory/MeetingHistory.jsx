@@ -8,8 +8,7 @@ import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { saveTranscriptFiles } from "../../components/TextTable/TextTable";
 import { useToast } from "../../components/ToastContext";
-import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
-import NoPage from "../NoPage/NoPage";
+import { Search } from "lucide-react";
 
 const MeetingHistory = () => {
   const [showFullData, setShowFullData] = useState(null);
@@ -85,7 +84,23 @@ const MeetingHistory = () => {
                 You can now customize the Minutes of the Meeting (MOM) on this page and also can download.
               </p>
               {error ? (
-                <NoPage />
+                <div className={cn("w-full py-24 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl mx-4")}>
+                  <div className="relative mb-8">
+                    <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                      <Search className="w-10 h-10 text-white" />
+                    </div>
+                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-lg opacity-30 animate-pulse"></div>
+                  </div>
+                  <h1 className="dark:text-white text-4xl font-bold mb-4 text-gray-800  bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text ">
+                    Not Found
+                  </h1>
+                  <p className="dark:text-gray-300 text-gray-600 text-lg text-center max-w-md leading-relaxed">
+                    The content you're searching for seems to be unavailable at the moment.
+                  </p>
+                  <button className="mt-8 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
+                    Try Again
+                  </button>
+                </div>
               ) : (
                 <RealTablePreview
                   showFullData={showFullData || []}

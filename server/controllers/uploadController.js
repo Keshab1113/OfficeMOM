@@ -11,6 +11,7 @@ const {
   secondsToMinutes
 } = require("./../middlewares/minutesManager");
 const { processTranscript } = require("./deepseekController");
+const emailController = require("./emailController");
 
 const ASSEMBLY_KEY = process.env.ASSEMBLYAI_API_KEY;
 const UPLOAD_URL = process.env.ASSEMBLYAI_API_UPLOAD_URL;
@@ -633,6 +634,12 @@ async function startMoMGeneration(params) {
 
     console.log(`✅ MoM generation completed for history ${historyID}`);
 
+    try {
+      await sendCompletionEmailImmediately(historyID, userId);
+    } catch (emailError) {
+      console.error(`Email failed for history ${historyID}:`, emailError);
+    }
+
     // ✅ Emit completion event
     if (global.socketManager) {
       global.socketManager.emitToUser(userId, 'processing-completed', {
@@ -675,6 +682,59 @@ async function startMoMGeneration(params) {
        WHERE history_id = ?`,
       [`Failed: ${error.message}`, historyID]
     );
+  }
+}
+
+async function sendCompletionEmailImmediately(historyId, userId) {
+  try {
+    const [emailCheck] = await db.query(
+      `SELECT completion_email_sent FROM history WHERE id = ? AND user_id = ?`,
+      [historyId, userId]
+    );
+
+    if (emailCheck[0]?.completion_email_sent === 1) {
+      return true;
+    }
+
+    const [userRows] = await db.query(
+      `SELECT u.email, u.fullName, h.title 
+             FROM users u 
+             JOIN history h ON u.id = h.user_id 
+             WHERE u.id = ? AND h.id = ?`,
+      [userId, historyId]
+    );
+
+    if (userRows.length === 0) {
+      return false;
+    }
+
+    const userEmail = userRows[0].email;
+    const userName = userRows[0].fullName || "Valued User";
+    const meetingTitle = userRows[0].title || "Meeting";
+
+    const emailSent = await emailController.sendProcessingCompleteEmail(
+      userEmail,
+      userName,
+      meetingTitle,
+      historyId
+    );
+
+    if (emailSent) {
+      await db.query(
+        `UPDATE history 
+                 SET completion_email_sent = 1,
+                     email_sent_at = NOW()
+                 WHERE id = ? AND user_id = ?`,
+        [historyId, userId]
+      );
+      return true;
+    }
+
+    return false;
+
+  } catch (error) {
+    console.error(`Error sending immediate completion email:`, error);
+    return false;
   }
 }
 

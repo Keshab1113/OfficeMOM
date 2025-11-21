@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
+  id: null,
   fullName: null,
   email: null,
   tokenExpiration: null,
@@ -20,6 +21,7 @@ const authSlice = createSlice({
    setUser: (state, action) => {
   state.fullName = action.payload.fullName;
   state.email = action.payload.email;
+  state.id = action.payload.id;
   state.token = action.payload.token;
   
   // ✅ Decode JWT to get actual expiration time
@@ -39,6 +41,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.fullName = null;
       state.email = null;
+      state.id = null;
       state.token = null;
       state.profileImage = null;
       state.tokenExpiration = null;

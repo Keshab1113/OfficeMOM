@@ -114,10 +114,10 @@ io.engine.on("connection_error", (err) => {
 });
 
 const rooms = new Map();
- 
 
 
- 
+
+
 
 // io.on("connection", (socket) => {
 //   console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
@@ -282,7 +282,7 @@ const rooms = new Map();
 //   console.log(
 //     `🎯 Received merged audio chunk for room ${roomId}, size: ${buffer.length} bytes`
 //   );
-  
+
 //   await audioBackup.storeChunk(roomId, buffer);
 // });
 
@@ -417,7 +417,7 @@ const rooms = new Map();
 
 //     // 🔹 DO NOT delete room immediately
 //     // rooms.delete(roomId);
-     
+
 
 //     // Mark room as ended
 //     room.ended = true;
@@ -473,7 +473,7 @@ const rooms = new Map();
 //         });
 
 //         rooms.delete(roomId);
-         
+
 //       }
 //     }
 //   });
@@ -482,29 +482,34 @@ const rooms = new Map();
 //     console.log(`Client disconnected: ${socket.id}`);
 //   });
 // });
- 
+
 // Add this to your server.js socket handlers section
 
 io.on("connection", (socket) => {
   console.log(`✅ [SOCKET CONNECTED] Client: ${socket.id}`);
   console.log(`📡 Connected from: ${socket.handshake.headers.origin || "Unknown Origin"}`);
 
-  // --- Host joins room ---
   socket.on("host:join-room", async ({ roomId, userId }) => {
+    // ✅ Add validation
+    if (!roomId || !userId) {
+      console.error('❌ Missing roomId or userId in host:join-room');
+      socket.emit('error', { message: 'Room ID and User ID are required' });
+      return;
+    }
+
+    console.log(`🎯 Host joining room: ${roomId}, user: ${userId}`);
+
     if (rooms.has(roomId)) {
       const existingRoom = rooms.get(roomId);
       if (existingRoom.hostSocketId !== socket.id) {
         const previousHost = io.sockets.sockets.get(existingRoom.hostSocketId);
         if (previousHost && previousHost.connected) {
-          // Only replace if previous host is still connected
           previousHost.emit("host:replaced");
           previousHost.leave(roomId);
         }
-        // Update to new host socket
         existingRoom.hostSocketId = socket.id;
       }
     } else {
-      // Create new room
       rooms.set(roomId, {
         hostSocketId: socket.id,
         approvedPeers: new Map(),
@@ -515,22 +520,26 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     socket.data.roomId = roomId;
     socket.data.userId = userId;
-    socket.data.isHost = true; // ✅ Mark as host
+    socket.data.isHost = true;
 
-    // Initialize or resume meeting
-    const meetingDbId = await audioBackup.initMeeting(roomId, socket.id, userId);
-    audioBackup.addParticipant(roomId, socket.id, "Host");
+    try {
+      // ✅ This will now throw an error if userId is invalid
+      const meetingDbId = await audioBackup.initMeeting(roomId, socket.id, userId);
+      audioBackup.addParticipant(roomId, socket.id, "Host");
 
-    const room = rooms.get(roomId);
-    io.to(socket.id).emit("room:count", {
-      count: room.approvedPeers.size,
-    });
+      const room = rooms.get(roomId);
+      io.to(socket.id).emit("room:count", {
+        count: room.approvedPeers.size,
+      });
 
-    // Send current recording state for recovery
-    const recordingState = await audioBackup.getRecordingState(roomId);
-    if (recordingState) {
-      console.log(`📡 Sending recording state to host: ${JSON.stringify(recordingState)}`);
-      socket.emit("meeting:status", recordingState);
+      const recordingState = await audioBackup.getRecordingState(roomId);
+      if (recordingState) {
+        console.log(`📡 Sending recording state to host: ${JSON.stringify(recordingState)}`);
+        socket.emit("meeting:status", recordingState);
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize meeting:', error);
+      socket.emit('error', { message: 'Failed to initialize meeting: ' + error.message });
     }
   });
 
@@ -738,7 +747,7 @@ io.on("connection", (socket) => {
       // Don't cleanup on page refresh!
       if (room.hostSocketId === socket.id && socket.data.isHost) {
         console.log(`⚠️ Host disconnected from ${roomId} - keeping meeting active for reconnection`);
-        
+
         // Notify guests that host disconnected (but keep meeting alive)
         room.approvedPeers.forEach((_, guestId) => {
           io.to(guestId).emit("host:disconnected");

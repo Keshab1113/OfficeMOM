@@ -1,8 +1,3 @@
-
-// // // backend/services/audioBackup.js
-
-
-
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs').promises;
@@ -17,6 +12,11 @@ class AudioBackupService {
     this.hostSockets = new Map(); // Track host socket per room
   }
 
+  // ✅ NEW: Sanitize room ID for file names
+  sanitizeRoomId(roomId) {
+    return roomId.replace(/[<>:"/\\|?*]/g, '_');
+  }
+
   async ensureTempDir() {
     try {
       await fs.mkdir(this.tempDir, { recursive: true });
@@ -27,6 +27,14 @@ class AudioBackupService {
   }
 
   async initMeeting(roomId, hostId, userId) {
+    if (!userId) {
+      console.error('❌ Cannot initialize meeting - userId is required');
+      throw new Error('User ID is required to initialize meeting');
+    }
+
+    // ✅ Use sanitized room ID for file operations
+    const sanitizedRoomId = this.sanitizeRoomId(roomId);
+
     if (this.activeMeetings.has(roomId)) {
       const meeting = this.activeMeetings.get(roomId);
 
@@ -37,7 +45,7 @@ class AudioBackupService {
         meeting.hostId = hostId;
       }
 
-      console.log(`♻️ Reconnected to existing meeting: ${roomId} (${meeting.chunkCounter} chunks)`);
+      console.log(`♻️ Reconnected to existing meeting for ${userId} user: ${roomId} (${meeting.chunkCounter} chunks)`);
       return meeting.meetingDbId;
     }
 
@@ -48,7 +56,6 @@ class AudioBackupService {
 
     if (existingMeeting) {
       meetingDbId = existingMeeting.id;
-      // ✅ FIX: Use created_at for start time
       startTime = new Date(existingMeeting.created_at).getTime();
       console.log(`📄 Resuming meeting from DB: ${roomId} (ID: ${meetingDbId})`);
     } else {
@@ -62,7 +69,8 @@ class AudioBackupService {
       console.log(`✅ Created new meeting in DB: ${roomId} (ID: ${meetingDbId})`);
     }
 
-    const tempFilePath = path.join(this.tempDir, `${roomId}_temp.webm`);
+    // ✅ Use sanitized room ID for file path
+    const tempFilePath = path.join(this.tempDir, `${sanitizedRoomId}_temp.webm`);
 
     // Check if temp file exists from previous session
     let existingChunkCount = 0;
@@ -78,6 +86,7 @@ class AudioBackupService {
 
     this.activeMeetings.set(roomId, {
       roomId,
+      sanitizedRoomId, // ✅ Store sanitized version
       hostId,
       meetingDbId,
       userId,
@@ -221,7 +230,8 @@ class AudioBackupService {
         return null;
       }
 
-      const fileName = `meeting_${roomId}_${Date.now()}.webm`;
+      // ✅ Use sanitized room ID in filename
+      const fileName = `meeting_${meeting.sanitizedRoomId}_${Date.now()}.webm`;
       const fileSizeMB = (audioBuffer.length / 1024 / 1024).toFixed(2);
 
       console.log(`📤 Uploading: ${fileName}`);

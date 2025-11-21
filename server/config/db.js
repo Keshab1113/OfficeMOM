@@ -41,21 +41,21 @@ const pool = mysql.createPool({
 });
 
 // ✅ Connection pool event handlers for monitoring
-pool.on('connection', (connection) => {
-  console.log('✅ New database connection established:', connection.threadId);
-});
+// pool.on('connection', (connection) => {
+//   console.log('✅ New database connection established:', connection.threadId);
+// });
 
-pool.on('acquire', (connection) => {
-  console.log('📊 Connection %d acquired', connection.threadId);
-});
+// pool.on('acquire', (connection) => {
+//   console.log('📊 Connection %d acquired', connection.threadId);
+// });
 
-pool.on('release', (connection) => {
-  console.log('📤 Connection %d released', connection.threadId);
-});
+// pool.on('release', (connection) => {
+//   console.log('📤 Connection %d released', connection.threadId);
+// });
 
-pool.on('enqueue', () => {
-  console.log('⏳ Waiting for available connection slot');
-});
+// pool.on('enqueue', () => {
+//   console.log('⏳ Waiting for available connection slot');
+// });
 
 // ✅ Graceful shutdown handler
 process.on('SIGINT', async () => {

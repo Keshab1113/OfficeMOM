@@ -9,32 +9,33 @@ import MeetingInstruction from "../../components/MeetingInstructions/MeetingInst
 import MeetingFeatures from "../../components/MeetingInstructions/MeetingFeatures";
 import Footer from "../../components/Footer/Footer";
 import Breadcrumb from "../../components/LittleComponent/Breadcrumb";
+import UnifiedHistory from "../../components/History/UnifiedHistory";
 
 const meetingPlatforms = [
-    { 
-        name: "Google Meet", 
-        icon: "/Icons/meet.svg", 
+    {
+        name: "Google Meet",
+        icon: "/Icons/meet.svg",
         match: "meet.google.com",
         color: "bg-green-500",
         description: "Secure video meetings for teams"
     },
-    { 
-        name: "Zoom", 
-        icon: "/Icons/zoom.svg", 
+    {
+        name: "Zoom",
+        icon: "/Icons/zoom.svg",
         match: "zoom.us",
         color: "bg-blue-500",
         description: "Video conferencing and webinars"
     },
-    { 
-        name: "Microsoft Teams", 
-        icon: "/Icons/teams.png", 
+    {
+        name: "Microsoft Teams",
+        icon: "/Icons/teams.png",
         match: "teams.microsoft.com",
         color: "bg-purple-500",
         description: "Collaboration and communication platform"
     },
-    { 
-        name: "Other Meeting", 
-        icon: "/Icons/other.webp", 
+    {
+        name: "Other Meeting",
+        icon: "/Icons/other.webp",
         match: "",
         color: "bg-gray-500",
         description: "Any other meeting platform"
@@ -66,15 +67,15 @@ export default function MeetingHome() {
             alert("Please paste a meeting link");
             return;
         }
-        
+
         if (!navigator.mediaDevices?.getUserMedia) {
             alert("Your browser doesn't support audio recording");
             return;
         }
 
         const id = uuidv4();
-        navigate(`/meeting/${id}`, { 
-            state: { 
+        navigate(`/meeting/${id}`, {
+            state: {
                 meetingLink,
                 activePlatform
             }
@@ -83,21 +84,21 @@ export default function MeetingHome() {
 
     return (
         <section className="relative min-h-screen w-full overflow-hidden">
-        {/* Enhanced Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
-          {/* Animated background elements */}
-          <div className="absolute inset-0 opacity-40">
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
-            <div className="absolute top-3/4 left-1/3 w-60 h-60 bg-pink-300 dark:bg-pink-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1500"></div>
-          </div>
+            {/* Enhanced Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/30">
+                {/* Animated background elements */}
+                <div className="absolute inset-0 opacity-40">
+                    <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 dark:bg-purple-600 rounded-full blur-3xl animate-pulse-slow"></div>
+                    <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1000"></div>
+                    <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full blur-3xl animate-pulse-slow animation-delay-2000"></div>
+                    <div className="absolute top-3/4 left-1/3 w-60 h-60 bg-pink-300 dark:bg-pink-600 rounded-full blur-3xl animate-pulse-slow animation-delay-1500"></div>
+                </div>
 
-          {/* Grid pattern */}
-          <div className="absolute inset-0 opacity-10 dark:opacity-5">
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(120,119,198,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(120,119,198,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
-          </div>
-        </div>
+                {/* Grid pattern */}
+                <div className="absolute inset-0 opacity-10 dark:opacity-5">
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(120,119,198,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(120,119,198,0.1)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black_40%,transparent_100%)]"></div>
+                </div>
+            </div>
 
             <div className="relative z-20 max-h-screen overflow-hidden overflow-y-scroll lg:pb-0 pb-10">
                 <Breadcrumb items={breadcrumbItems} />
@@ -264,10 +265,11 @@ export default function MeetingHome() {
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-1 w-full">
-                                <div className="h-80 sm:h-96 lg:h-[27rem] w-full">
-                                    <AllHistory NeedFor={"Online Meeting Conversion"} height="100%" />
-                                </div>
+                            <div className="lg:col-span-1">
+                                <UnifiedHistory
+                                    NeedFor="Online Meeting Conversion"
+                                    height="26.8rem"
+                                />
                             </div>
                         </div>
 
@@ -280,11 +282,11 @@ export default function MeetingHome() {
                 </div>
                 <Footer />
             </div>
-        <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
-        <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
-        <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
-        <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
-        <div className="absolute top-1/2 right-1/4 w-4 h-4 bg-yellow-400 rounded-full opacity-50 animate-float animation-delay-3000"></div>
-      </section>
+            <div className="absolute bottom-10 left-10 w-4 h-4 bg-indigo-400 rounded-full opacity-60 animate-float"></div>
+            <div className="absolute top-20 right-20 w-6 h-6 bg-purple-400 rounded-full opacity-40 animate-float animation-delay-1000"></div>
+            <div className="absolute top-40 left-20 w-3 h-3 bg-blue-400 rounded-full opacity-50 animate-float animation-delay-2000"></div>
+            <div className="absolute bottom-32 right-32 w-5 h-5 bg-green-400 rounded-full opacity-40 animate-float animation-delay-1500"></div>
+            <div className="absolute top-1/2 right-1/4 w-4 h-4 bg-yellow-400 rounded-full opacity-50 animate-float animation-delay-3000"></div>
+        </section>
     );
 }

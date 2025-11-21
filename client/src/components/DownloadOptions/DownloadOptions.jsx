@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { FaFileWord, FaFileExcel } from "react-icons/fa";
 import { Download } from "lucide-react";
 
 const DownloadOptions = ({ onChange }) => {
