@@ -1,105 +1,80 @@
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs').promises;
-const path = require('path');
+const { PassThrough } = require('stream');
 const pool = require('../config/db');
+const uploadToFTP = require('../config/uploadToFTP');
 
-class AudioBackupService {
+class AudioStreamService {
   constructor() {
     this.activeMeetings = new Map();
-    this.tempDir = path.join(__dirname, '../../temp_audio');
-    this.ensureTempDir();
-    this.hostSockets = new Map(); // Track host socket per room
+    this.hostSockets = new Map();
+
+    this.config = {
+      maxBufferSizeMB: parseInt(process.env.MAX_BUFFER_SIZE_MB) || 100,
+      chunkSaveInterval: 10,
+      maxRecordingMinutes: parseInt(process.env.MAX_RECORDING_MINUTES) || 180,
+    };
+
+    console.log('✅ AudioStreamService initialized (Direct FTP mode)');
   }
 
-  // ✅ NEW: Sanitize room ID for file names
   sanitizeRoomId(roomId) {
-    return roomId.replace(/[<>:"/\\|?*]/g, '_');
-  }
-
-  async ensureTempDir() {
-    try {
-      await fs.mkdir(this.tempDir, { recursive: true });
-      console.log('✅ Temp directory ready:', this.tempDir);
-    } catch (error) {
-      console.error('❌ Error creating temp directory:', error);
-    }
+    return String(roomId).replace(/[<>:"/\\|?*\s]/g, '_').substring(0, 100);
   }
 
   async initMeeting(roomId, hostId, userId) {
     if (!userId) {
-      console.error('❌ Cannot initialize meeting - userId is required');
       throw new Error('User ID is required to initialize meeting');
     }
 
-    // ✅ Use sanitized room ID for file operations
     const sanitizedRoomId = this.sanitizeRoomId(roomId);
 
     if (this.activeMeetings.has(roomId)) {
       const meeting = this.activeMeetings.get(roomId);
-
       const oldHostId = this.hostSockets.get(roomId);
+
       if (oldHostId !== hostId) {
-        console.log(`🔄 Host socket changed: ${oldHostId} → ${hostId}`);
+        console.log(`🔄 Host changed: ${oldHostId} → ${hostId}`);
         this.hostSockets.set(roomId, hostId);
         meeting.hostId = hostId;
       }
 
-      console.log(`♻️ Reconnected to existing meeting for ${userId} user: ${roomId} (${meeting.chunkCounter} chunks)`);
+      console.log(`♻️ Reconnected: ${roomId} (${meeting.chunkCounter} chunks, ${this.getBufferSizeMB(meeting)}MB)`);
       return meeting.meetingDbId;
     }
 
     const existingMeeting = await this.getMeetingFromDB(roomId);
-
-    let meetingDbId;
-    let startTime;
+    let meetingDbId, startTime;
 
     if (existingMeeting) {
       meetingDbId = existingMeeting.id;
       startTime = new Date(existingMeeting.created_at).getTime();
-      console.log(`📄 Resuming meeting from DB: ${roomId} (ID: ${meetingDbId})`);
+      console.log(`📄 Resuming meeting: ${roomId} (ID: ${meetingDbId})`);
     } else {
       const [result] = await pool.query(
         `INSERT INTO meetings (room_id, host_user_id, status, created_at) 
-       VALUES (?, ?, 'active', NOW())`,
+         VALUES (?, ?, 'active', NOW())`,
         [roomId, userId]
       );
       meetingDbId = result.insertId;
       startTime = Date.now();
-      console.log(`✅ Created new meeting in DB: ${roomId} (ID: ${meetingDbId})`);
-    }
-
-    // ✅ Use sanitized room ID for file path
-    const tempFilePath = path.join(this.tempDir, `${sanitizedRoomId}_temp.webm`);
-
-    // Check if temp file exists from previous session
-    let existingChunkCount = 0;
-    try {
-      const stats = await fs.stat(tempFilePath);
-      existingChunkCount = existingMeeting?.chunk_count || 0;
-      console.log(`📁 Found existing temp file: ${(stats.size / 1024).toFixed(2)} KB, ${existingChunkCount} chunks`);
-    } catch (error) {
-      // Create new temp file
-      await fs.writeFile(tempFilePath, Buffer.alloc(0));
-      console.log('✅ Created new temp file:', tempFilePath);
+      console.log(`✅ Created meeting: ${roomId} (ID: ${meetingDbId})`);
     }
 
     this.activeMeetings.set(roomId, {
       roomId,
-      sanitizedRoomId, // ✅ Store sanitized version
+      sanitizedRoomId,
       hostId,
       meetingDbId,
       userId,
       participants: new Map(),
-      chunkCounter: existingChunkCount,
+      chunkCounter: 0,
       startTime,
-      isRecording: existingMeeting?.status === 'recording',
+      isRecording: false,
       isShuttingDown: false,
-      tempFilePath,
+      audioChunks: [],
+      totalBytes: 0,
     });
 
     this.hostSockets.set(roomId, hostId);
-    console.log(`✅ Backup service initialized for meeting ${roomId}`);
     return meetingDbId;
   }
 
@@ -107,52 +82,73 @@ class AudioBackupService {
     try {
       const [rows] = await pool.query(
         `SELECT id, host_user_id, created_at, status, chunk_count, duration_seconds 
-         FROM meetings 
-         WHERE room_id = ? 
-         ORDER BY created_at DESC 
-         LIMIT 1`,
+         FROM meetings WHERE room_id = ? ORDER BY created_at DESC LIMIT 1`,
         [roomId]
       );
       return rows[0] || null;
-    } catch (error) {
-      console.error('❌ Error fetching meeting from DB:', error);
+    } catch (err) {
+      console.error('❌ DB fetch error:', err.message);
       return null;
     }
+  }
+
+  getBufferSizeMB(meeting) {
+    return (meeting.totalBytes / 1024 / 1024).toFixed(2);
+  }
+
+  getMemoryUsage() {
+    const used = process.memoryUsage();
+    return {
+      heapUsedMB: (used.heapUsed / 1024 / 1024).toFixed(2),
+      heapTotalMB: (used.heapTotal / 1024 / 1024).toFixed(2),
+      rssMB: (used.rss / 1024 / 1024).toFixed(2),
+    };
   }
 
   addParticipant(roomId, socketId, name) {
     const meeting = this.activeMeetings.get(roomId);
     if (!meeting) return;
-
-    meeting.participants.set(socketId, {
-      name,
-      joinedAt: Date.now(),
-    });
-    console.log(`✅ Added ${name} (${socketId}) to meeting ${roomId}`);
+    meeting.participants.set(socketId, { name, joinedAt: Date.now() });
+    console.log(`✅ Added ${name} to ${roomId}`);
   }
 
-  async storeChunk(roomId, chunkBuffer) {
+  storeChunk(roomId, chunkBuffer) {
     const meeting = this.activeMeetings.get(roomId);
 
     if (!meeting) {
-      console.log(`❌ Cannot store chunk - meeting ${roomId} not found`);
-      return;
+      return { success: false, error: 'Meeting not found' };
     }
 
-    try {
-      await fs.appendFile(meeting.tempFilePath, chunkBuffer);
-      meeting.chunkCounter++;
-
-      if (meeting.chunkCounter % 10 === 0) {
-        await this.saveProgressToDB(roomId);
-      }
-
-      if (meeting.chunkCounter % 50 === 0) {
-        console.log(`📊 Progress: ${meeting.chunkCounter} chunks stored for ${roomId}`);
-      }
-    } catch (error) {
-      console.error(`❌ Error storing chunk for ${roomId}:`, error);
+    if (meeting.isShuttingDown) {
+      return { success: false, error: 'Meeting is shutting down' };
     }
+
+    const maxBytes = this.config.maxBufferSizeMB * 1024 * 1024;
+    if (meeting.totalBytes + chunkBuffer.length > maxBytes) {
+      console.error(`❌ Buffer limit reached for ${roomId}`);
+      return { success: false, error: 'Buffer size limit reached' };
+    }
+
+    const durationMinutes = (Date.now() - meeting.startTime) / 1000 / 60;
+    if (durationMinutes > this.config.maxRecordingMinutes) {
+      console.error(`❌ Max duration reached for ${roomId}`);
+      return { success: false, error: 'Max recording duration reached' };
+    }
+
+    meeting.audioChunks.push(Buffer.from(chunkBuffer));
+    meeting.totalBytes += chunkBuffer.length;
+    meeting.chunkCounter++;
+
+    if (meeting.chunkCounter % this.config.chunkSaveInterval === 0) {
+      this.saveProgressToDB(roomId);
+    }
+
+    if (meeting.chunkCounter % 50 === 0) {
+      const mem = this.getMemoryUsage();
+      console.log(`📊 ${roomId}: ${meeting.chunkCounter} chunks, ${this.getBufferSizeMB(meeting)}MB | Heap: ${mem.heapUsedMB}MB`);
+    }
+
+    return { success: true, chunks: meeting.chunkCounter, sizeMB: this.getBufferSizeMB(meeting) };
   }
 
   async saveProgressToDB(roomId) {
@@ -161,145 +157,151 @@ class AudioBackupService {
 
     try {
       const duration = Math.floor((Date.now() - meeting.startTime) / 1000);
-
       await pool.query(
-        `UPDATE meetings 
-         SET duration_seconds = ?, 
-             chunk_count = ?,
-             last_updated = NOW()
-         WHERE id = ?`,
+        `UPDATE meetings SET duration_seconds = ?, chunk_count = ?, last_updated = NOW() WHERE id = ?`,
         [duration, meeting.chunkCounter, meeting.meetingDbId]
       );
-
-      console.log(`💾 Progress saved: ${roomId} - ${duration}s, ${meeting.chunkCounter} chunks`);
-    } catch (error) {
-      console.error('❌ Error saving progress:', error);
+    } catch (err) {
+      console.error('❌ Progress save error:', err.message);
     }
   }
 
   async startRecording(roomId) {
     const meeting = this.activeMeetings.get(roomId);
-    if (!meeting) {
-      console.log(`❌ Cannot start recording - meeting ${roomId} not found`);
-      return;
-    }
+    if (!meeting) return { success: false, error: 'Meeting not found' };
 
     meeting.isRecording = true;
-
-    if (!meeting.recordingStartTime) {
-      meeting.recordingStartTime = Date.now();
-    }
+    meeting.recordingStartTime = meeting.recordingStartTime || Date.now();
 
     await pool.query(
       `UPDATE meetings SET status = 'recording', started_at = NOW() WHERE id = ?`,
       [meeting.meetingDbId]
     );
 
-    console.log(`🎙️ Recording started for room ${roomId}`);
+    console.log(`🎙️ Recording started: ${roomId}`);
+    return { success: true };
   }
 
+  // ✅ FIXED: Direct FTP upload instead of HTTP call
   async stopRecording(roomId, backendUrl, token, recordingTime) {
+    console.log(`\n${'='.repeat(50)}`);
+    console.log(`🛑 STOP RECORDING - Direct FTP Upload`);
+    console.log(`   Room: ${roomId}`);
+    console.log(`   Recording time: ${recordingTime}s`);
+    console.log(`${'='.repeat(50)}\n`);
+
     const meeting = this.activeMeetings.get(roomId);
+
     if (!meeting) {
-      console.log(`⚠️ No meeting found for ${roomId} to stop`);
+      console.error(`❌ Meeting ${roomId} NOT FOUND`);
       return null;
     }
+
+    console.log(`📊 Meeting state:`);
+    console.log(`   Chunks: ${meeting.chunkCounter}`);
+    console.log(`   Size: ${this.getBufferSizeMB(meeting)}MB`);
 
     meeting.isShuttingDown = true;
     meeting.isRecording = false;
 
-    console.log(`🛑 Stopping recording for ${roomId}, waiting for final chunks...`);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
+    console.log('⏳ Waiting 2s for final chunks...');
+    await new Promise(r => setTimeout(r, 2000));
     await this.saveProgressToDB(roomId);
 
+    if (meeting.audioChunks.length === 0 || meeting.totalBytes === 0) {
+      console.error(`❌ No audio data!`);
+      this.cleanup(roomId);
+      return null;
+    }
+
     try {
-      // Check if temp file exists
-      try {
-        await fs.access(meeting.tempFilePath);
-      } catch (error) {
-        console.error(`❌ Temp file not found: ${meeting.tempFilePath}`);
-        return null;
-      }
-
-      const audioBuffer = await fs.readFile(meeting.tempFilePath);
-
-      if (audioBuffer.length === 0) {
-        console.log('⚠️ No audio data to save');
-        await this.cleanup(roomId);
-        return null;
-      }
-
-      // ✅ Use sanitized room ID in filename
+      console.log(`📦 Combining ${meeting.audioChunks.length} chunks...`);
+      const audioBuffer = Buffer.concat(meeting.audioChunks);
       const fileName = `meeting_${meeting.sanitizedRoomId}_${Date.now()}.webm`;
-      const fileSizeMB = (audioBuffer.length / 1024 / 1024).toFixed(2);
+      const sizeMB = (audioBuffer.length / 1024 / 1024).toFixed(2);
 
-      console.log(`📤 Uploading: ${fileName}`);
-      console.log(`📦 Size: ${fileSizeMB} MB, Chunks: ${meeting.chunkCounter}`);
+      console.log(`   Combined size: ${sizeMB}MB`);
+      console.log(`   Filename: ${fileName}`);
 
-      const formData = new FormData();
-      formData.append('audio', audioBuffer, {
-        filename: fileName,
-        contentType: 'audio/webm',
-      });
-      formData.append('meetingId', roomId);
-      formData.append('source', 'Live Meeting');
-      formData.append('recordingTime', recordingTime || Math.floor((Date.now() - meeting.startTime) / 1000));
+      // ✅ Direct FTP upload - no HTTP call needed!
+      console.log(`\n🚀 Starting direct FTP upload...`);
+      const audioUrl = await uploadToFTP(audioBuffer, fileName, 'audio_files');
 
-      const response = await axios.post(
-        `${backendUrl}/api/upload/upload-audio-ftp`,
-        formData,
-        {
-          headers: {
-            ...formData.getHeaders(),
-            Authorization: `Bearer ${token}`,
-          },
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-          timeout: 600000, // 10 minutes
-        }
+      console.log(`✅ FTP upload complete: ${audioUrl}`);
+
+      // ✅ Update database with audio URL
+      await pool.query(
+        `UPDATE meetings SET audio_url = ?, status = 'completed', completed_at = NOW(), duration_seconds = ? WHERE id = ?`,
+        [audioUrl, recordingTime, meeting.meetingDbId]
       );
 
-      if (response.data?.audioUrl) {
+      // ✅ Also create history entry (like your upload endpoint does)
+      try {
         await pool.query(
-          `UPDATE meetings 
-           SET audio_url = ?, 
-               status = 'completed',
-               completed_at = NOW(),
-               duration_seconds = ?
-           WHERE id = ?`,
-          [response.data.audioUrl, recordingTime, meeting.meetingDbId]
+          `INSERT INTO history (user_id, audioUrl, source, date, isMoMGenerated) VALUES (?, ?, ?, NOW(), 0)`,
+          [meeting.userId, audioUrl, 'Live Meeting']
         );
-
-        console.log(`✅ Meeting saved: ${response.data.audioUrl}`);
-
-        // NOW cleanup after successful save
-        await this.cleanup(roomId);
-
-        return response.data.audioUrl;
+        console.log(`✅ History entry created`);
+      } catch (historyErr) {
+        console.warn(`⚠️ History insert warning: ${historyErr.message}`);
       }
 
-      return null;
-    } catch (error) {
-      console.error('❌ Error saving recording:', error.message);
-      // DON'T cleanup on error - keep temp file for recovery
+      console.log(`✅ Database updated`);
+      this.cleanup(roomId);
+      return audioUrl;
+
+    } catch (err) {
+      console.error(`\n❌ UPLOAD ERROR: ${err.message}`);
+      console.error(`   Stack: ${err.stack}`);
+
+      // ✅ Fixed: Don't use error_message column (it doesn't exist)
+      try {
+        await pool.query(
+          `UPDATE meetings SET status = 'failed' WHERE id = ?`,
+          [meeting.meetingDbId]
+        );
+      } catch (dbErr) {
+        console.error(`❌ DB update error: ${dbErr.message}`);
+      }
+
+      meeting.isShuttingDown = false;
+      meeting.uploadError = err.message;
+
       return null;
     }
   }
 
+  async retryUpload(roomId, backendUrl, token) {
+    const meeting = this.activeMeetings.get(roomId);
+
+    if (!meeting || !meeting.uploadError) {
+      return { success: false, error: 'No failed upload to retry' };
+    }
+
+    console.log(`🔄 Retrying upload for ${roomId}`);
+    meeting.uploadError = null;
+
+    const result = await this.stopRecording(roomId, backendUrl, token);
+    return { success: !!result, audioUrl: result };
+  }
+
   async getRecordingState(roomId) {
     const meeting = this.activeMeetings.get(roomId);
+
     if (meeting) {
       return {
         isRecording: meeting.isRecording,
         duration: Math.floor((Date.now() - meeting.startTime) / 1000),
         chunkCount: meeting.chunkCounter,
+        sizeMB: this.getBufferSizeMB(meeting),
         participants: meeting.participants.size,
+        hasError: !!meeting.uploadError,
+        error: meeting.uploadError,
       };
     }
 
     const dbMeeting = await this.getMeetingFromDB(roomId);
-    if (dbMeeting && dbMeeting.status === 'recording') {
+    if (dbMeeting?.status === 'recording') {
       return {
         isRecording: true,
         duration: dbMeeting.duration_seconds || 0,
@@ -315,31 +317,58 @@ class AudioBackupService {
     const meeting = this.activeMeetings.get(roomId);
     if (meeting) {
       meeting.participants.delete(socketId);
-      console.log(`👋 Removed participant ${socketId} from ${roomId}`);
     }
   }
 
-  // ✅ NEW: Check if socket is the current host
   isCurrentHost(roomId, socketId) {
-    const currentHostId = this.hostSockets.get(roomId);
-    return currentHostId === socketId;
+    return this.hostSockets.get(roomId) === socketId;
   }
 
-  async cleanup(roomId) {
+  cleanup(roomId) {
     const meeting = this.activeMeetings.get(roomId);
+
     if (meeting) {
-      try {
-        await fs.unlink(meeting.tempFilePath);
-        console.log(`🗑️ Deleted temp file for ${roomId}`);
-      } catch (error) {
-        console.error('⚠️ Could not delete temp file:', error.message);
-      }
+      const freedMB = this.getBufferSizeMB(meeting);
+      meeting.audioChunks = [];
+      meeting.totalBytes = 0;
+      console.log(`🗑️ Cleared buffer for ${roomId} (freed ${freedMB}MB)`);
     }
 
     this.activeMeetings.delete(roomId);
     this.hostSockets.delete(roomId);
-    console.log(`🗑️ Cleaned up meeting ${roomId}`);
+  }
+
+  getStatus() {
+    const meetings = [];
+
+    for (const [roomId, meeting] of this.activeMeetings) {
+      meetings.push({
+        roomId,
+        chunks: meeting.chunkCounter,
+        sizeMB: this.getBufferSizeMB(meeting),
+        duration: Math.floor((Date.now() - meeting.startTime) / 1000),
+        isRecording: meeting.isRecording,
+        participants: meeting.participants.size,
+      });
+    }
+
+    return {
+      activeMeetings: meetings.length,
+      meetings,
+      memory: this.getMemoryUsage(),
+    };
+  }
+
+  async shutdown() {
+    console.log('🔄 Shutting down AudioStreamService...');
+    for (const [roomId] of this.activeMeetings) {
+      await this.saveProgressToDB(roomId);
+    }
   }
 }
 
-module.exports = new AudioBackupService();
+const service = new AudioStreamService();
+process.on('SIGTERM', () => service.shutdown());
+process.on('SIGINT', () => service.shutdown());
+
+module.exports = service;
