@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import DownloadOptions from "../../components/DownloadOptions/DownloadOptions";
 import Timing from "../../components/Timing/Timing";
 import { useToast } from "../../components/ToastContext";
 import { MdRecordVoiceOver } from "react-icons/md";
 import Footer from "../../components/Footer/Footer";
-import TablePreview from "../../components/TablePreview/TablePreview";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
-import AllHistory from "../../components/History/History";
-import Heading from "../../components/LittleComponent/Heading";
 import { Mic, Loader2, FileText, Copy } from "lucide-react";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 import { QRCodeCanvas } from "qrcode.react";
@@ -16,10 +12,7 @@ import { Helmet } from "react-helmet";
 import JoinRequestModal from "../../components/LittleComponent/JoinRequestModal";
 import io from "socket.io-client";
 import { createHostMixerStream } from "../../hooks/useHostMixer";
-import StylishAudioPreview from "../../components/LittleComponent/StylishAudioPreview";
-import MultipleAudioPlayer from "../../components/LittleComponent/MultipleAudioPlayer";
 import {
-  addAudioPreview,
   removeAudioPreview,
   updateNeedToShow,
 } from "../../redux/audioSlice";
@@ -41,8 +34,6 @@ const LiveMeeting = () => {
 
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isPreviewProcessing, setIsPreviewProcessing] = useState(false);
-  const [isAudioPreviewProcessing, setIsAudioPreviewProcessing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const [recordedBlob, setRecordedBlob] = useState(false);
   const [barCount, setBarCount] = useState(32);
@@ -65,8 +56,6 @@ const LiveMeeting = () => {
   const addRemoteRef = useRef(null);
   const mixerRef = useRef(null);
   const recordingBlobRef = useRef(null);
-  const previousBlobRef = useRef(null);
-  const mergedPreviewBlobRef = useRef(null); // ✅ keep track of merged preview audio
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [rechargeInfo, setRechargeInfo] = useState(null);
   const navigate = useNavigate();
@@ -77,7 +66,6 @@ const LiveMeeting = () => {
   const meetingIdRef = useRef(null);
 
   const userId = useSelector((state) => state.auth.id);
-
 
   const { pendingMeeting, isChecking, clearPendingMeeting } = useMeetingRecovery(token);
   const [showResumeModal, setShowResumeModal] = useState(false);
@@ -173,7 +161,7 @@ const LiveMeeting = () => {
       if (status.isRecording) {
         setIsRecording(true);
         setRecordingTime(Math.floor(status.duration / 1000));
-        addToast('info', 'Recording resumed after reconnection');
+        // addToast('info', 'Recording resumed after reconnection');
       }
     };
 
@@ -256,7 +244,7 @@ const LiveMeeting = () => {
           setIsRecording(true);
           setRecordingTime(state.duration || 0);
           accumulatedTimeRef.current = state.duration || 0;
-          addToast("info", "Recording resumed after page refresh");
+          // addToast("info", "Recording resumed after page refresh");
 
           // Resume streaming
           if (mixerRef.current?.mixedStream) {
@@ -646,9 +634,6 @@ const LiveMeeting = () => {
     }
   };
 
-
-  // Add this to your LiveMeeting.jsx component
-
   // ✅ Check for existing recording state on component mount
   useEffect(() => {
     const checkForExistingRecording = async () => {
@@ -673,7 +658,7 @@ const LiveMeeting = () => {
               setIsRecording(true);
               setRecordingTime(state.duration || 0);
               accumulatedTimeRef.current = state.duration || 0;
-              addToast("info", "Recording resumed after page refresh");
+              // addToast("info", "Recording resumed after page refresh");
 
               // Resume streaming if mixer is ready
               if (mixerRef.current?.mixedStream) {
@@ -764,7 +749,7 @@ const LiveMeeting = () => {
       console.log(`⏱ Saving accumulated time: ${accumulatedTimeRef.current}s`);
 
       // Show initial toast
-      addToast("info", "Stopping recording and processing audio...", 5000);
+      // addToast("info", "Stopping recording and processing audio...", 5000);
 
       // Stop backup recorder
       if (mediaRecorderRef.current?.backupRecorder?.state === "recording") {
@@ -834,6 +819,7 @@ const LiveMeeting = () => {
             historyId = data.latestMeeting.history_id;
             console.log('✅ Successfully fetched audio URL:', audioUrl);
             console.log('📋 History ID:', historyId);
+
             break;
           } else {
             console.log(`⏳ Attempt ${attempt}: Audio not ready yet, waiting...`);
@@ -856,7 +842,7 @@ const LiveMeeting = () => {
       console.log("🔥 Starting background processing with audio URL:", audioUrl);
 
       // Show processing toast
-      addToast("info", "Starting transcription processing...", 3000);
+      // addToast("info", "Starting transcription processing...", 3000);
 
       // Start background processing
       const payload = {
@@ -892,7 +878,7 @@ const LiveMeeting = () => {
         }
 
         // Show ending meeting toast
-        addToast("info", "Ending meeting...", 2000);
+        // addToast("info", "Ending meeting...", 2000);
 
         // End the meeting
         await endMeeting();
@@ -902,8 +888,7 @@ const LiveMeeting = () => {
 
         // Small delay for UX
         await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Navigate to result page with background processing
+        setIsProcessing(false);
         navigate(`/live-meeting/meeting-result/${finalHistoryId}`, {
           state: {
             historyID: finalHistoryId,
@@ -920,51 +905,6 @@ const LiveMeeting = () => {
       console.error('❌ Error in stopRecording:', error);
       setIsProcessing(false);
       addToast("error", error.message || "Failed to stop recording properly");
-    }
-  };
-
-
-  const continuePollingInBackground = async (meetingId, token, duration) => {
-    console.log('🔄 Starting background polling for audio URL...');
-    const maxBackgroundAttempts = 30; // Poll for up to 5 more minutes
-
-    for (let attempt = 1; attempt <= maxBackgroundAttempts; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Check every 10 seconds
-
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/live-meeting/${meetingId}/latest`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        const data = await res.json();
-
-        if (data?.latestMeeting?.audio_url) {
-          console.log('✅ Background polling found audio URL:', data.latestMeeting.audio_url);
-
-          // Add preview now that audio is ready
-          dispatch(
-            addAudioPreview({
-              audioUrl: data.latestMeeting.audio_url,
-              id: Date.now(),
-              uploadedAt: new Date().toISOString(),
-              title: `meeting_${meetingId}.mp3`,
-              needToShow: true,
-              duration: duration,
-            })
-          );
-          setRecordedBlob(true);
-
-          addToast("success", "Your recording is now ready!");
-          break; // Stop polling
-        } else {
-          console.log(`🔄 Background attempt ${attempt}: Still processing...`);
-        }
-      } catch (error) {
-        console.error(`❌ Background polling error:`, error);
-      }
     }
   };
 
@@ -1305,60 +1245,25 @@ const LiveMeeting = () => {
                           </div>
                         </div>
                       )}
+
                     </div>
-                  </div>
-                  {/* {isAudioPreviewProcessing && (
-                    <div className="text-xl font-medium text-black dark:text-white flex justify-center items-center gap-2 my-4 py-4 px-4">
-                      <Loader2 className="w-10 h-10 animate-spin" />
-                      Meeting Preview Processing...
-                    </div>
-                  )} */}
-
-                  {/* Show preview when ready */}
-                  {/* {lastPreview?.needToShow === true && lastPreview?.audioUrl && !isAudioPreviewProcessing && (
-                    <StylishAudioPreview
-                      onRecordAgain={handleRecordAgain}
-                      onRemove={onRemove}
-                    />
-                  )} */}
-
-                  {/* <button
-                    onClick={handleStartMakingNotes}
-                    disabled={
-                      !lastPreview?.audioUrl ||
-                      lastPreview?.needToShow === false ||
-                      isProcessing ||
-                      previews.length === 0
-                    }
-                    className={`mt-10 w-full py-4 rounded-lg text-gray-600 dark:text-white font-semibold flex justify-center items-center gap-2 ${!lastPreview?.audioUrl ||
-                      lastPreview?.needToShow === false ||
-                      isProcessing ||
-                      previews.length === 0
-                      ? "bg-gray-500/20 cursor-not-allowed"
-                      : "bg-blue-400/20 hover:bg-blue-500 hover:text-white cursor-pointer"
-                      }`}
-
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="w-6 h-6" />
-                        Create MoM (Minutes of Meeting)
-                      </>
+                    {isProcessing && (
+                      <div className="w-full py-10 mt-6 flex items-center justify-center gap-3 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div className="relative">
+                          <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+                          <div className="absolute inset-0 bg-blue-100 dark:bg-blue-900/30 rounded-full animate-ping opacity-20"></div>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-gray-700 dark:text-gray-200 font-medium text-sm">
+                            Preparing your meeting
+                          </span>
+                          <span className="text-gray-500 dark:text-gray-400 text-xs">
+                            This will just take a moment...
+                          </span>
+                        </div>
+                      </div>
                     )}
-                  </button> */}
-                  {/* <p className="text-xs text-gray-400 mt-3 text-center">
-                    🆓 Meeting transcription is completely free now
-                  </p> */}
-
-                  {/* <MultipleAudioPlayer
-                    // onContinue={continueNextProcess}
-                    isPreviewProcessing={isPreviewProcessing}
-                  /> */}
+                  </div>
                 </div>
                 <div className="lg:col-span-1">
                   <UnifiedHistory
@@ -1393,7 +1298,7 @@ const LiveMeeting = () => {
           requiredMinutes={rechargeInfo?.required || 0}
           remainingMinutes={rechargeInfo?.remaining || 0}
           onRecharge={() => {
-            window.location.href = '/recharge'; // Update with your actual pricing page route
+            window.location.href = '/recharge';
           }}
         />
       )}

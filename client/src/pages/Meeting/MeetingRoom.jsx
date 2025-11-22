@@ -117,7 +117,7 @@ export default function MeetingRoom() {
             }
 
             socket.emit("host:join-room", {
-                roomId: meetingLink,
+                roomId: meetingId,
                 userId: userID // ✅ Make sure this is not null
             });
             setTimerActive(true);

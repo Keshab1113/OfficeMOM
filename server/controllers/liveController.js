@@ -1,4 +1,4 @@
-  const fs = require("fs");
+const fs = require("fs");
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
 const db = require("../config/db.js");
@@ -27,7 +27,7 @@ async function uploadFileToAssemblyAI(buffer, filename) {
 async function createTranscription(audioUrl) {
   const res = await axios.post(
     TRANSCRIPT_URL,
-    { audio_url: audioUrl, language_detection: true,speaker_labels: true },
+    { audio_url: audioUrl, language_detection: true, speaker_labels: true },
     {
       headers: {
         Authorization: ASSEMBLY_KEY,
@@ -73,7 +73,7 @@ const transcribeAudio = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    fs.unlink(file.path, () => {});
+    fs.unlink(file.path, () => { });
     res.status(500).json({ error: err.message || "Server error" });
   }
 };
@@ -111,7 +111,7 @@ const endMeeting = async (req, res) => {
   res.json({ ok: true });
 };
 
- 
+
 
 // ✅ Get the latest meeting record for a given meetingId (room_id)
 const getLatestMeeting = async (req, res) => {
@@ -248,39 +248,6 @@ const getAllAudios = async (req, res) => {
   }
 };
 
-// const deleteAudio = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { id } = req.params;
-
-//     // First check if the record exists for this user
-//     const [audio] = await db.query(
-//       "SELECT audioUrl FROM history WHERE id = ? AND user_id = ?",
-//       [id, userId]
-//     );
-
-//     if (audio.length === 0) {
-//       return res.status(404).json({ message: "Audio not found" });
-//     }
-
-//     const audioUrl = audio[0].audioUrl;
-
-//     // Now delete the record
-//     await db.query("DELETE FROM history WHERE id = ? AND user_id = ?", [
-//       id,
-//       userId,
-//     ]);
-
-//     res.status(200).json({
-//       message: "Audio deleted successfully",
-//       id,
-//     });
-//   } catch (err) {
-//     console.error("❌ [Audio Delete] Error:", err);
-//     res.status(500).json({ message: "Server error while deleting audio" });
-//   }
-// };
-
 const deleteAudio = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -352,7 +319,7 @@ const updateAudioHistory = async (req, res) => {
     // Update in one query since all fields always updated
     await db.query(
       "UPDATE history SET isMoMGenerated = ?, date = ?, data = ?, language = ? WHERE id = ? AND user_id = ?",
-      [1, formattedDate, data ? JSON.stringify(data) : null,language, id, userId]
+      [1, formattedDate, data ? JSON.stringify(data) : null, language, id, userId]
     );
 
     if (audio_id) {
